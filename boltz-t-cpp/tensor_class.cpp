@@ -8,6 +8,42 @@
 #include <algorithm>
 using namespace std;
 
+double **qr(MKL_INT m, MKL_INT n, double *a) {
+
+	double **result = new double *[2];
+
+    const double alpha = 1.0;
+    const double beta = 0.0;
+
+	MKL_INT size = min(m, n);
+
+	double *tau = new double[size];
+
+	double *a_tmp = new double[m*n];
+
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, n, a, n, a_tmp, n);
+
+	LAPACKE_dgeqrf (LAPACK_ROW_MAJOR, m, n, a_tmp, n, tau);
+
+	double *q = new double[m*size];
+	double *r = new double[size*n]();
+
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'U', size, n, a_tmp, n, r, n);
+
+	LAPACKE_dorgqr (LAPACK_ROW_MAJOR, m, size, size, a_tmp, n, tau);
+
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, size, a_tmp, n, q, size);
+
+	result[0] = q;
+	result[1] = r;
+
+	delete [] a_tmp;
+	delete [] tau;
+
+	return result;
+
+}
+
 double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r) {
 
 	MKL_INT info;
@@ -137,6 +173,10 @@ public:
 		delete [] A;
 	}
 
+	void get_r() {
+		cout << r1 << " " << r2 << " " << r3 << endl;
+	}
+
 	// Destructor
 	~Tensor(){
 		delete [] core;
@@ -148,12 +188,12 @@ public:
 		auto dim = {n1, n2, n3};
 		return dim;
 	}
-	double At(int i1, int i2, int i3){
+	double At(MKL_INT i1, MKL_INT i2, MKL_INT i3){
 		// get element
 		double a = 0.0;
-		for(int j1 = 0; j1 < r1; j1++) {
-			for(int j2 = 0; j2 < r2; j2++) {
-				for(int j3 = 0; j3 < r3; j3++) {
+		for(MKL_INT j1 = 0; j1 < r1; j1++) {
+			for(MKL_INT j2 = 0; j2 < r2; j2++) {
+				for(MKL_INT j3 = 0; j3 < r3; j3++) {
 					a += core[j1 * r2 * r3 + j2 * r3 + j3] * mode1[i1 * r1 + j1] * mode2[i2 * r2 + j2] * mode3[i3 * r3 + j3];
 				}
 			}
@@ -162,9 +202,116 @@ public:
 	}
 
 	// rounding
-	void round(){
-		// do nothing for full tensor
+	void normalize() {
+
+		const double alpha = 1.0;
+		const double beta = 0.0;
+
+		double **QR1, **QR2, **QR3;
+		QR1 = qr(n1, r1, mode1);
+		QR2 = qr(n2, r2, mode2);
+		QR3 = qr(n3, r3, mode3);
+
+		delete [] mode1;
+		mode1 = new double[n1*r1];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1, min(n1, r1), QR1[0], min(n1, r1), mode1, min(n1, r1));
+		delete [] mode2;
+		mode2 = new double[n2*r2];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n2, min(n2, r2), QR2[0], min(n2, r2), mode2, min(n2, r2));
+		delete [] mode3;
+		mode3 = new double[n3*r3];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3, min(n3, r3), QR3[0], min(n3, r3), mode3, min(n3, r3));
+
+		double *z1 = new double[r1*r2*r3];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', r1*r2*r3, 1, core, 1, z1, 1);
+
+		delete [] core;
+		core = new double[min(n1, r1)*min(n2, r2)*min(n3, r3)];
+
+		mkl_dimatcopy ('R', 'T', r1, r2*r3, alpha, z1, r2*r3, r1);
+		mkl_dimatcopy ('R', 'T', min(n1, r1), r1, alpha, QR1[1], r1, min(n1, r1));
+		double *z2 = new double[min(n1, r1)*r2*r3];
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+			                            r2*r3, min(n1, r1), r1, alpha, z1, r1, QR1[1], min(n1, r1), beta, z2, min(n1, r1));
+		mkl_dimatcopy ('R', 'T', r2, min(n1, r1)*r3, alpha, z2, min(n1, r1)*r3, r2);
+		mkl_dimatcopy ('R', 'T', min(n2, r2), r2, alpha, QR2[1], r2, min(n2, r2));
+		double *z3 = new double[min(n1, r1)*min(n2, r2)*r3];
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+				min(n1, r1)*r3, min(n2, r2), r2, alpha, z2, r2, QR2[1], min(n2, r2), beta, z3, min(n2, r2));
+		mkl_dimatcopy ('R', 'T', r3, min(n1, r1)*min(n2, r2), alpha, z3, min(n1, r1)*min(n2, r2), r3);
+		mkl_dimatcopy ('R', 'T', min(n3, r3), r3, alpha, QR3[1], r3, min(n3, r3));
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+				min(n1, r1)*min(n2, r2), min(n3, r3), r3, alpha, z3, r3, QR3[1], min(n3, r3), beta, core, min(n3, r3));
+
+		delete [] z1;
+		delete [] z2;
+		delete [] z3;
+		for (int i = 0; i < 2; ++i) {
+			delete [] QR1[i];
+			delete [] QR2[i];
+			delete [] QR3[i];
+		}
+		delete [] QR1;
+		delete [] QR2;
+		delete [] QR3;
+
+		r1 = min(n1, r1);
+		r2 = min(n2, r2);
+		r3 = min(n3, r3);
+
 	}
+
+	void round(double eps) {
+
+		const double alpha = 1.0;
+		const double beta = 0.0;
+
+		MKL_INT r1_, r2_, r3_;
+
+		normalize();
+
+		double **A;
+		A = compress(r1, r2, r3, core, eps, r1_, r2_, r3_);
+
+		delete [] core;
+		core = new double[r1_ * r2_ * r3_];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', r1_ * r2_ * r3_, 1, A[0], 1, core, 1);
+
+		double *mode1_ = new double[n1 * r1_];
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+			                            n1, r1_, r1, alpha, mode1, r1, A[1], r1_, beta, mode1_, r1_);
+		delete [] mode1;
+		mode1 = new double[n1 * r1_];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1 * r1_, 1, mode1_, 1, mode1, 1);
+		delete [] mode1_;
+
+		double *mode2_ = new double[n2 * r2_];
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+			                            n2, r2_, r2, alpha, mode2, r2, A[2], r2_, beta, mode2_, r2_);
+		delete [] mode2;
+		mode2 = new double[n2 * r2_];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n2 * r2_, 1, mode2_, 1, mode2, 1);
+		delete [] mode2_;
+
+		double *mode3_ = new double[n3 * r3_];
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+										n3, r3_, r3, alpha, mode3, r3, A[3], r3_, beta, mode3_, r3_);
+		delete [] mode3;
+		mode3 = new double[n3 * r3_];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3 * r3_, 1, mode3_, 1, mode3, 1);
+		delete [] mode3_;
+
+		r1 = r1_;
+		r2 = r2_;
+		r3 = r3_;
+
+		for (int i = 0; i < 4; ++i) {
+			delete [] A[i];
+		}
+		delete [] A;
+
+	}
+
 	// compute sum of all elements
 	double sum() {
 		double s = 0.0;
@@ -175,6 +322,7 @@ public:
 	}
 
 	// element-wise summation
+	//TODO: const, Tensor&, new
 	friend Tensor add(Tensor& t1, Tensor& t2){
 		// check, that shapes are equal;
 		if (t1.shape() != t2.shape()){
@@ -225,8 +373,8 @@ public:
 	    const double alpha = 1.0;
 	    const double beta = 0.0;
 
-	    double *z1 = new double[n1*n2*n3];
-	    double *z2 = new double[n1*n2*n3];
+	    double *z1 = new double[n1*r2*r3];
+	    double *z2 = new double[n1*n2*r3];
 	    double *res = new double[n1*n2*n3];
 
 	    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
@@ -280,9 +428,6 @@ Tensor operator *(Tensor& t1, Tensor& t2){
 	return mult(t1, t2);
 }
 */
-double f(double x, double y, double z) {
-	return exp(-(x*x + y*y + z*z) / 1000.0);
-}
 
 void print_matrix( char* desc, MKL_INT m, MKL_INT n, double* a, MKL_INT lda ) {
         MKL_INT i, j;
@@ -293,22 +438,28 @@ void print_matrix( char* desc, MKL_INT m, MKL_INT n, double* a, MKL_INT lda ) {
         }
 }
 
+double f(double x, double y, double z) {
+	return exp(-(x*x + y*y + z*z) / 1000.0) + (x / 100.0) + (x*y / 100.0) + 10.0 * sin(z) + exp(-(x*(x - 10.) + y*y + z*z) / 1000.0);
+}
+
 int main(){
 	MKL_INT n1, n2, n3;
-	n1 = 10;
-	n2 = 10;
-	n3 = 10;
+	n1 = 30;
+	n2 = 30;
+	n3 = 30;
 
-	double eps = 0.01;
+	double eps = 0.001;
 
 	double *a1 = new double[n1*n2*n3];
 	double *a2 = new double[n1*n2*n3];
+	double *a3 = new double[n1*n2*n3];
 
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
-				a1[i*n2*n3 + j*n3 + k] = double(k);
-				a2[i*n2*n3 + j*n3 + k] = double(k);
+				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a2[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a3[i*n2*n3 + j*n3 + k] = 3 * f(double(i), double(j), double(k));
 			}
 		}
 	}
@@ -316,19 +467,27 @@ int main(){
 	Tensor t1 = Tensor(n1, n2, n3, a1, eps);
 	Tensor t2 = Tensor(n1, n2, n3, a2, eps);
 	Tensor t3 = t1 + t2;
-//	t3 = t1 + t2;//add(t1, t2);
+	t3.round(eps);
+	Tensor t4 = t3 + t2;
+	t4.get_r();
+	t4.round(eps);
+	t4.get_r();
 
-	double *t3_full;
+	double *t4_full;
 
-	t3_full = t3.full();
+	t4_full = t4.full();
 
-	print_matrix("t3.full()", n1*n2, n3, t3_full, n3);
+	double a_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
 
-//	delete t1;
-//	delete t2;
-//	delete t3;
-	delete [] t3_full;
+	cblas_daxpy(n1*n2*n3, -1.0, t4_full, 1, a3, 1);
 
-	cout << "End" << endl;
+	double diff_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+
+	double diff = diff_norm / a_norm;
+
+	cout << "diff = " << diff << endl;
+
+	delete [] t4_full;
+
 	return 0;
 }

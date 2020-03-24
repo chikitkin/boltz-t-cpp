@@ -9,8 +9,8 @@
 
 using namespace std;
 
-#define N1 3
-#define N2 2
+#define N1 4
+#define N2 10
 
 extern void print_matrix( char* desc, MKL_INT m, MKL_INT n, double* a, MKL_INT lda );
 
@@ -18,11 +18,18 @@ int main() {
 
 	MKL_INT n1 = N1, n2 = N2;
 
+    const double alpha = 1.0;
+    const double beta = 0.0;
+
 	double eps = 0.01;
 
 	double *a = new double[n1*n2];
 
-	int size = max(1, min(n1, n2));
+	delete [] a;
+
+	a = new double[n1*n2];
+
+	int size = min(n1, n2);
 
 	double *tau = new double[size];
 
@@ -39,20 +46,20 @@ int main() {
 	print_matrix("qr", n1, n2, a, n2);
 	print_matrix("tau", size, 1, tau, 1);
 
-	double *r = new double[n2*n2]();
+	double *r = new double[size*n2]();
 
-	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'U', n2, n2, a, n2, r, n2);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'U', size, n2, a, n2, r, n2);
 
-	print_matrix("r", n2, n2, r, n2);
+	print_matrix("r", size, n2, r, n2);
 
-	LAPACKE_dorgqr (LAPACK_ROW_MAJOR, n1, n2, n2, a, n2, tau);
+	LAPACKE_dorgqr (LAPACK_ROW_MAJOR, n1, size, size, a, n2, tau);
 
-	print_matrix("q", n1, n2, a, n2);
+	print_matrix("q", n1, size, a, n2);
 
 	double *a_ = new double[n1*n2];
 
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-	                            n1, n2, n2, 1.0, a, n2, r, n2, 0.0, a_, n2);
+	                            n1, n2, size, alpha, a, n2, r, n2, beta, a_, n2);
 
 	print_matrix("a_", n1, n2, a_, n2);
 
