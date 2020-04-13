@@ -16,15 +16,20 @@ extern double **qr(MKL_INT m, MKL_INT n, double *a);
 class Tensor {
 public:
 	// Constructor
-	Tensor(){
-
+	Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_) :
+		n1(n1_), n2(n2_), n3(n3_) {
+		r1 = 0;
+		r2 = 0;
+		r3 = 0;
+		g = new double[0];
+		u1 = new double[0];
+		u2 = new double[0];
+		u3 = new double[0];
 	}
 	// Zero tensor with given ranks
-	Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, MKL_INT r1_, MKL_INT r2_, MKL_INT r3_){
+	Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, MKL_INT r1_, MKL_INT r2_, MKL_INT r3_) :
+		n1(n1_), n2(n2_), n3(n3_) {
 		// Create zero tensor
-		n1 = n1_;
-		n2 = n2_;
-		n3 = n3_;
 		r1 = r1_;
 		r2 = r2_;
 		r3 = r3_;
@@ -34,10 +39,8 @@ public:
 		u3 = new double[n3 * r3];
 	}
 	// Compress a tensor with given accuracy
-	Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *a, double eps){
-		n1 = n1_;
-		n2 = n2_;
-		n3 = n3_;
+	Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *a, double eps) :
+		n1(n1_), n2(n2_), n3(n3_) {
 		double **A;
 		A = compress(n1, n2, n3, a, eps, r1, r2, r3);
 		g = new double[r1 * r2 * r3];
@@ -53,6 +56,24 @@ public:
 				delete [] A[i];
 			}
 		delete [] A;
+	}
+	// Create a rank-1 tensor from given factors
+	Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *u1_, double *u2_, double *u3_) :
+		n1(n1_), n2(n2_), n3(n3_) {
+		r1 = 1;
+		r2 = 1;
+		r3 = 1;
+
+		g = new double[r1 * r2 * r3];
+		u1 = new double[n1 * r1];
+		u2 = new double[n2 * r2];
+		u3 = new double[n3 * r3];
+
+		g[0] = 1.0;
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*r1, 1, u1_, 1, u1, 1);
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n2*r2, 1, u2_, 1, u2, 1);
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3*r3, 1, u3_, 1, u3, 1);
+
 	}
 	// Print ranks
 	void get_r() {
@@ -251,8 +272,7 @@ public:
 	}
 
 	// Element-wise summation
-	//TODO: const, Tensor&, new
-	friend Tensor add(const Tensor& t1, const Tensor& t2){
+	const friend Tensor add(const Tensor& t1, const Tensor& t2){
 		// check that shapes are equal;
 		if (t1.shape() != t2.shape()){
 			cout << "Different shapes in sum!" << endl;
@@ -280,7 +300,7 @@ public:
 	}
 
 	// Element-wise multiplication
-	friend Tensor mult(const Tensor& t1, const Tensor& t2){
+	const friend Tensor mult(const Tensor& t1, const Tensor& t2){
 		// check that shapes are equal;
 		if (t1.shape() != t2.shape()){
 			cout << "Different shapes in mult!" << endl;
@@ -324,6 +344,59 @@ public:
 		return result;
 	}
 
+	Tensor& rmult(const double alpha){
+		mkl_dimatcopy('R', 'N', 1, r1 * r2 * r3, alpha, g, 1, r1 * r2 * r3);
+
+		return *this;
+	}
+
+	Tensor& divide(const Tensor& t){
+		if (vector<int>{t.r1, t.r2, t.r3} != vector<int>{1, 1, 1}){
+			cout << "Invalid ranks in divide!" << endl;
+			exit(-1);
+		}
+		mkl_dimatcopy('R', 'N', 1, r1 * r2 * r3, 1.0 / t.g[0], g, 1, r1 * r2 * r3);
+		for (int i = 0; i < n1; ++i){
+			mkl_dimatcopy('R', 'N', 1, r1, 1.0 / t.u1[i], u1+i*r1, 1, r1);
+		}
+		for (int i = 0; i < n2; ++i){
+			mkl_dimatcopy('R', 'N', 1, r2, 1.0 / t.u2[i], u2+i*r2, 1, r2);
+		}
+		for (int i = 0; i < n3; ++i){
+			mkl_dimatcopy('R', 'N', 1, r3, 1.0 / t.u3[i], u3+i*r3, 1, r3);
+		}
+
+		return *this;
+	}
+
+	void operator =(const Tensor& t){
+		if (shape() != t.shape()){
+			cout << "Different shapes!" << endl;
+			exit(-1);
+		}
+		delete [] g;
+		g = new double[t.r1 * t.r2 * t.r3];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', t.r1 * t.r2 * t.r3, 1, t.g, 1, g, 1);
+
+		delete [] u1;
+		u1 = new double[t.n1 * t.r1];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', t.n1 * t.r1, 1, t.u1, 1, u1, 1);
+
+		delete [] u2;
+		u2 = new double[t.n2 * t.r2];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', t.n2 * t.r2, 1, t.u2, 1, u2, 1);
+
+		delete [] u3;
+		u3 = new double[t.n3 * t.r3];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', t.n3 * t.r3, 1, t.u3, 1, u3, 1);
+
+		r1 = t.r1;
+		r2 = t.r2;
+		r3 = t.r3;
+
+//		return *this;
+	}
+
 private:
 	int I(int i1, int i2, int i3){
 		return i1 * n2 * n3 + i2 * n3 + i3;
@@ -334,7 +407,7 @@ private:
 	// dynamic array to store parameters
 	double* g;
 	// sizes along each dimension;
-	MKL_INT n1, n2, n3;
+	const MKL_INT n1, n2, n3;
 	// u ranks;
 	MKL_INT r1, r2, r3;
 	// us;
@@ -492,49 +565,53 @@ int main(){
 	n2 = 10;
 	n3 = 20;
 
-	double eps = 0.0001;
+	double eps = 0.0005;
 
 	double *a1 = new double[n1*n2*n3];
 	double *a2 = new double[n1*n2*n3];
 	double *a3 = new double[n1*n2*n3];
 	double s = 0.0;
-
+/*
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
 				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
 				a2[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a3[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k)) * f(double(i), double(j), double(k));
+				a3[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k)) + f(double(i), double(j), double(k));
 				s += a3[i*n2*n3 + j*n3 + k];
 			}
 		}
 	}
-	/*
-	Tensor *t1p = new Tensor(n1, n2, n3, a1, eps);
-	Tensor t1 = *t1p;
-	Tensor *t2p = new Tensor(n1, n2, n3, a1, eps);
-	Tensor t2 = *t2p;
-	Tensor *t3p = new Tensor;
-	Tensor t3 = *t3p;
-	delete [] t3p;
-	t3 = t1 * t2;
+	Tensor t1(n1, n2, n3, a1, eps);
+	Tensor t2(n1, n2, n3, a1, eps);
+	Tensor t3(n1, n2, n3, 0, 0, 0);
+	t1.rmult(2.0);
+	t3 = t1;
 	t3.round(eps);
+*/
 
-	delete [] t1p;
-	delete [] t2p;
-	delete [] t3p;
-	*/
-	Tensor t1 = Tensor(n1, n2, n3, a1, eps);
-	Tensor t2 = Tensor(n1, n2, n3, a1, eps);
-	Tensor* t3p = new Tensor;
-	Tensor t3 = *t3p;
-	delete t3p;
-	Tensor t3 = t1 * t2;
-//	t3.round(eps);
+	for (int i = 0; i < n1; ++i) {
+		for (int j = 0; j < n2; ++j) {
+			for (int k = 0; k < n3; ++k) {
+				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a2[i*n2*n3 + j*n3 + k] = double(i + 1.0);
+				a3[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k)) / double(i + 1.0);
+				s += a3[i*n2*n3 + j*n3 + k];
+			}
+		}
+	}
+	Tensor t1(n1, n2, n3, a1, eps);
+	Tensor t2(n1, n2, n3, a2, eps);
+	Tensor t3(n1, n2, n3);
+	t3 = t1;
+	t3.divide(t2);
+	t3 = t3 + t1;
+	t3 = t3 + t1.rmult(-1.0);
+	t3.round(eps);
 
 	double s_res = t3.sum();
 
-	cout << "s_diff = " << s_res - s << endl;
+	cout << "s_diff = " << (s_res - s) / s << endl;
 
 	double *t3_full;
 	t3_full = t3.full();
