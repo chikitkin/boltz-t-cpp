@@ -8,10 +8,10 @@
 #include <algorithm>
 using namespace std;
 
-extern double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r);
-extern double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3,
+double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r);
+double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3,
 		double *a, double eps, MKL_INT &r1, MKL_INT &r2, MKL_INT &r3);
-extern double **qr(MKL_INT m, MKL_INT n, double *a);
+double **qr(MKL_INT m, MKL_INT n, double *a);
 
 class Tensor {
 public:
@@ -75,19 +75,17 @@ public:
 		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3*r3, 1, u3_, 1, u3, 1);
 
 	}
-	// Print ranks
-	void get_r() {
-		cout << r1 << " " << r2 << " " << r3 << endl;
-	}
 	// Destructor
 	~Tensor(){
-		cout << "destructed" << endl;
 		delete [] g;
 		delete [] u1;
 		delete [] u2;
 		delete [] u3;
 	}
-
+	// Print ranks
+	void get_r() {
+		cout << r1 << " " << r2 << " " << r3 << endl;
+	}
 	vector<int> shape() const{
 		auto dim = {n1, n2, n3};
 		return dim;
@@ -369,7 +367,11 @@ public:
 		return *this;
 	}
 
-	void operator =(const Tensor& t){
+	Tensor& operator =(const Tensor& t){
+
+		if (this == &t)
+		        return *this;
+
 		if (shape() != t.shape()){
 			cout << "Different shapes!" << endl;
 			exit(-1);
@@ -394,7 +396,7 @@ public:
 		r2 = t.r2;
 		r3 = t.r3;
 
-//		return *this;
+		return *this;
 	}
 
 private:
@@ -559,6 +561,10 @@ double f(double x, double y, double z) {
 	return exp(-(x*x + y*y + z*z) / 1000.0) + (x / 100.0) + (x*y / 100.0) + 10.0 * sin(z) + exp(-(x*(x - 10.) + y*y + z*z) / 1000.0);
 }
 
+double g(double x, double y, double z) {
+	return exp(-(x*x + y*y) / 100.0) + (x * z / 100.0) + (x*y / 100.0) + 10.0 * cos(x * y) + exp(-(x*(x - 5.) + y*y + z) / 1000.0);
+}
+
 int main(){
 	MKL_INT n1, n2, n3;
 	n1 = 10;
@@ -566,30 +572,87 @@ int main(){
 	n3 = 20;
 
 	double eps = 0.0005;
-
+/*************************************************************************************/
 	double *a1 = new double[n1*n2*n3];
 	double *a2 = new double[n1*n2*n3];
 	double *a3 = new double[n1*n2*n3];
-	double s = 0.0;
-/*
+
+	double s;
+	double s_res;
+
+	double a_norm;
+	double diff_norm;
+	double diff;
+/*************************************************************************************/
+	s = 0.0;
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
 				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a2[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a3[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k)) + f(double(i), double(j), double(k));
+				a2[i*n2*n3 + j*n3 + k] = g(double(i), double(j), double(k));
+				a3[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k)) + g(double(i), double(j), double(k));
 				s += a3[i*n2*n3 + j*n3 + k];
 			}
 		}
 	}
-	Tensor t1(n1, n2, n3, a1, eps);
-	Tensor t2(n1, n2, n3, a1, eps);
-	Tensor t3(n1, n2, n3, 0, 0, 0);
-	t1.rmult(2.0);
-	t3 = t1;
-	t3.round(eps);
-*/
+	Tensor t1_1(n1, n2, n3, a1, eps);
+	Tensor t2_1(n1, n2, n3, a2, eps);
+	Tensor t3_1(n1, n2, n3);
+	t3_1 = t1_1 + t2_1;
+	t3_1.round(eps);
 
+	s_res = t3_1.sum();
+
+	cout << "s_diff sum = " << (s_res - s) / s << endl;
+
+	double *t3_1_full;
+	t3_1_full = t3_1.full();
+
+//	print_matrix("t3_full", n1*n2, n3, t3_full, n3);
+//	print_matrix("a3", n1*n2, n3, a3, n3);
+	a_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+	cblas_daxpy(n1*n2*n3, -1.0, t3_1_full, 1, a3, 1);
+	diff_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+	diff = diff_norm / a_norm;
+	cout << "diff sum = " << diff << endl;
+
+	delete [] t3_1_full;
+/*************************************************************************************/
+	s = 0.0;
+	for (int i = 0; i < n1; ++i) {
+		for (int j = 0; j < n2; ++j) {
+			for (int k = 0; k < n3; ++k) {
+				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a2[i*n2*n3 + j*n3 + k] = g(double(i), double(j), double(k));
+				a3[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k)) * g(double(i), double(j), double(k));
+				s += a3[i*n2*n3 + j*n3 + k];
+			}
+		}
+	}
+	Tensor t1_2(n1, n2, n3, a1, eps);
+	Tensor t2_2(n1, n2, n3, a2, eps);
+	Tensor t3_2(n1, n2, n3);
+	t3_2 = t1_2 * t2_2;
+	t3_2.round(eps);
+
+	s_res = t3_2.sum();
+
+	cout << "s_diff mult = " << (s_res - s) / s << endl;
+
+	double *t3_2_full;
+	t3_2_full = t3_2.full();
+
+//	print_matrix("t3_full", n1*n2, n3, t3_full, n3);
+//	print_matrix("a3", n1*n2, n3, a3, n3);
+	a_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+	cblas_daxpy(n1*n2*n3, -1.0, t3_2_full, 1, a3, 1);
+	diff_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+	diff = diff_norm / a_norm;
+	cout << "diff mult = " << diff << endl;
+
+	delete [] t3_2_full;
+/*************************************************************************************/
+	s = 0.0;
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
@@ -600,34 +663,100 @@ int main(){
 			}
 		}
 	}
-	Tensor t1(n1, n2, n3, a1, eps);
-	Tensor t2(n1, n2, n3, a2, eps);
-	Tensor t3(n1, n2, n3);
-	t3 = t1;
-	t3.divide(t2);
-	t3 = t3 + t1;
-	t3 = t3 + t1.rmult(-1.0);
-	t3.round(eps);
+	Tensor t1_3(n1, n2, n3, a1, eps);
+	Tensor t2_3(n1, n2, n3, a2, eps);
+	Tensor t3_3(n1, n2, n3);
+	t3_3 = t1_3.divide(t2_3);
+	t3_3.round(eps);
 
-	double s_res = t3.sum();
+	s_res = t3_3.sum();
 
-	cout << "s_diff = " << (s_res - s) / s << endl;
+	cout << "s_diff div = " << (s_res - s) / s << endl;
 
-	double *t3_full;
-	t3_full = t3.full();
+	double *t3_3_full;
+	t3_3_full = t3_3.full();
 
 //	print_matrix("t3_full", n1*n2, n3, t3_full, n3);
 //	print_matrix("a3", n1*n2, n3, a3, n3);
-	double a_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
-	cblas_daxpy(n1*n2*n3, -1.0, t3_full, 1, a3, 1);
-	double diff_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
-	double diff = diff_norm / a_norm;
-	cout << "diff = " << diff << endl;
+	a_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+	cblas_daxpy(n1*n2*n3, -1.0, t3_3_full, 1, a3, 1);
+	diff_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+	diff = diff_norm / a_norm;
+	cout << "diff div = " << diff << endl;
 
+	delete [] t3_3_full;
+/*************************************************************************************/
+	s = 0.0;
+	for (int i = 0; i < n1; ++i) {
+		for (int j = 0; j < n2; ++j) {
+			for (int k = 0; k < n3; ++k) {
+				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a2[i*n2*n3 + j*n3 + k] = double(i + 1.0);
+				a3[i*n2*n3 + j*n3 + k] = 2 * f(double(i), double(j), double(k));
+				s += a3[i*n2*n3 + j*n3 + k];
+			}
+		}
+	}
+	Tensor t1_4(n1, n2, n3, a1, eps);
+	Tensor t2_4(n1, n2, n3, a2, eps);
+	Tensor t3_4(n1, n2, n3);
+	t3_4 = t1_4.rmult(2.0);
+	t3_4.round(eps);
+
+	s_res = t3_4.sum();
+
+	cout << "s_diff rmult = " << (s_res - s) / s << endl;
+
+	double *t3_4_full;
+	t3_4_full = t3_4.full();
+
+//	print_matrix("t3_full", n1*n2, n3, t3_full, n3);
+//	print_matrix("a3", n1*n2, n3, a3, n3);
+	a_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+	cblas_daxpy(n1*n2*n3, -1.0, t3_4_full, 1, a3, 1);
+	diff_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+	diff = diff_norm / a_norm;
+	cout << "diff rmult = " << diff << endl;
+
+	delete [] t3_4_full;
+/*************************************************************************************/
+	s = 0.0;
+	for (int i = 0; i < n1; ++i) {
+		for (int j = 0; j < n2; ++j) {
+			for (int k = 0; k < n3; ++k) {
+				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a2[i*n2*n3 + j*n3 + k] = g(double(i), double(j), double(k));
+				a3[i*n2*n3 + j*n3 + k] = 2 * f(double(i), double(j), double(k)) + g(double(i), double(j), double(k));
+				s += a3[i*n2*n3 + j*n3 + k];
+			}
+		}
+	}
+	Tensor t1_5(n1, n2, n3, a1, eps);
+	Tensor t2_5(n1, n2, n3, a2, eps);
+	Tensor t3_5(n1, n2, n3);
+	t3_5 = (t1_5 + t2_5) + t1_5;
+	t3_5.round(eps);
+
+	s_res = t3_5.sum();
+
+	cout << "s_diff ++ = " << (s_res - s) / s << endl;
+
+	double *t3_5_full;
+	t3_5_full = t3_5.full();
+
+//	print_matrix("t3_full", n1*n2, n3, t3_full, n3);
+//	print_matrix("a3", n1*n2, n3, a3, n3);
+	a_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+	cblas_daxpy(n1*n2*n3, -1.0, t3_5_full, 1, a3, 1);
+	diff_norm = cblas_dnrm2(n1*n2*n3, a3, 1);
+	diff = diff_norm / a_norm;
+	cout << "diff ++ = " << diff << endl;
+
+	delete [] t3_5_full;
+/*************************************************************************************/
 	delete [] a1;
 	delete [] a2;
 	delete [] a3;
-	delete [] t3_full;
 
 	return 0;
 }
