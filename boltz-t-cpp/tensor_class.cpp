@@ -707,8 +707,8 @@ int main(){
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
 				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a2[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a3[i*n2*n3 + j*n3 + k] = 3 * f(double(i), double(j), double(k));
+				a2[i*n2*n3 + j*n3 + k] = g(double(i), double(j), double(k));
+				a3[i*n2*n3 + j*n3 + k] = 2 * f(double(i), double(j), double(k)) + g(double(i), double(j), double(k));
 				s += a3[i*n2*n3 + j*n3 + k];
 			}
 		}
@@ -716,7 +716,7 @@ int main(){
 	Tensor t1_5(n1, n2, n3, a1, eps);
 	Tensor t2_5(n1, n2, n3, a2, eps);
 	Tensor t3_5(n1, n2, n3);
-	t3_5 = t1_5 + t2_5 + t1_5;
+	t3_5 = (t1_5 + t2_5) + t1_5; // TODO: temp?
 	t3_5.round(eps);
 
 	s_res = t3_5.sum();
