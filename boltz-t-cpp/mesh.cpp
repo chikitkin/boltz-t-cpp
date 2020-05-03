@@ -32,6 +32,22 @@ public:
 				(a02 * a11 * a20 + a00 * a12 * a21 + a01 * a10 * a22)) / 6.0;
 	}
 
+	vector < vector < int > > get_faces_for_cell(int ic) {
+
+		vector < vector < int > > faces;
+		faces.reserve(6);
+		vector <int> verts = vert_list_for_cell[ic];
+
+		faces.push_back(vector <int> {verts[0], verts[1], verts[5], verts[4]});
+		faces.push_back(vector <int> {verts[1], verts[3], verts[7], verts[5]});
+		faces.push_back(vector <int> {verts[3], verts[2], verts[6], verts[7]});
+		faces.push_back(vector <int> {verts[2], verts[0], verts[4], verts[6]});
+		faces.push_back(vector <int> {verts[1], verts[0], verts[2], verts[3]});
+		faces.push_back(vector <int> {verts[4], verts[5], verts[7], verts[6]});
+
+		return faces;
+	}
+
 	int nbf;
 	int nbc;
 	int nc;
@@ -39,7 +55,7 @@ public:
 	int nf;
 
 	vector < vector < int > > bcface_vert_lists; // TODO: Needs ()?
-	vector < set < int > > bcface_vert_set_lists;
+	vector < set < int > > bcface_vert_set_lists; // TODO: Doesn't need set?
 	vector < int > bcface_bctype;
 	vector < vector < int > > vert_list_for_cell;
 	vector < vector < int > > bf_for_each_bc;
@@ -56,7 +72,9 @@ public:
 	vector < vector < int > > cell_face_normal_direction;
 	vector < vector < int > > bound_face_info;
 	vector < double > cell_diam;
+	vector < vector < double > > face_centers;
 
+	// TODO: vectors in cycles?
 	void read_starcd(const string& path, const double scale = 1.0) {
 		int max_vert_in_face = 4;
 		int max_vert_in_cell = 8;
@@ -72,7 +90,7 @@ public:
 		}
 		string line;
 		while (getline(bnd_data, line)) {
-			istringstream iss(line); // TODO: is it good?
+			istringstream iss(line);
 			int n, v0, v1, v2, v3, type;
 			if (!(iss >> n >> v0 >> v1 >> v2 >> v3 >> type)) { break; }
 			vector <int> bcface;
@@ -210,23 +228,15 @@ public:
 */
 		cell_volumes.resize(nc, 0.0);
 		for (int ic = 0; ic < nc; ++ic) {
-			vector < vector < int > > faces;
-			faces.reserve(6);
-			vector <int> verts = vert_list_for_cell[ic];
-			faces.push_back(vector <int> {verts[0], verts[1], verts[5], verts[4]});
-			faces.push_back(vector <int> {verts[1], verts[3], verts[7], verts[5]});
-			faces.push_back(vector <int> {verts[3], verts[2], verts[6], verts[7]});
-			faces.push_back(vector <int> {verts[2], verts[0], verts[4], verts[6]});
-			faces.push_back(vector <int> {verts[1], verts[0], verts[2], verts[3]});
-			faces.push_back(vector <int> {verts[4], verts[5], verts[7], verts[6]});
+			vector < vector < int > > faces = get_faces_for_cell(ic);
 			// Loop over faces, for each face construct 4 tetras
 			// and compute their volumes
 			for (int jf = 0; jf < 6; ++jf) {
 				vector <double> face_center = {0.0, 0.0, 0.0};
 				for (int kf = 0; kf < 4; ++kf) {
-					face_center[0] += vert_coo[faces[jf][kf]][0] / 4.0;
-					face_center[1] += vert_coo[faces[jf][kf]][1] / 4.0;
-					face_center[2] += vert_coo[faces[jf][kf]][2] / 4.0;
+					face_center[0] += (vert_coo[faces[jf][kf]][0] / 4.0);
+					face_center[1] += (vert_coo[faces[jf][kf]][1] / 4.0);
+					face_center[2] += (vert_coo[faces[jf][kf]][2] / 4.0);
 				}
 				vector <double> x1 = vert_coo[faces[jf][0]];
 				vector <double> x2 = vert_coo[faces[jf][1]];
@@ -237,7 +247,7 @@ public:
 				tetra1.push_back(x1);
 				tetra1.push_back(x2);
 				tetra1.push_back(face_center);
-				cell_volumes[ic] = compute_tetra_volume(tetra1);
+				cell_volumes[ic] += compute_tetra_volume(tetra1);
 				vector <vector < double > > tetra2;
 				tetra2.push_back(cell_center_coo[ic]);
 				tetra2.push_back(x2);
@@ -278,15 +288,7 @@ public:
 		cell_face_list.resize(nc, vector <int> {-1, -1, -1, -1, -1, -1});
 		nf = 0;
 		for (int ic = 0; ic < nc; ic++) {
-			vector < vector < int > > faces;
-			faces.reserve(6);
-			vector <int> verts = vert_list_for_cell[ic];
-			faces.push_back(vector <int> {verts[0], verts[1], verts[5], verts[4]});
-			faces.push_back(vector <int> {verts[1], verts[3], verts[7], verts[5]});
-			faces.push_back(vector <int> {verts[3], verts[2], verts[6], verts[7]});
-			faces.push_back(vector <int> {verts[2], verts[0], verts[4], verts[6]});
-			faces.push_back(vector <int> {verts[1], verts[0], verts[2], verts[3]});
-			faces.push_back(vector <int> {verts[4], verts[5], verts[7], verts[6]});
+			vector < vector < int > > faces = get_faces_for_cell(ic);
 			for (int jf = 0; jf < 6; ++jf) {
 				if  (cell_neighbors_list[ic][jf] >= 0) { // if face is already assigned - skip
 					continue;
@@ -298,16 +300,7 @@ public:
 					// loop over all cells containing this vertex
 					for (int kc = 0; kc < cell_num_for_vertex[faces[jf][iv]]; ++kc) {
 						int icell = cell_list_for_vertex[faces[jf][iv]][kc];
-						vector < vector < int > > faces_neigh;
-						faces_neigh.reserve(6);
-						vector <int> verts_neigh = vert_list_for_cell[icell];
-						// construct faces of cell
-						faces_neigh.push_back(vector <int> {verts_neigh[0], verts_neigh[1], verts_neigh[5], verts_neigh[4]});
-						faces_neigh.push_back(vector <int> {verts_neigh[1], verts_neigh[3], verts_neigh[7], verts_neigh[5]});
-						faces_neigh.push_back(vector <int> {verts_neigh[3], verts_neigh[2], verts_neigh[6], verts_neigh[7]});
-						faces_neigh.push_back(vector <int> {verts_neigh[2], verts_neigh[0], verts_neigh[4], verts_neigh[6]});
-						faces_neigh.push_back(vector <int> {verts_neigh[1], verts_neigh[0], verts_neigh[2], verts_neigh[3]});
-						faces_neigh.push_back(vector <int> {verts_neigh[4], verts_neigh[5], verts_neigh[7], verts_neigh[6]});
+						vector < vector < int > > faces_neigh = get_faces_for_cell(icell);
 						// Now compare these faces with face
 						vector <int> faces_sorted(4);
 						vector <int> faces_neigh_sorted(4);
@@ -358,6 +351,20 @@ public:
 
 			// TODO: Complicated procedure to overcome problems when area is tiny
 		}
+
+		// face centers
+		for (int jf = 0; jf < nf; ++jf) {
+			vector <int> face_verts = face_vert_list[jf];
+			vector <double> face_center = {0.0, 0.0, 0.0};
+			for (int i = 0; i < 4; ++i) {
+				face_center[0] += vert_coo[face_verts[i]][0] / 4.0;
+				face_center[1] += vert_coo[face_verts[i]][1] / 4.0;
+				face_center[2] += vert_coo[face_verts[i]][2] / 4.0;
+			}
+			face_centers.push_back(face_center);
+		}
+		face_centers.shrink_to_fit();
+
 /*
 		Compute orientation of face normals with respect to each cell
 
@@ -368,16 +375,9 @@ public:
 			for (int jf = 0; jf < 6; ++jf) {
 				int face = cell_face_list[ic][jf];
 				vector <double> face_normal = face_normals[face];
-				vector <int> face_verts = face_vert_list[face];
-				vector <double> face_center = {0.0, 0.0, 0.0};
-				for (int i = 0; i < 4; ++i) {
-					face_center[0] += vert_coo[face_verts[i]][0] / 4.0;
-					face_center[1] += vert_coo[face_verts[i]][1] / 4.0;
-					face_center[2] += vert_coo[face_verts[i]][2] / 4.0;
-				}
 				// Compute vector from cell center to center of face
-				vector <double> vec = {face_center[0] - cell_center_coo[ic][0],
-						face_center[1] - cell_center_coo[ic][1], face_center[2] - cell_center_coo[ic][2]};
+				vector <double> vec = {face_centers[face][0] - cell_center_coo[ic][0],
+						face_centers[face][1] - cell_center_coo[ic][1], face_centers[face][2] - cell_center_coo[ic][2]};
 				double dot_prod = vec[0] * face_normal[0] + vec[1] * face_normal[1] + vec[2] * face_normal[2];
 				if (dot_prod >= 0) {
 					cell_face_normal_direction[ic][jf] = +1;
@@ -414,18 +414,12 @@ public:
 			vector <double> face_diam(6);
 			for (int jf = 0; jf < 6; ++jf) {
 				int face = cell_face_list[ic][jf];
-				vector <int> face_verts = face_vert_list[face];
-				vector <double> face_center = {0.0, 0.0, 0.0};
-				for (int i = 0; i < 4; ++i) {
-					face_center[0] += vert_coo[face_verts[i]][0] / 4.0;
-					face_center[1] += vert_coo[face_verts[i]][1] / 4.0;
-					face_center[2] += vert_coo[face_verts[i]][2] / 4.0;
-				}
-				vector <double> vec = {face_center[0] - cell_center_coo[ic][0],
-						face_center[1] - cell_center_coo[ic][1], face_center[2] - cell_center_coo[ic][2]};
+				vector <double> vec = {face_centers[face][0] - cell_center_coo[ic][0],
+						face_centers[face][1] - cell_center_coo[ic][1], face_centers[face][2] - cell_center_coo[ic][2]};
 				face_diam[jf] = 2.0 * sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2]);
 			}
-			cell_diam[ic] = distance(face_diam.begin(), min_element(face_diam.begin(), face_diam.end()));
+			int dist = distance(face_diam.begin(), min_element(face_diam.begin(), face_diam.end()));
+			cell_diam[ic] = face_diam[dist];
 		}
 		// end of function
 	}
@@ -434,7 +428,7 @@ public:
 void write_tecplot(Mesh mesh, vector < vector <double> > data, string filename,
 		vector <string> var_names, double time = 0.0) {
 
-	int nv = data.size();
+	int nv = data[0].size();
 	ofstream file;
 	file.open(filename);
 	if (file.fail())
@@ -455,18 +449,18 @@ void write_tecplot(Mesh mesh, vector < vector <double> > data, string filename,
 	// Write vertices' coo;
 	for (int i = 0; i < 3; ++i) {
 		for (int iv = 0; iv < mesh.nv; ++iv) {
-			file << mesh.vert_coo[iv][i] << "\n";
+			file << mesh.vert_coo[iv][i] << "\n"; // TODO: format
 		}
 	}
 	// Write values of variables
 	for (int i = 0; i < nv; ++i) {
 		for (int ic = 0; ic < mesh.nc; ++ic) {
-			file << data[ic][i] << "\n";
+			file << data[ic][i] << "\n"; // TODO: format
 		}
 	}
 	// Write cell-to-vertices connectivity
 	for (int ic = 0; ic < mesh.nc; ++ic) {
-		vector <int> verts = mesh.vert_list_for_cell[ic];
+		vector <int> verts = mesh.vert_list_for_cell[ic]; // TODO: format
 		file << verts[4] + 1 << " ";
 		file << verts[5] + 1 << " ";
 		file << verts[1] + 1 << " ";
@@ -477,7 +471,6 @@ void write_tecplot(Mesh mesh, vector < vector <double> > data, string filename,
 		file << verts[2] + 1 << " ";
 		file << "\n";
 	}
-
 }
 
 int main() {
@@ -504,8 +497,9 @@ int main() {
 
 	cout << "\nCell center coo\n";
 	for (int i = 0; i < (mesh.nc); ++i) {
-		cout << mesh.cell_center_coo[i][0] << " ";
+		cout << mesh.cell_center_coo[i][1] << " ";
 	}
+
 	cout << "\n";
 	for (int i = 0; i < (mesh.nc); ++i) {
 		cout << mesh.cell_center_coo[i][1] << " ";
@@ -514,21 +508,29 @@ int main() {
 	for (int i = 0; i < (mesh.nc); ++i) {
 		cout << mesh.cell_center_coo[i][2] << " ";
 	}
-*/
+
 	cout << "Cell volumes" << endl;
 	for (double c : mesh.cell_volumes) {
 		cout << c << " ";
 	}
+
 	cout << "\nFace areas" << endl;
 	for (double c : mesh.face_areas) {
 		cout << c << " ";
 	}
+*/
+
+	cout << "\n";
+	for (int i = 0; i < (mesh.nc); ++i) {
+		cout << mesh.cell_diam[i] << " ";
+	}
 
 	vector < vector < double > > data;
+	data.resize(mesh.nv, {0.0, 0.0, 0.0});
 
-	vector <string> var_names;
+	vector <string> var_names {"A", "B", "C"};
 
-	write_tecplot(mesh, data, "file.tec", var_names);
+	write_tecplot(mesh, data, "file.dat", var_names);
 
 /*
 	vector < vector <double> > tetra;
