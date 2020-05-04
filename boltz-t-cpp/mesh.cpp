@@ -28,7 +28,7 @@ public:
 		double a21 = tetra[3][1] - tetra[0][1];
 		double a22 = tetra[3][2] - tetra[0][2];
 
-		return ((a00 * a11 * a22 + a01 * a12 * a20 + a02 * a21) -
+		return ((a00 * a11 * a22 + a01 * a12 * a20 + a02 * a21 * a10) -
 				(a02 * a11 * a20 + a00 * a12 * a21 + a01 * a10 * a22)) / 6.0;
 	}
 
@@ -54,8 +54,8 @@ public:
 	int nv;
 	int nf;
 
-	vector < vector < int > > bcface_vert_lists; // TODO: Needs ()?
-	vector < set < int > > bcface_vert_set_lists; // TODO: Doesn't need set?
+	vector < vector < int > > bcface_vert_lists;
+	vector < set < int > > bcface_vert_set_lists; // TODO: Don't need set
 	vector < int > bcface_bctype;
 	vector < vector < int > > vert_list_for_cell;
 	vector < vector < int > > bf_for_each_bc;
@@ -74,7 +74,6 @@ public:
 	vector < double > cell_diam;
 	vector < vector < double > > face_centers;
 
-	// TODO: vectors in cycles?
 	void read_starcd(const string& path, const double scale = 1.0) {
 		int max_vert_in_face = 4;
 		int max_vert_in_cell = 8;
@@ -333,7 +332,6 @@ public:
 			vector <double> verts_coo1 = vert_coo[verts[1]];
 			vector <double> verts_coo2 = vert_coo[verts[2]];
 			vector <double> verts_coo3 = vert_coo[verts[3]];
-			// TODO: face center
 
 			vector <double> vec1(3);
 			vec1[0] = 0.5 * (verts_coo2[0] + verts_coo1[0]) - 0.5 * (verts_coo0[0] + verts_coo3[0]);
