@@ -6,8 +6,8 @@
 #include "mkl_lapacke.h"
 #include "math.h"
 #include <algorithm>
-using namespace std;
 #include "tensor_class.h"
+using namespace std;
 
 // Constructor
 Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_) :
@@ -67,6 +67,24 @@ Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *u1_, double *u2_, 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*r1, 1, u1_, 1, u1, 1);
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n2*r2, 1, u2_, 1, u2, 1);
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3*r3, 1, u3_, 1, u3, 1);
+
+}
+// Copy constructor
+Tensor::Tensor(const Tensor& t) :
+	n1(t.n1), n2(t.n2), n3(t.n3) {
+	r1 = t.r1;
+	r2 = t.r2;
+	r3 = t.r3;
+
+	g = new double[r1 * r2 * r3];
+	u1 = new double[n1 * r1];
+	u2 = new double[n2 * r2];
+	u3 = new double[n3 * r3];
+
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', r1*r2*r3, 1, t.g, 1, g, 1);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*r1, 1, t.u1, 1, u1, 1);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n2*r2, 1, t.u2, 1, u2, 1);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3*r3, 1, t.u3, 1, u3, 1);
 
 }
 // Destructor

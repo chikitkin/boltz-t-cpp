@@ -1,4 +1,14 @@
-#pragma once
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <set>
+#include <stdlib.h>
+#include <stdio.h>
+#include <algorithm>
+#include <numeric>
+using namespace std;
 /*
  * Header for Mesh class
  * Чтобы не напрягаться из-за ручной работы с памятью
@@ -23,19 +33,41 @@
  * желательно вынести в отдельную функцию (# 1st tetra и т.д.)
  */
 
-#include <vector>
-
 // Вспомогательные функции:
-double compute_tetra_volume();
+double compute_tetra_volume(vector < vector < double > > tetra);
+vector < vector < int > > get_faces_for_cell(int ic);
 
-void write_tecplot(mesh, data, fname, var_names, time = 0.0);
+void write_tecplot(Mesh mesh, vector < vector <double> > data, string filename,
+		vector <string> var_names, double time = 0.0);
 
 class Mesh{
-//	пока можно всё делать в public
 public:
-	void read_starcd(const string& path, const int scale = 1);
-	// Нужно придумать удобные типы для всех массивов, например
-	vector<vector<int>> bcface_vert_lists;
-	// ...
+	void read_starcd(const string& path, const double scale = 1.0);
+
+	int nbf;
+	int nbc;
+	int nc;
+	int nv;
+	int nf;
+
+	vector < vector < int > > bcface_vert_lists;
+	vector < set < int > > bcface_vert_set_lists; // TODO: Don't need set
+	vector < int > bcface_bctype;
+	vector < vector < int > > vert_list_for_cell;
+	vector < vector < int > > bf_for_each_bc;
+	vector < vector < double > > vert_coo;
+	vector < vector < double > > cell_center_coo;
+	vector < double > cell_volumes;
+	vector < vector < int > > cell_list_for_vertex;
+	vector < int > cell_num_for_vertex;
+	vector < vector < int > > cell_neighbors_list;
+	vector < vector < int > > face_vert_list;
+	vector < vector < int > > cell_face_list;
+	vector < double > face_areas;
+	vector < vector < double > > face_normals;
+	vector < vector < int > > cell_face_normal_direction;
+	vector < vector < int > > bound_face_info;
+	vector < double > cell_diam;
+	vector < vector < double > > face_centers;
 
 };
