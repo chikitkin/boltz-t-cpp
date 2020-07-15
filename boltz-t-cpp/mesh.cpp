@@ -6,11 +6,13 @@
 #include <set>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <algorithm>
 #include <numeric>
+#include "mesh.h"
 using namespace std;
 
-double compute_tetra_volume(vector < vector < double > > tetra) {
+double Mesh::compute_tetra_volume(vector < vector < double > > tetra) {
 	// tetra - (4, 3)
 	double a00 = tetra[1][0] - tetra[0][0];
 	double a01 = tetra[1][1] - tetra[0][1];
@@ -26,7 +28,7 @@ double compute_tetra_volume(vector < vector < double > > tetra) {
 			(a02 * a11 * a20 + a00 * a12 * a21 + a01 * a10 * a22)) / 6.0;
 }
 
-vector < vector < int > > get_faces_for_cell(int ic) {
+vector < vector < int > > Mesh::get_faces_for_cell(int ic) {
 
 	vector < vector < int > > faces;
 	faces.reserve(6);
@@ -42,7 +44,7 @@ vector < vector < int > > get_faces_for_cell(int ic) {
 	return faces;
 }
 
-void Mesh::read_starcd(const string& path, const double scale = 1.0) {
+void Mesh::read_starcd(const string& path, const double scale) {
 	int max_vert_in_face = 4;
 	int max_vert_in_cell = 8;
 /*
@@ -390,8 +392,8 @@ void Mesh::read_starcd(const string& path, const double scale = 1.0) {
 	// end of function
 }
 
-void write_tecplot(Mesh mesh, vector < vector <double> > data, string filename,
-		vector <string> var_names, double time = 0.0) {
+void Mesh::write_tecplot(vector < vector <double> > data, string filename,
+		vector <string> var_names, double time) {
 
 	int nv = data[0].size();
 	ofstream file;
@@ -408,24 +410,24 @@ void write_tecplot(Mesh mesh, vector < vector <double> > data, string filename,
 	}
 	file << "\n";
 	file << "ZONE T= my_zone, SolutionTime = " << time <<
-            ", DATAPACKING=Block, ZONETYPE=FEBRICK Nodes= " << mesh.nv <<
-           " Elements= " << mesh.nc;
+            ", DATAPACKING=Block, ZONETYPE=FEBRICK Nodes= " << nv <<
+           " Elements= " << nc;
 	file << " VarLocation=([4-" << 3+nv << "]=CellCentered)";
 	// Write vertices' coo;
 	for (int i = 0; i < 3; ++i) {
-		for (int iv = 0; iv < mesh.nv; ++iv) {
-			file << mesh.vert_coo[iv][i] << "\n"; // TODO: format
+		for (int iv = 0; iv < nv; ++iv) {
+			file << vert_coo[iv][i] << "\n"; // TODO: format
 		}
 	}
 	// Write values of variables
 	for (int i = 0; i < nv; ++i) {
-		for (int ic = 0; ic < mesh.nc; ++ic) {
+		for (int ic = 0; ic < nc; ++ic) {
 			file << data[ic][i] << "\n"; // TODO: format
 		}
 	}
 	// Write cell-to-vertices connectivity
-	for (int ic = 0; ic < mesh.nc; ++ic) {
-		vector <int> verts = mesh.vert_list_for_cell[ic]; // TODO: format
+	for (int ic = 0; ic < nc; ++ic) {
+		vector <int> verts = vert_list_for_cell[ic]; // TODO: format
 		file << verts[4] + 1 << " ";
 		file << verts[5] + 1 << " ";
 		file << verts[1] + 1 << " ";
@@ -495,7 +497,7 @@ int main() {
 
 	vector <string> var_names {"A", "B", "C"};
 
-	write_tecplot(mesh, data, "file.dat", var_names);
+	mesh.write_tecplot(data, "file.dat", var_names);
 
 /*
 	vector < vector <double> > tetra;

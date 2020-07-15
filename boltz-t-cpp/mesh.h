@@ -1,3 +1,6 @@
+#ifndef MESH_H_
+#define MESH_H_
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -6,6 +9,7 @@
 #include <set>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <algorithm>
 #include <numeric>
 using namespace std;
@@ -33,16 +37,12 @@ using namespace std;
  * желательно вынести в отдельную функцию (# 1st tetra и т.д.)
  */
 
-// Вспомогательные функции:
-double compute_tetra_volume(vector < vector < double > > tetra);
-vector < vector < int > > get_faces_for_cell(int ic);
-
-void write_tecplot(Mesh mesh, vector < vector <double> > data, string filename,
-		vector <string> var_names, double time = 0.0);
-
-class Mesh{
+class Mesh {
 public:
 	void read_starcd(const string& path, const double scale = 1.0);
+
+	double compute_tetra_volume(vector < vector < double > > tetra);
+	vector < vector < int > > get_faces_for_cell(int ic);
 
 	int nbf;
 	int nbc;
@@ -70,4 +70,8 @@ public:
 	vector < double > cell_diam;
 	vector < vector < double > > face_centers;
 
+	void write_tecplot(vector < vector <double> > data, string filename,
+			vector <string> var_names, double time = 0.0);
 };
+
+#endif /* MESH_H_ */
