@@ -42,13 +42,66 @@ public:
 	double d; // # diameter of molecule
 };
 
-class Solution {
-private:
-
-
+class Problem {
 public:
+	vector < string > bc_type_list;
+	vector < vector < double > > bc_data;
+	vector < Tensor > f_init;
+};
+
+class Solution {
+public:
+	GasParams gas_params;
+
+	Mesh mesh;
+	// velocity mesh parameters
+	int nv;
+	double vmax;
+	double tol;
+	// path to the folder
+	string path;
+	// number of iteration
+	int it;
+
+	double tau;
+	double t;
+
+	double *vx_;
+
+	double *vx, *vy, *vz;
+
+	vector < double * > vn;
+
+	Tensor vx_t, vy_t, vz_t;
+
+	vector < Tensor > vn_t;
+	vector < Tensor > vnp_t;
+	vector < Tensor > vnm_t;
+	vector < Tensor > vn_abs_t;
+
+	vector < Tensor > f;
+
+	vector < Tensor > fp;
+	vector < Tensor > fm;
+
+	vector < Tensor > flux;
+
+	vector < Tensor > rhs;
+
+	double *n;
+	double *ux, *uy, *uz;
+	double *T;
 
 
+	// Constructor
+	Solution();
+	// Destructor
+	~Solution();
+
+	void load_t();
+	void save_t();
+
+	void maketimesteps(double CFL, int nt, ...);
 };
 
 #endif /* SOLVER_H_ */
