@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <set>
@@ -41,4 +42,15 @@ double GasParams::mu_suth(double T) {
 
 double GasParams::mu(double T) {
 	return mu_suth(200.0) * ((T / 200.0) ** (0.734));
+}
+
+Solution::Solution() {
+	path = "../job-"; // dummy
+	fs::create_directory(path);
+
+}
+
+Solution::maketimesteps() {
+
+
 }

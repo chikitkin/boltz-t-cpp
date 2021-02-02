@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <set>
@@ -20,6 +21,10 @@ using namespace std;
 
 class GasParams {
 public:
+	// Constructor
+	GasParams();
+	~GasParams();
+
     double Na; // Avogadro constant
     double kB; // Boltzmann constant, J / K
     double Ru; // Universal gas constant

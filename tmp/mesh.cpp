@@ -444,7 +444,7 @@ int main() {
 
 	Mesh mesh;
 
-	mesh.read_starcd("/home/egor/eclipse-workspace/boltz-t-cpp/mesh-cyl/");
+	mesh.read_starcd("/home/egor/git/boltz-t-cpp/mesh-cyl/");
 /*
 	cout << "Vertices" << endl;
 	for (int i = 0; i < (mesh.bcface_vert_lists.size() / 100); ++i) {
