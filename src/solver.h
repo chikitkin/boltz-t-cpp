@@ -19,19 +19,70 @@
 #include "mesh.h"
 using namespace std;
 
+const double PI = acos(-1.0); // TODO
+
+class VelocityGrid {
+public:
+	// Constructor
+	VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *vy__, double *vz__); // TODO
+//	~VelocityGrid(); // TODO
+
+	double *vx_;
+	double *vy_;
+	double *vz_;
+
+	int nvx, nvy, nvz;
+	int nv;
+
+	double hvx, hvy, hvz;
+	double hv3;
+
+	double *vx;
+	double *vy;
+	double *vz;
+
+	double *zerox;
+	double *zeroy;
+	double *zeroz;
+
+	double *onesx;
+	double *onesy;
+	double *onesz;
+
+	Tensor vx_t;
+	Tensor vy_t;
+	Tensor vz_t;
+
+	Tensor v2;
+
+	Tensor zero;
+	Tensor ones;
+};
+
+double *f_maxwell(VelocityGrid v,
+		double n, double ux, double uy, double uz,
+		double T, double Rg);
+
+Tensor f_maxwell_t(VelocityGrid v,
+		double n, double ux, double uy, double uz,
+		double T, double Rg);
+
 class GasParams {
 public:
 	// Constructor
-	GasParams();
-	~GasParams();
+	GasParams(double Mol_ = 40e-3, double Pr_ = 2.0 / 3.0, double g_ = 5.0 / 3.0, double d_ = 3.418e-10,
+			double C_ = 144.4, double T_0_ = 273.11, double mu_0_ = 2.125e-5);
 
-    double Na; // Avogadro constant
-    double kB; // Boltzmann constant, J / K
-    double Ru; // Universal gas constant
+    double Na = 6.02214129e+23; // Avogadro constant
+    double kB = 1.381e-23; // Boltzmann constant, J / K
+    double Ru = 8.3144598; // Universal gas constant
 
     double Mol; // = Mol
     double Rg; // = self.Ru  / self.Mol  # J / (kg * K)
     double m; // # kg
+
+	double g; // # specific heat ratio
+	double d; // # diameter of molecule
 
     double Pr;
 
@@ -39,20 +90,26 @@ public:
 	double T_0;
 	double mu_0;
 
-	double mu_suth(double T);
+	double mu_suth(double T) const;
 
-	double mu(double T);
-
-	double g; // # specific heat ratio
-	double d; // # diameter of molecule
+	double mu(double T) const;
 };
 
 class Problem {
 public:
+	// Constructor
+	Problem();
 	vector < string > bc_type_list;
-	vector < vector < double > > bc_data;
-	vector < Tensor > f_init;
+	vector < Tensor > bc_data;
+	Tensor f_init(double x, double y, double z, VelocityGrid v);
 };
+
+Tensor set_bc(const GasParams& gas_params,
+		const string& bc_type, const Tensor& bc_data, const Tensor& f, const VelocityGrid& v,
+		const Tensor& vn, const Tensor& vnp, const Tensor& vnm, double tol);
+
+vector <double> comp_macro_params(const Tensor& f, const VelocityGrid& v, const GasParams& gas_params);
+Tensor comp_j(const vector <double> params, const Tensor& f, const VelocityGrid& v, const GasParams& gas_params);
 
 class Solution {
 public:

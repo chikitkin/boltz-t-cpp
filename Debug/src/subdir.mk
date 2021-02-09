@@ -4,13 +4,16 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../src/mesh.cpp 
+../src/solver.cpp \
+../src/tensor_class.cpp 
 
 OBJS += \
-./src/mesh.o 
+./src/solver.o \
+./src/tensor_class.o 
 
 CPP_DEPS += \
-./src/mesh.d 
+./src/solver.d \
+./src/tensor_class.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

@@ -53,8 +53,9 @@ Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *a, double eps) :
 	delete [] A;
 }
 // Create a rank-1 tensor from given factors
-Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *u1_, double *u2_, double *u3_) :
-	n1(n1_), n2(n2_), n3(n3_) {
+Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *u1_, double *u2_, double *u3_)
+: n1(n1_), n2(n2_), n3(n3_)
+{
 	r1 = 1;
 	r2 = 1;
 	r3 = 1;
@@ -68,11 +69,11 @@ Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *u1_, double *u2_, 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*r1, 1, u1_, 1, u1, 1);
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n2*r2, 1, u2_, 1, u2, 1);
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3*r3, 1, u3_, 1, u3, 1);
-
 }
 // Copy constructor
-Tensor::Tensor(const Tensor& t) :
-	n1(t.n1), n2(t.n2), n3(t.n3) {
+Tensor::Tensor(const Tensor& t)
+: n1(t.n1), n2(t.n2), n3(t.n3)
+{
 	r1 = t.r1;
 	r2 = t.r2;
 	r3 = t.r3;
@@ -86,10 +87,10 @@ Tensor::Tensor(const Tensor& t) :
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*r1, 1, t.u1, 1, u1, 1);
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n2*r2, 1, t.u2, 1, u2, 1);
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3*r3, 1, t.u3, 1, u3, 1);
-
 }
 // Destructor
-Tensor::~Tensor(){
+Tensor::~Tensor()
+{
 	delete [] g;
 	delete [] u1;
 	delete [] u2;
@@ -104,7 +105,8 @@ vector<int> Tensor::shape() const{
 	return dim;
 }
 // Get element
-double Tensor::At(MKL_INT i1, MKL_INT i2, MKL_INT i3){
+double Tensor::At(MKL_INT i1, MKL_INT i2, MKL_INT i3)
+{
 	double a = 0.0;
 	for(MKL_INT j1 = 0; j1 < r1; j1++) {
 		for(MKL_INT j2 = 0; j2 < r2; j2++) {
@@ -116,8 +118,8 @@ double Tensor::At(MKL_INT i1, MKL_INT i2, MKL_INT i3){
 	return a;
 }
 // Orthogonalize factors with QR
-void Tensor::orthogonalize() {
-
+void Tensor::orthogonalize()
+{
 	const double alpha = 1.0;
 	const double beta = 0.0;
 
@@ -172,11 +174,10 @@ void Tensor::orthogonalize() {
 	r1 = min(n1, r1);
 	r2 = min(n2, r2);
 	r3 = min(n3, r3);
-
 }
 // Recompress tensor
-void Tensor::round(double eps) {
-
+void Tensor::round(double eps)
+{
 	const double alpha = 1.0;
 	const double beta = 0.0;
 
@@ -223,11 +224,10 @@ void Tensor::round(double eps) {
 		delete [] A[i];
 	}
 	delete [] A;
-
 }
 
-double *Tensor::full() {
-
+double *Tensor::full()
+{
 	const double alpha = 1.0;
 	const double beta = 0.0;
 
@@ -256,15 +256,15 @@ double *Tensor::full() {
 	return res;
 }
 // Compute sum of all elements
-double Tensor::sum() {
-
+double Tensor::sum() const
+{
 	const double alpha = 1.0;
 	const double beta = 0.0;
 
 	double *S;
 	Tensor tmp(1, 1, 1, r1, r2, r3);
 	mkl_domatcopy ('R', 'N', r1*r2, r3, alpha, g, r3, tmp.g, r3);
-	MKL_INT n = max(n1, max(n2, n3));
+	MKL_INT n = max(n1, n2, n3);
 	double* ones = new double[n];
 	for (int i = 0; i < n; ++i) {
 		ones[i] = 1.0;
@@ -283,7 +283,8 @@ double Tensor::sum() {
 }
 
 // Element-wise summation
-Tensor add(const Tensor& t1, const Tensor& t2){
+Tensor add(const Tensor& t1, const Tensor& t2)
+{
 	// check that shapes are equal;
 	if (t1.shape() != t2.shape()){
 		cout << "Different shapes in sum!" << endl;
@@ -311,7 +312,8 @@ Tensor add(const Tensor& t1, const Tensor& t2){
 }
 
 // Element-wise multiplication
-Tensor mult(const Tensor& t1, const Tensor& t2){
+Tensor mult(const Tensor& t1, const Tensor& t2)
+{
 	// check that shapes are equal;
 	if (t1.shape() != t2.shape()){
 		cout << "Different shapes in mult!" << endl;
@@ -355,13 +357,15 @@ Tensor mult(const Tensor& t1, const Tensor& t2){
 	return result;
 }
 
-Tensor& Tensor::rmult(const double alpha){
+Tensor& Tensor::rmult(const double alpha)
+{
 	mkl_dimatcopy('R', 'N', 1, r1 * r2 * r3, alpha, g, 1, r1 * r2 * r3);
 
 	return *this;
 }
 
-Tensor& Tensor::divide(const Tensor& t){
+Tensor& Tensor::divide(const Tensor& t)
+{
 	if (vector<int>{t.r1, t.r2, t.r3} != vector<int>{1, 1, 1}){
 		cout << "Invalid ranks in divide!" << endl;
 		exit(-1);
@@ -380,15 +384,42 @@ Tensor& Tensor::divide(const Tensor& t){
 	return *this;
 }
 
-Tensor& Tensor::operator =(const Tensor& t){
+Tensor reflect(const Tensor& t, char axis)
+{
+	Tensor res(t);
+	switch (axis)
+	{
+	case 'X':
+		for (int i = 0; i < t.r1; ++i) {
+			reverse_copy(t.u1 + i * t.n1, t.u1 + (i + 1) * t.n1, res.u1 + i * t.n1);
+		}
+		return res;
+	case 'Y':
+		for (int i = 0; i < t.r2; ++i) {
+			reverse_copy(t.u2 + i * t.n2, t.u2 + (i + 1) * t.n2, res.u2 + i * t.n2);
+		}
+		return res;
+	case 'Z':
+		for (int i = 0; i < t.r3; ++i) {
+			reverse_copy(t.u3 + i * t.n3, t.u3 + (i + 1) * t.n3, res.u3 + i * t.n3);
+		}
+		return res;
+	default:
+		cout << "Wrong axis, try X, Y, Z." << endl;
+		exit(-1);
+	}
+}
 
+Tensor& Tensor::operator =(const Tensor& t)
+{
 	if (this == &t)
-			return *this;
+		return *this;
 
 	if (shape() != t.shape()){
 		cout << "Different shapes!" << endl;
 		exit(-1);
 	}
+
 	delete [] g;
 	g = new double[t.r1 * t.r2 * t.r3];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', t.r1 * t.r2 * t.r3, 1, t.g, 1, g, 1);
@@ -413,23 +444,23 @@ Tensor& Tensor::operator =(const Tensor& t){
 }
 
 // TODO: overload operators "+, *";
-Tensor operator +(const Tensor& t1, const Tensor& t2){
+Tensor operator +(const Tensor& t1, const Tensor& t2) {
 	return add(t1, t2);
 }
 
-Tensor operator *(const Tensor& t1, const Tensor& t2){
+Tensor operator *(const Tensor& t1, const Tensor& t2) {
 	return mult(t1, t2);
 }
 
-int Tensor::I(int i1, int i2, int i3){
+int Tensor::I(int i1, int i2, int i3) {
 	return i1 * n2 * n3 + i2 * n3 + i3;
 }
-vector<int> Tensor::multiI(int I){
+vector<int> Tensor::multiI(int I) {
 	// TODO: implement
 }
 
-double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r) {
-
+double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r)
+{
 	MKL_INT info;
 
 	double *U = new double[m*m];
@@ -468,8 +499,8 @@ double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r) {
     return u;
 }
 
-double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL_INT &r1, MKL_INT &r2, MKL_INT &r3) {
-
+double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL_INT &r1, MKL_INT &r2, MKL_INT &r3)
+{
 	double **result = new double *[4]; //TODO: tuple
 
     const double alpha = 1.0;
@@ -514,8 +545,8 @@ double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL
     return result;
 }
 // QR-decomposition of matrix a
-double **qr(MKL_INT m, MKL_INT n, double *a) {
-
+double **qr(MKL_INT m, MKL_INT n, double *a)
+{
 	double **result = new double *[2];
 
     const double alpha = 1.0;
@@ -549,7 +580,8 @@ double **qr(MKL_INT m, MKL_INT n, double *a) {
 	return result;
 }
 
-void print_matrix( char* desc, MKL_INT m, MKL_INT n, double* a, MKL_INT lda ) {
+void print_matrix( char* desc, MKL_INT m, MKL_INT n, double* a, MKL_INT lda )
+{
 	MKL_INT i, j;
 	printf( "\n %s\n", desc );
 	for( i = 0; i < m; i++ ) {

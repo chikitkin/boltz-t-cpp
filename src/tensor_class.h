@@ -45,7 +45,7 @@ public:
 	void round(double eps);
 	double *full();
 	// Compute sum of all elements
-	double sum();
+	double sum() const;
 
 	// Element-wise summation
 	friend Tensor add(const Tensor& t1, const Tensor& t2);
@@ -54,6 +54,7 @@ public:
 	Tensor& rmult(const double alpha);
 	Tensor& divide(const Tensor& t);
 	Tensor& operator =(const Tensor& t);
+	friend Tensor reflect(const Tensor& t, char axis);
 
 private:
 	int I(int i1, int i2, int i3);
