@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <filesystem>
+// #include <filesystem>
 #include <string>
 #include <vector>
 #include <set>
@@ -218,7 +218,7 @@ Tensor comp_j(const vector <double> params, const Tensor& f, const VelocityGrid&
 	double p = params[6];
 	double nu = params[7];
 
-	double *tmp = new double[max(v.nvx, v.nvy, v.nvz)];
+	double *tmp = new double[max(v.nvx, max(v.nvy, v.nvz))];
 
 	for (int i = 0; i < v.nvx; ++i) {
 		tmp[i] = (1.0 / pow(2.0 * gas_params.Rg * T, 0.5)) * (v.vx_[i] - ux);

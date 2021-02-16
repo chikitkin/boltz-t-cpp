@@ -1,0 +1,14 @@
+eclipse.preferences.version=1
+environment/buildEnvironmentInclude/intel.config.composerxe.exe.debug.227209114/CPATH/delimiter=\:
+environment/buildEnvironmentInclude/intel.config.composerxe.exe.debug.227209114/CPATH/operation=append
+environment/buildEnvironmentInclude/intel.config.composerxe.exe.debug.227209114/CPATH/value=/opt/intel/oneapi/dev-utilities/2021.1.1/include\:/opt/intel/oneapi/mpi/2021.1.1//include\:/opt/intel/oneapi/compiler/2021.1.1/linux/include\:/opt/intel/oneapi/tbb/2021.1.1/env/../include
+environment/buildEnvironmentInclude/intel.config.composerxe.exe.debug.227209114/CPLUS_INCLUDE_PATH/delimiter=\:
+environment/buildEnvironmentInclude/intel.config.composerxe.exe.debug.227209114/CPLUS_INCLUDE_PATH/operation=append
+environment/buildEnvironmentInclude/intel.config.composerxe.exe.debug.227209114/CPLUS_INCLUDE_PATH/value=/opt/intel/oneapi/clck/2021.1.1/include
+environment/buildEnvironmentInclude/intel.config.composerxe.exe.debug.227209114/append=true
+environment/buildEnvironmentInclude/intel.config.composerxe.exe.debug.227209114/appendContributed=true
+environment/buildEnvironmentLibrary/intel.config.composerxe.exe.debug.227209114/LIBRARY_PATH/delimiter=\:
+environment/buildEnvironmentLibrary/intel.config.composerxe.exe.debug.227209114/LIBRARY_PATH/operation=append
+environment/buildEnvironmentLibrary/intel.config.composerxe.exe.debug.227209114/LIBRARY_PATH/value=/opt/intel/oneapi/clck/2021.1.1/lib/intel64\:/opt/intel/oneapi/mpi/2021.1.1//libfabric/lib\:/opt/intel/oneapi/mpi/2021.1.1//lib/release\:/opt/intel/oneapi/mpi/2021.1.1//lib\:/opt/intel/oneapi/compiler/2021.1.1/linux/compiler/lib/intel64_lin\:/opt/intel/oneapi/compiler/2021.1.1/linux/lib\:/opt/intel/oneapi/tbb/2021.1.1/env/../lib/intel64/gcc4.8
+environment/buildEnvironmentLibrary/intel.config.composerxe.exe.debug.227209114/append=true
+environment/buildEnvironmentLibrary/intel.config.composerxe.exe.debug.227209114/appendContributed=true

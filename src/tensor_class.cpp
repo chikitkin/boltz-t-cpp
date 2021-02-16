@@ -264,7 +264,7 @@ double Tensor::sum() const
 	double *S;
 	Tensor tmp(1, 1, 1, r1, r2, r3);
 	mkl_domatcopy ('R', 'N', r1*r2, r3, alpha, g, r3, tmp.g, r3);
-	MKL_INT n = max(n1, n2, n3);
+	MKL_INT n = max(n1, max(n2, n3));
 	double* ones = new double[n];
 	for (int i = 0; i < n; ++i) {
 		ones[i] = 1.0;
@@ -499,7 +499,7 @@ double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r)
     return u;
 }
 
-double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL_INT &r1, MKL_INT &r2, MKL_INT &r3)
+double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL_INT &r1, MKL_INT &r2, MKL_INT &r3) // TODO tuple
 {
 	double **result = new double *[4]; //TODO: tuple
 

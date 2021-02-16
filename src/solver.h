@@ -4,7 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <filesystem>
+// #include <filesystem>
 #include <string>
 #include <vector>
 #include <set>
@@ -25,7 +25,7 @@ class VelocityGrid {
 public:
 	// Constructor
 	VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *vy__, double *vz__); // TODO
-//	~VelocityGrid(); // TODO
+	~VelocityGrid();
 
 	double *vx_;
 	double *vy_;

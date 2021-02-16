@@ -1,4 +1,38 @@
-src/mesh.d: ../src/mesh.cpp ../src/mesh.h
+src/solver.d: ../src/solver.cpp /opt/intel/oneapi/mkl/latest/include/mkl.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_version.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_types.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_blas.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_trans.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_cblas.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_spblas.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_lapack.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_lapacke.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_pardiso.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_dss.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_sparse_handle.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_rci.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_service.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_vml.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_vml_defines.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_vml_types.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_vml_functions.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_vsl.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_vsl_defines.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_vsl_functions.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_vsl_types.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_df.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_df_defines.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_df_functions.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_df_types.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_dfti.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_trig_transforms.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_poisson.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_solvers_ee.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_direct_call.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_compact.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_graph.h \
+ /opt/intel/oneapi/mkl/latest/include/mkl_sparse_qr.h ../src/tensor_class.h \
+ ../src/mesh.h ../src/solver.h
 
 /usr/include/stdc-predef.h:
 
@@ -368,6 +402,74 @@ src/mesh.d: ../src/mesh.cpp ../src/mesh.h
 
 /usr/include/c++/7.5.0/stdlib.h:
 
+/opt/intel/oneapi/mkl/latest/include/mkl.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_version.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_types.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_blas.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_trans.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_cblas.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_spblas.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_lapack.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_lapacke.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_pardiso.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_dss.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_sparse_handle.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_rci.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_service.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_vml.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_vml_defines.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_vml_types.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_vml_functions.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_vsl.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_vsl_defines.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_vsl_functions.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_vsl_types.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_df.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_df_defines.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_df_functions.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_df_types.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_dfti.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_trig_transforms.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_poisson.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_solvers_ee.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_direct_call.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_compact.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_graph.h:
+
+/opt/intel/oneapi/mkl/latest/include/mkl_sparse_qr.h:
+
 /opt/intel/oneapi/compiler/2021.1.1/linux/bin/intel64/../../compiler/include/math.h:
 
 /usr/include/c++/7.5.0/math.h:
@@ -418,4 +520,8 @@ src/mesh.d: ../src/mesh.cpp ../src/mesh.h
 
 /usr/include/c++/7.5.0/bits/stl_numeric.h:
 
+../src/tensor_class.h:
+
 ../src/mesh.h:
+
+../src/solver.h:
