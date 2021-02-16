@@ -11,23 +11,23 @@
 #include <algorithm>
 using namespace std;
 
-double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r);
+double *svd_trunc(int m, int n, double *a, double eps, int &r);
 
-double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3,
-		double *a, double eps, MKL_INT &r1, MKL_INT &r2, MKL_INT &r3);
+double **compress(int n1, int n2, int n3,
+		double *a, double eps, int &r1, int &r2, int &r3);
 
-double **qr(MKL_INT m, MKL_INT n, double *a);
+double **qr(int m, int n, double *a);
 
 class Tensor {
 public:
 	// Constructor
-	Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_);
+	Tensor(int n1_, int n2_, int n3_);
 	// Zero tensor with given ranks
-	Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, MKL_INT r1_, MKL_INT r2_, MKL_INT r3_);
+	Tensor(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_);
 	// Compress a tensor with given accuracy
-	Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *a, double eps);
+	Tensor(int n1_, int n2_, int n3_, double *a, double eps);
 	// Create a rank-1 tensor from given factors
-	Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *u1_, double *u2_, double *u3_);
+	Tensor(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_);
 	// Copy constructor
 	Tensor(const Tensor& t);
 	// Destructor
@@ -37,7 +37,7 @@ public:
 	void get_r();
 	vector<int> shape() const;
 	// Get element
-	double At(MKL_INT i1, MKL_INT i2, MKL_INT i3);
+	double At(int i1, int i2, int i3);
 
 	// Orthogonalize factors with QR
 	void orthogonalize();
@@ -62,9 +62,9 @@ private:
 
 	double* g;
 	// sizes along each dimension;
-	const MKL_INT n1, n2, n3;
+	const int n1, n2, n3;
 	// u ranks;
-	MKL_INT r1, r2, r3;
+	int r1, r2, r3;
 	// us;
 	double* u1;
 	double* u2;

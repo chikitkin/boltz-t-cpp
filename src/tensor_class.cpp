@@ -11,7 +11,7 @@
 using namespace std;
 
 // Constructor
-Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_) :
+Tensor::Tensor(int n1_, int n2_, int n3_) :
 	n1(n1_), n2(n2_), n3(n3_) {
 	r1 = 0;
 	r2 = 0;
@@ -22,7 +22,7 @@ Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_) :
 	u3 = new double[0];
 }
 // Zero tensor with given ranks
-Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, MKL_INT r1_, MKL_INT r2_, MKL_INT r3_) :
+Tensor::Tensor(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_) :
 	n1(n1_), n2(n2_), n3(n3_) {
 	// Create zero tensor
 	r1 = r1_;
@@ -34,7 +34,7 @@ Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, MKL_INT r1_, MKL_INT r2_, 
 	u3 = new double[n3 * r3];
 }
 // Compress a tensor with given accuracy
-Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *a, double eps) :
+Tensor::Tensor(int n1_, int n2_, int n3_, double *a, double eps) :
 	n1(n1_), n2(n2_), n3(n3_) {
 	double **A;
 	A = compress(n1, n2, n3, a, eps, r1, r2, r3);
@@ -53,7 +53,7 @@ Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *a, double eps) :
 	delete [] A;
 }
 // Create a rank-1 tensor from given factors
-Tensor::Tensor(MKL_INT n1_, MKL_INT n2_, MKL_INT n3_, double *u1_, double *u2_, double *u3_)
+Tensor::Tensor(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_)
 : n1(n1_), n2(n2_), n3(n3_)
 {
 	r1 = 1;
@@ -105,12 +105,12 @@ vector<int> Tensor::shape() const{
 	return dim;
 }
 // Get element
-double Tensor::At(MKL_INT i1, MKL_INT i2, MKL_INT i3)
+double Tensor::At(int i1, int i2, int i3)
 {
 	double a = 0.0;
-	for(MKL_INT j1 = 0; j1 < r1; j1++) {
-		for(MKL_INT j2 = 0; j2 < r2; j2++) {
-			for(MKL_INT j3 = 0; j3 < r3; j3++) {
+	for(int j1 = 0; j1 < r1; j1++) {
+		for(int j2 = 0; j2 < r2; j2++) {
+			for(int j3 = 0; j3 < r3; j3++) {
 				a += g[j1 * r2 * r3 + j2 * r3 + j3] * u1[i1 * r1 + j1] * u2[i2 * r2 + j2] * u3[i3 * r3 + j3];
 			}
 		}
@@ -144,18 +144,18 @@ void Tensor::orthogonalize()
 	delete [] g;
 	g = new double[min(n1, r1)*min(n2, r2)*min(n3, r3)];
 
-	mkl_dimatcopy ('R', 'T', r1, r2*r3, alpha, z1, r2*r3, r1);
-	mkl_dimatcopy ('R', 'T', min(n1, r1), r1, alpha, QR1[1], r1, min(n1, r1));
+	MKL_Dimatcopy ('R', 'T', r1, r2*r3, alpha, z1, r2*r3, r1);
+	MKL_Dimatcopy ('R', 'T', min(n1, r1), r1, alpha, QR1[1], r1, min(n1, r1));
 	double *z2 = new double[min(n1, r1)*r2*r3];
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 									r2*r3, min(n1, r1), r1, alpha, z1, r1, QR1[1], min(n1, r1), beta, z2, min(n1, r1));
-	mkl_dimatcopy ('R', 'T', r2, min(n1, r1)*r3, alpha, z2, min(n1, r1)*r3, r2);
-	mkl_dimatcopy ('R', 'T', min(n2, r2), r2, alpha, QR2[1], r2, min(n2, r2));
+	MKL_Dimatcopy ('R', 'T', r2, min(n1, r1)*r3, alpha, z2, min(n1, r1)*r3, r2);
+	MKL_Dimatcopy ('R', 'T', min(n2, r2), r2, alpha, QR2[1], r2, min(n2, r2));
 	double *z3 = new double[min(n1, r1)*min(n2, r2)*r3];
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 			min(n1, r1)*r3, min(n2, r2), r2, alpha, z2, r2, QR2[1], min(n2, r2), beta, z3, min(n2, r2));
-	mkl_dimatcopy ('R', 'T', r3, min(n1, r1)*min(n2, r2), alpha, z3, min(n1, r1)*min(n2, r2), r3);
-	mkl_dimatcopy ('R', 'T', min(n3, r3), r3, alpha, QR3[1], r3, min(n3, r3));
+	MKL_Dimatcopy ('R', 'T', r3, min(n1, r1)*min(n2, r2), alpha, z3, min(n1, r1)*min(n2, r2), r3);
+	MKL_Dimatcopy ('R', 'T', min(n3, r3), r3, alpha, QR3[1], r3, min(n3, r3));
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 			min(n1, r1)*min(n2, r2), min(n3, r3), r3, alpha, z3, r3, QR3[1], min(n3, r3), beta, g, min(n3, r3));
 
@@ -181,7 +181,7 @@ void Tensor::round(double eps)
 	const double alpha = 1.0;
 	const double beta = 0.0;
 
-	MKL_INT r1_, r2_, r3_;
+	int r1_, r2_, r3_;
 
 	orthogonalize();
 
@@ -238,17 +238,17 @@ double *Tensor::full()
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							n1, r2*r3, r1, alpha, u1, r1, g, r2*r3, beta, z1, r2*r3);
 
-	mkl_dimatcopy ('R', 'T', n1, r2*r3, alpha, z1, r2*r3, n1);
+	MKL_Dimatcopy ('R', 'T', n1, r2*r3, alpha, z1, r2*r3, n1);
 
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							n2, r3*n1, r2, alpha, u2, r2, z1, r3*n1, beta, z2, r3*n1);
 
-	mkl_dimatcopy ('R', 'T', n2, r3*n1, alpha, z2, r3*n1, n2);
+	MKL_Dimatcopy ('R', 'T', n2, r3*n1, alpha, z2, r3*n1, n2);
 
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							n3, n1*n2, r3, alpha, u3, r3, z2, n1*n2, beta, res, n1*n2);
 
-	mkl_dimatcopy ('R', 'T', n3, n1*n2, alpha, res, n1*n2, n3);
+	MKL_Dimatcopy ('R', 'T', n3, n1*n2, alpha, res, n1*n2, n3);
 
 	delete [] z1;
 	delete [] z2;
@@ -264,7 +264,7 @@ double Tensor::sum() const
 	double *S;
 	Tensor tmp(1, 1, 1, r1, r2, r3);
 	mkl_domatcopy ('R', 'N', r1*r2, r3, alpha, g, r3, tmp.g, r3);
-	MKL_INT n = max(n1, max(n2, n3));
+	int n = max(n1, max(n2, n3));
 	double* ones = new double[n];
 	for (int i = 0; i < n; ++i) {
 		ones[i] = 1.0;
@@ -359,7 +359,7 @@ Tensor mult(const Tensor& t1, const Tensor& t2)
 
 Tensor& Tensor::rmult(const double alpha)
 {
-	mkl_dimatcopy('R', 'N', 1, r1 * r2 * r3, alpha, g, 1, r1 * r2 * r3);
+	MKL_Dimatcopy('R', 'N', 1, r1 * r2 * r3, alpha, g, 1, r1 * r2 * r3);
 
 	return *this;
 }
@@ -370,15 +370,15 @@ Tensor& Tensor::divide(const Tensor& t)
 		cout << "Invalid ranks in divide!" << endl;
 		exit(-1);
 	}
-	mkl_dimatcopy('R', 'N', 1, r1 * r2 * r3, 1.0 / t.g[0], g, 1, r1 * r2 * r3);
+	MKL_Dimatcopy('R', 'N', 1, r1 * r2 * r3, 1.0 / t.g[0], g, 1, r1 * r2 * r3);
 	for (int i = 0; i < n1; ++i){
-		mkl_dimatcopy('R', 'N', 1, r1, 1.0 / t.u1[i], u1+i*r1, 1, r1);
+		MKL_Dimatcopy('R', 'N', 1, r1, 1.0 / t.u1[i], u1+i*r1, 1, r1);
 	}
 	for (int i = 0; i < n2; ++i){
-		mkl_dimatcopy('R', 'N', 1, r2, 1.0 / t.u2[i], u2+i*r2, 1, r2);
+		MKL_Dimatcopy('R', 'N', 1, r2, 1.0 / t.u2[i], u2+i*r2, 1, r2);
 	}
 	for (int i = 0; i < n3; ++i){
-		mkl_dimatcopy('R', 'N', 1, r3, 1.0 / t.u3[i], u3+i*r3, 1, r3);
+		MKL_Dimatcopy('R', 'N', 1, r3, 1.0 / t.u3[i], u3+i*r3, 1, r3);
 	}
 
 	return *this;
@@ -459,9 +459,9 @@ vector<int> Tensor::multiI(int I) {
 	// TODO: implement
 }
 
-double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r)
+double *svd_trunc(int m, int n, double *a, double eps, int &r)
 {
-	MKL_INT info;
+	int info;
 
 	double *U = new double[m*m];
     double *S = new double[min(m,n)];
@@ -499,7 +499,7 @@ double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r)
     return u;
 }
 
-double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL_INT &r1, MKL_INT &r2, MKL_INT &r3) // TODO tuple
+double **compress(int n1, int n2, int n3, double *a, double eps, int &r1, int &r2, int &r3) // TODO tuple
 {
 	double **result = new double *[4]; //TODO: tuple
 
@@ -514,9 +514,9 @@ double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL
 
     LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z1, 1);
     LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z2, 1);
-    mkl_dimatcopy ('R', 'T', n1, n2*n3, alpha, z2, n2*n3, n1);
+    MKL_Dimatcopy ('R', 'T', n1, n2*n3, alpha, z2, n2*n3, n1);
     LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z3, 1);
-    mkl_dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
+    MKL_Dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
 
     u1 = svd_trunc(n1, (n2 * n3), z1, eps, r1);
     u2 = svd_trunc(n2, (n1 * n3), z2, eps, r2);
@@ -525,13 +525,13 @@ double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL
     double *g = new double[r1*r2*r3]();
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                             n1*n2, r3, n3, alpha, a, n3, u3, r3, beta, z3, r3);
-    mkl_dimatcopy ('R', 'T', n1*n2, r3, alpha, z3, r3, n1*n2);
+    MKL_Dimatcopy ('R', 'T', n1*n2, r3, alpha, z3, r3, n1*n2);
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                             r3*n1, r2, n2, alpha, z3, n2, u2, r2, beta, z2, r2);
-    mkl_dimatcopy ('R', 'T', r3*n1, r2, alpha, z2, r2, r3*n1);
+    MKL_Dimatcopy ('R', 'T', r3*n1, r2, alpha, z2, r2, r3*n1);
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                             r2*r3, r1, n1, alpha, z2, n1, u1, r1, beta, g, r1);
-    mkl_dimatcopy ('R', 'T', r2*r3, r1, alpha, g, r1, r2*r3);
+    MKL_Dimatcopy ('R', 'T', r2*r3, r1, alpha, g, r1, r2*r3);
 
     result[0] = g;
     result[1] = u1;
@@ -545,14 +545,14 @@ double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL
     return result;
 }
 // QR-decomposition of matrix a
-double **qr(MKL_INT m, MKL_INT n, double *a)
+double **qr(int m, int n, double *a)
 {
 	double **result = new double *[2];
 
     const double alpha = 1.0;
     const double beta = 0.0;
 
-	MKL_INT size = min(m, n);
+	int size = min(m, n);
 
 	double *tau = new double[size];
 
@@ -580,9 +580,9 @@ double **qr(MKL_INT m, MKL_INT n, double *a)
 	return result;
 }
 
-void print_matrix( char* desc, MKL_INT m, MKL_INT n, double* a, MKL_INT lda )
+void print_matrix( char* desc, int m, int n, double* a, int lda )
 {
-	MKL_INT i, j;
+	int i, j;
 	printf( "\n %s\n", desc );
 	for( i = 0; i < m; i++ ) {
 		for( j = 0; j < n; j++ ) printf( " %6.2f", a[i*lda+j] );
@@ -599,7 +599,7 @@ double g(double x, double y, double z) {
 }
 
 int main(){
-	MKL_INT n1, n2, n3;
+	int n1, n2, n3;
 	n1 = 10;
 	n2 = 10;
 	n3 = 20;
