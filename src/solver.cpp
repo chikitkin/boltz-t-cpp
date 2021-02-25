@@ -12,9 +12,10 @@
 #include "math.h"
 #include <algorithm>
 #include <numeric>
-#include "tensor_class.h"
 #include "mesh.h"
 #include "solver.h"
+
+#include "tensor.h"
 using namespace std;
 
 VelocityGrid::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *vy__, double *vz__)
@@ -256,14 +257,6 @@ Tensor comp_j(const vector <double> params, const Tensor& f, const VelocityGrid&
 Solution::Solution()
 {
 	path = "../job-"; // dummy
-	fs::create_directory(path);
-
-}
-
-Solution::maketimesteps()
-{
-
-
 }
 
 int main()

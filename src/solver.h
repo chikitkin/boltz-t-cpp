@@ -15,8 +15,8 @@
 #include "math.h"
 #include <algorithm>
 #include <numeric>
-#include "tensor_class.h"
 #include "mesh.h"
+#include "tensor.h"
 using namespace std;
 
 const double PI = acos(-1.0); // TODO
