@@ -11,6 +11,33 @@
 #include <memory>
 using namespace std;
 
+void transpose(int n1, int n2, int n3, double* a, const int dim)
+{
+	switch (dim) // TODO enum
+	{
+	case 120:
+		MKL_Dimatcopy ('R', 'T', n1, n2 * n3, 1.0, a, n2 * n3, n1);
+		break;
+	case 201:
+		MKL_Dimatcopy ('R', 'T', n1 * n2, n3, 1.0, a, n3, n1 * n2);
+		break;
+	case 210:
+		double* a_tmp = new double [n1 * n2 * n3];
+		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1 * n2 * n3, 1, a, 1, a_tmp, 1);
+		for (int i = 0; i < n1; ++i) {
+			for (int j = 0; j < n2; ++j) {
+				for (int k = 0; k < n3; ++k) {
+					a[k * n2 * n1 + j * n1 + i] = a_tmp[i * n2 * n3 + j * n3 + k];
+				}
+			}
+		}
+		delete [] a_tmp;
+		break;
+	default:
+		cout << "Wrong dim, try 120, 201, 210." << endl;
+		exit(-1);
+	}
+}
 // Constructors
 // Tensor with empty everything
 Tensor::Tensor(int n1_, int n2_, int n3_)
@@ -170,43 +197,54 @@ void Tensor::orthogonalize()
 	const double alpha = 1.0;
 	const double beta = 0.0;
 
-	double **QR1, **QR2, **QR3;
-	QR1 = qr(n1, r1, u1);
-	QR2 = qr(n2, r2, u2);
-	QR3 = qr(n3, r3, u3);
+	double **QR1 = qr(n1, r1, u1);
+	double **QR2 = qr(n2, r2, u2);
+	double **QR3 = qr(n3, r3, u3);
+	// TODO maybe just change pointers
 	// u1 = q1
-	double* u1_tmp = new double[n1*r1];
+	double* u1_tmp = new double[n1 * min(n1, r1)];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1, min(n1, r1), QR1[0], min(n1, r1), u1_tmp, min(n1, r1));
 	delete [] u1;
 	u1 = u1_tmp;
 	// u2 = q2
-	double* u2_tmp = new double[n2*r2];
+	double* u2_tmp = new double[n2 * min(n2, r2)];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n2, min(n2, r2), QR2[0], min(n2, r2), u2_tmp, min(n2, r2));
 	delete [] u2;
 	u2 = u2_tmp;
 	// u3 = q3
-	double* u3_tmp = new double[n3*r3];
+	double* u3_tmp = new double[n3 * min(n3, r3)];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3, min(n3, r3), QR3[0], min(n3, r3), u3_tmp, min(n3, r3));
 	delete [] u3;
 	u3 = u3_tmp;
-
-	double *z1 = new double[r1*r2*r3];
+	// z1.shape = (r1, r2, r3)
+	double *z1 = new double[r1 * r2 * r3];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', r1*r2*r3, 1, g, 1, z1, 1);
 
 	double* g_tmp = new double[min(n1, r1)*min(n2, r2)*min(n3, r3)];
 
-	MKL_Dimatcopy ('R', 'T', r1, r2*r3, alpha, z1, r2*r3, r1);
+	// z1.shape = (r3, r2, r1)
+	transpose(r1, r2, r3, z1, 210);
+	// R1.shape = (r1, min(n1, r1))
 	MKL_Dimatcopy ('R', 'T', min(n1, r1), r1, alpha, QR1[1], r1, min(n1, r1));
-	double *z2 = new double[min(n1, r1)*r2*r3];
+	double *z2 = new double[r3*r2*min(n1, r1)];
+	// z2.shape = (r3, r2, min(n1, r1))
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-									r2*r3, min(n1, r1), r1, alpha, z1, r1, QR1[1], min(n1, r1), beta, z2, min(n1, r1));
-	MKL_Dimatcopy ('R', 'T', r2, min(n1, r1)*r3, alpha, z2, min(n1, r1)*r3, r2);
+			r3*r2, min(n1, r1), r1, alpha, z1, r1, QR1[1], min(n1, r1), beta, z2, min(n1, r1));
+	// z2.shape = (min(n1, r1), r2, r3)
+	transpose(r3, r2, min(n1, r1), z2, 210); // TODO
+	// z2.shape = (r3, min(n1, r1), r2)
+	transpose(min(n1, r1), r2, r3, z2, 201);
+	// R2.shape = (r2, min(n2, r2))
 	MKL_Dimatcopy ('R', 'T', min(n2, r2), r2, alpha, QR2[1], r2, min(n2, r2));
-	double *z3 = new double[min(n1, r1)*min(n2, r2)*r3];
+	double *z3 = new double[r3*min(n1, r1)*min(n2, r2)];
+	// z3.shape = (r3, min(n1, r1), min(n2, r2))
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-			min(n1, r1)*r3, min(n2, r2), r2, alpha, z2, r2, QR2[1], min(n2, r2), beta, z3, min(n2, r2));
-	MKL_Dimatcopy ('R', 'T', r3, min(n1, r1)*min(n2, r2), alpha, z3, min(n1, r1)*min(n2, r2), r3);
+			r3*min(n1, r1), min(n2, r2), r2, alpha, z2, r2, QR2[1], min(n2, r2), beta, z3, min(n2, r2));
+	// z3.shape = (min(n1, r1), min(n2, r2), r3)
+	transpose(r3, min(n1, r1), min(n2, r2), z3, 120);
+	// R3.shape = (r3, min(n3, r3))
 	MKL_Dimatcopy ('R', 'T', min(n3, r3), r3, alpha, QR3[1], r3, min(n3, r3));
+	// g_tmp.shape = (min(n1, r1), min(n2, r2), min(n3, r3))
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 			min(n1, r1)*min(n2, r2), min(n3, r3), r3, alpha, z3, r3, QR3[1], min(n3, r3), beta, g_tmp, min(n3, r3));
 
@@ -236,8 +274,7 @@ void Tensor::round(double eps)
 	const double beta = 0.0;
 
 	int r1_tmp, r2_tmp, r3_tmp;
-// TODO
-//	orthogonalize();
+	orthogonalize();
 	// TODO: replace with tuple
 	// add comments!
 	double **A;
@@ -335,7 +372,7 @@ double Tensor::sum() const
 	return S[0];
 }
 
-Tensor operator +(const Tensor& t1, const Tensor& t2)
+Tensor operator +(const Tensor& t1, const Tensor& t2) // TODO return reference (or not)
 {
 	// check that shapes are equal
 	if (t1.n() != t2.n()){
@@ -448,7 +485,7 @@ Tensor operator /(const Tensor& t1, const Tensor& t2)
 Tensor reflect(const Tensor& t, char axis)
 {
 	Tensor res(t);
-	switch (axis)
+	switch (axis) // TODO use enum
 	{
 	case 'X':
 		for (int i = 0; i < t.r1; ++i) {
@@ -471,10 +508,13 @@ Tensor reflect(const Tensor& t, char axis)
 	}
 }
 
-int Tensor::I(int i1, int i2, int i3) {
+int Tensor::I(int i1, int i2, int i3)
+{
 	return i1 * n2 * n3 + i2 * n3 + i3;
 }
-vector<int> Tensor::multiI(int I) {
+
+vector<int> Tensor::multiI(int I)
+{
 	// TODO: implement
 	return {0, 0, 0};
 }
@@ -519,7 +559,7 @@ double *svd_trunc(int m, int n, double *a, double eps, int &r)
     return u;
 }
 
-double **compress(int n1, int n2, int n3, double *a, double eps, int &r1, int &r2, int &r3) // TODO tuple
+double **compress(int n1, int n2, int n3, double *a, double eps, int &r1, int &r2, int &r3)
 {
 	double **result = new double *[4]; //TODO: tuple
 
@@ -581,16 +621,16 @@ double **qr(int n1, int n2, const double *a)
 	double *a_tmp = new double[n1 * n2];
 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1, n2, a, n2, a_tmp, n2);
-
+	// QR in-place
 	LAPACKE_dgeqrf (LAPACK_ROW_MAJOR, n1, n2, a_tmp, n2, tau);
 
 	double *q = new double[n1 * size];
 	double *r = new double[size * n2]();
-
+	// R (only upper triangle)
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'U', n1, n2, a_tmp, n2, r, n2);
-
+	// get Q
 	LAPACKE_dorgqr (LAPACK_ROW_MAJOR, n1, size, size, a_tmp, n2, tau);
-
+	// Q
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1, size, a_tmp, n2, q, size);
 
 	result[0] = q;
@@ -624,11 +664,12 @@ int main(){
 	int n1, n2, n3;
 	n1 = 11;
 	n2 = 11;
-	n3 = 5;
+	n3 = 4;
 
 	double eps = 1e-5;
 /*************************************************************************************/
 // QR test
+
 	double* A = new double[n1*n2];
 	double* B = new double[n1*n2]();
 
@@ -641,7 +682,6 @@ int main(){
 	int size = min(n1, n2);
 
 	double *tau = new double[size];
-//	LAPACKE_dgeqrf (LAPACK_ROW_MAJOR, n1, n2, A, n2, tau);
 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'U', n1, n2, A, n2, B, n2);
 
@@ -677,15 +717,33 @@ int main(){
 	double diff_norm;
 	double diff;
 /*************************************************************************************/
+// Transpose test
 /*
+	double *a_0 = new double[n1*n2*n3];
+	double *a = new double[n1*n2*n3];
+	double *a_true = new double[n1*n2*n3];
+
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
-				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a_0[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a_true[k*n2*n1 + j*n1 + i] = a[i*n2*n3 + j*n3 + k];
 			}
 		}
 	}
 
+	print_matrix("A", 1, n1*n2*n3, a, n1*n2*n3);
+
+	transpose(n1, n2, n3, a, 210);
+
+	print_matrix("A 0", 1, n1*n2*n3, a_0, n1*n2*n3);
+	print_matrix("A", 1, n1*n2*n3, a, n1*n2*n3);
+	print_matrix("A true", 1, n1*n2*n3, a_true, n1*n2*n3);
+
+	delete [] a_0;
+	delete [] a;
+	delete [] a_true;
 /*************************************************************************************/
 
 	s = 0.0;

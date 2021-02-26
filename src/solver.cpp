@@ -155,7 +155,7 @@ Tensor set_bc(const GasParams& gas_params,
 		const string& bc_type, const Tensor& bc_data, const Tensor& f, const VelocityGrid& v,
 		const Tensor& vn, const Tensor& vnp, const Tensor& vnm, double tol)
 {
-	switch (bc_type)
+	switch (bc_type) // TODO use enum
 	{
 	case "SYM_X":
 		return reflect(f, 'X');
