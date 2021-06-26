@@ -39,7 +39,9 @@ using namespace std;
 
 class Mesh {
 public:
-	void read_starcd(const string& path, const double scale = 1.0);
+	// Constructor
+	Mesh(const string& path, double scale = 1.0);
+	void read_starcd(const string& path, double scale = 1.0);
 
 	double compute_tetra_volume(vector < vector < double > > tetra);
 	vector < vector < int > > get_faces_for_cell(int ic);

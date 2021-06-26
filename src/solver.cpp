@@ -9,14 +9,109 @@
 #include <stdio.h>
 #include "mkl.h"
 #include "mkl_lapacke.h"
-#include "math.h"
+#include <math.h>
 #include <algorithm>
 #include <numeric>
 #include "mesh.h"
-#include "solver.h"
-
 #include "tensor.h"
+#include "solver.h"
 using namespace std;
+
+double *f_maxwell(const VelocityGrid & v,
+		double n, double ux, double uy, double uz,
+		double T, double Rg)
+{
+	double *fmax = new double[v.nv];
+
+	double C = n * pow(1.0 / (2.0 * PI * Rg * T), 1.5); // TODO pi
+	double s = 2.0 * Rg * T;
+
+	for (int i = 0; i < v.nv; ++i) {
+		fmax[i] = C * exp(-((pow(v.vx[i] - ux, 2) + pow(v.vy[i] - uy, 2) + pow(v.vz[i] - uz, 2)) / s));
+	}
+
+	return fmax;
+}
+
+Tensor f_maxwell_t(const VelocityGrid & v,
+		double n, double ux, double uy, double uz,
+		double T, double Rg)
+{
+	double C = n * pow(1.0 / (2.0 * PI * Rg * T), 1.5);
+	double s = 2.0 * Rg * T;
+
+	double *u1 = new double[v.nvx];
+	for (int i = 0; i < v.nvx; ++i) {
+		u1[i] = exp(-(pow(v.vx_[i] - ux, 2.0) / s));
+	}
+
+	double *u2 = new double[v.nvy];
+	for (int i = 0; i < v.nvy; ++i) {
+		u2[i] = exp(-(pow(v.vy_[i] - uy, 2.0) / s));
+	}
+
+	double *u3 = new double[v.nvz];
+	for (int i = 0; i < v.nvz; ++i) {
+		u3[i] = exp(-(pow(v.vz_[i] - uz, 2.0) / s));
+	}
+
+	Tensor fmax(v.nvx, v.nvy, v.nvz, u1, u2, u3);
+
+	delete [] u1;
+	delete [] u2;
+	delete [] u3;
+
+	return C * fmax;
+}
+
+double GasParams::mu_suth(double T) const {
+	return mu_0 * ((T_0 + C) / (T + C)) * (pow(T / T_0, 3.0 / 2.0));
+}
+
+double GasParams::mu(double T) const {
+	return mu_suth(200.0) * (pow(T / 200.0, 0.734));
+}
+
+Tensor Problem::f_init(double x, double y, double z) {
+	if (x < 0.0) {
+		return init_tensor_list[0];
+	}
+	else {
+		return init_tensor_list[1];
+	}
+}
+
+Tensor Problem::set_bc(const GasParams& gas_params, const VelocityGrid& v,
+		char bc_type, const Tensor& bc_data,
+		const Tensor& f,
+		const Tensor& vn, const Tensor& vnp, const Tensor& vnm,
+		double tol)
+{
+	switch (bc_type) // TODO use enum
+	{
+	case 'X':
+		return reflect(f, 'X');
+	case 'Y':
+		return reflect(f, 'Y');
+	case 'Z':
+		return reflect(f, 'Z');
+	case 'S':
+		return Tensor(f);
+	case 'I':
+		return Tensor(bc_data);
+	case 'O':
+		return Tensor(bc_data);
+	case 'W':
+	{
+		double Ni = v.hv3 * (round_t(f * vnp, tol, 1e+6)).sum();
+		double Nr = v.hv3 * (round_t(bc_data * vnm, tol, 1e+6)).sum();
+		return -(Ni / Nr) * bc_data;
+	}
+	default:
+		cout << "Wrong BC type." << endl;
+		exit(-1);
+	}
+}
 
 VelocityGrid::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *vy__, double *vz__)
 : nvx(nvx_), nvy(nvy_), nvz(nvz_)
@@ -24,8 +119,71 @@ VelocityGrid::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *v
 	nv = nvx * nvy * nvz;
 
 	vx_ = new double[nvx];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvx, 1, vx__, 1, vx_, 1);
 	vy_ = new double[nvy];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvy, 1, vy__, 1, vy_, 1);
 	vz_ = new double[nvz];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvz, 1, vz__, 1, vz_, 1);
+
+	hvx = vx_[1] - vx_[0];
+	hvy = vy_[1] - vy_[0];
+	hvz = vz_[1] - vz_[0];
+	hv3 = hvx * hvy * hvz; // TODO better designations
+
+	vx = new double[nv];
+	vy = new double[nv];
+	vz = new double[nv];
+
+	for (int i = 0; i < nvx; ++i) {
+		for (int j = 0; j < nvy; ++j) {
+			for (int k = 0; k < nvz; ++k) {
+				vx[i * nvy * nvz + j * nvz + k] = vx_[i];
+				vy[i * nvy * nvz + j * nvz + k] = vy_[j];
+				vz[i * nvy * nvz + j * nvz + k] = vz_[k];
+			}
+		}
+	}
+
+	zerox = new double[nvx]();
+	onesx = new double[nvx];
+	for (int i = 0; i < nvx; ++i) {
+		onesx[i] = 1.0;
+	}
+
+	zeroy = new double[nvy]();
+	onesy = new double[nvy];
+	for (int i = 0; i < nvy; ++i) {
+		onesy[i] = 1.0;
+	}
+
+	zeroz = new double[nvz]();
+	onesz = new double[nvz];
+	for (int i = 0; i < nvz; ++i) {
+		onesz[i] = 1.0;
+	}
+
+	vx_t = Tensor(nvx, nvy, nvz, vx_, onesy, onesz);
+	vy_t = Tensor(nvx, nvy, nvz, onesx, vy_, onesz);
+	vz_t = Tensor(nvx, nvy, nvz, onesx, onesy, vz_);
+
+	v2 = vx_t * vx_t + vy_t * vy_t + vz_t * vz_t;
+	v2.round(1e-7);
+
+	zero = Tensor(nvx, nvy, nvz, zerox, zeroy, zeroz);
+	ones = Tensor(nvx, nvy, nvz, onesx, onesy, onesz);
+}
+
+VelocityGrid::VelocityGrid(const VelocityGrid& v)
+: nvx(v.nvx), nvy(v.nvy), nvz(v.nvz)
+{
+	nv = nvx * nvy * nvz;
+
+	vx_ = new double[nvx];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvx, 1, v.vx_, 1, vx_, 1);
+	vy_ = new double[nvy];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvy, 1, v.vy_, 1, vy_, 1);
+	vz_ = new double[nvz];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvz, 1, v.vz_, 1, vz_, 1);
 
 	hvx = vx_[1] - vx_[0];
 	hvy = vy_[1] - vy_[0];
@@ -37,24 +195,31 @@ VelocityGrid::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *v
 	vy = new double[nv];
 	vz = new double[nv];
 
-	zerox = new double[nvx];
+	for (int i = 0; i < nvx; ++i) {
+		for (int j = 0; j < nvy; ++j) {
+			for (int k = 0; k < nvz; ++k) {
+				vx[i * nvy * nvz + j * nvz + k] = vx_[i];
+				vy[i * nvy * nvz + j * nvz + k] = vy_[j];
+				vz[i * nvy * nvz + j * nvz + k] = vz_[k];
+			}
+		}
+	}
+
+	zerox = new double[nvx]();
 	onesx = new double[nvx];
 	for (int i = 0; i < nvx; ++i) {
-		zerox[i] = 0.0;
 		onesx[i] = 1.0;
 	}
 
-	zeroy = new double[nvy];
+	zeroy = new double[nvy]();
 	onesy = new double[nvy];
 	for (int i = 0; i < nvy; ++i) {
-		zeroy[i] = 0.0;
 		onesy[i] = 1.0;
 	}
 
-	zeroz = new double[nvz];
+	zeroz = new double[nvz]();
 	onesz = new double[nvz];
 	for (int i = 0; i < nvz; ++i) {
-		zeroz[i] = 0.0;
 		onesz[i] = 1.0;
 	}
 
@@ -87,97 +252,6 @@ VelocityGrid::~VelocityGrid()
 	delete [] vy;
 	delete [] vz;
 }
-// TODO copy or create??
-double *f_maxwell(VelocityGrid v,
-		double n, double ux, double uy, double uz,
-		double T, double Rg)
-{
-	double *fmax = new double[v.nv];
-
-	double C = n * pow(1.0 / (2.0 * PI * Rg * T), 1.5); // TODO pi
-	double s = 2.0 * Rg * T;
-
-	for (int i = 0; i < v.nv; ++i) {
-		fmax[i] = C * exp(-((pow(v.vx[i] - ux, 2) + pow(v.vy[i] - uy, 2) + pow(v.vz[i] - uz, 2)) / s));
-	}
-
-	return fmax;
-}
-
-Tensor f_maxwell_t(VelocityGrid v,
-		double n, double ux, double uy, double uz,
-		double T, double Rg)
-{
-	double C = n * pow(1.0 / (2.0 * PI * Rg * T), 1.5);
-	double s = 2.0 * Rg * T;
-
-	double *u1 = new double[v.nvx];
-	for (int i = 0; i < v.nvx; ++i) {
-		u1[i] = exp(-(pow(v.vx[i] - ux, 2.0) / s));
-	}
-
-	double *u2 = new double[v.nvy];
-	for (int i = 0; i < v.nvy; ++i) {
-		u2[i] = exp(-(pow(v.vy[i] - uy, 2.0) / s));
-	}
-
-	double *u3 = new double[v.nvz];
-	for (int i = 0; i < v.nvz; ++i) {
-		u3[i] = exp(-(pow(v.vz[i] - uz, 2.0) / s));
-	}
-
-	Tensor fmax(v.nvx, v.nvy, v.nvz, u1, u2, u3);
-
-	delete [] u1;
-	delete [] u2;
-	delete [] u3;
-
-	return C * fmax;
-}
-
-GasParams::GasParams(double Mol_, double Pr_, double g_, double d_,
-		double C_, double T_0_, double mu_0_)
-: Mol(Mol_), Pr(Pr_), g(g_), d(d_), C(C_), T_0(T_0_), mu_0(mu_0_)
-{
-	Rg = Ru / Mol; // = self.Ru  / self.Mol  # J / (kg * K)
-	m = Mol / Na; // # kg
-}
-
-double GasParams::mu_suth(double T) const {
-	return mu_0 * ((T_0 + C) / (T + C)) * ((T / T_0) ** (3.0 / 2.0));
-}
-
-double GasParams::mu(double T) const {
-	return mu_suth(200.0) * ((T / 200.0) ** (0.734));
-}
-
-Tensor set_bc(const GasParams& gas_params,
-		const string& bc_type, const Tensor& bc_data, const Tensor& f, const VelocityGrid& v,
-		const Tensor& vn, const Tensor& vnp, const Tensor& vnm, double tol)
-{
-	switch (bc_type) // TODO use enum
-	{
-	case "SYM_X":
-		return reflect(f, 'X');
-	case "SYM_Y":
-		return reflect(f, 'Y');
-	case "SYM_Z":
-		return reflect(f, 'Z');
-	case "SYM":
-		return Tensor(f);
-	case "IN":
-		return Tensor(bc_data);
-	case "OUT":
-		return Tensor(bc_data);
-	case "WALL":
-	{
-		return 0; // TODO
-	}
-	default:
-		cout << "Wrong BC type." << endl;
-		exit(-1);
-	}
-}
 
 vector <double> comp_macro_params(const Tensor& f, const VelocityGrid& v, const GasParams& gas_params)
 {
@@ -204,11 +278,10 @@ vector <double> comp_macro_params(const Tensor& f, const VelocityGrid& v, const 
 	double mu = gas_params.mu(T);
 	double nu = p / mu;
 
-	return vector <double> {n, ux, uy, uz, T, rho, p, nu};
+	return {n, ux, uy, uz, T, rho, p, nu};
 }
 
-Tensor comp_j(const vector <double> params, const Tensor& f, const VelocityGrid& v, const GasParams& gas_params)
-// TODO const v
+Tensor comp_j(const vector <double>& params, const Tensor& f, const VelocityGrid& v, const GasParams& gas_params)
 {
 	double n = params[0];
 	double ux = params[1];
@@ -245,8 +318,8 @@ Tensor comp_j(const vector <double> params, const Tensor& f, const VelocityGrid&
 
 	Tensor fmax = f_maxwell_t(v, n, ux, uy, uz, T, gas_params.Rg);
 
-	Tensor f_plus = fmax * (v.ones + ((4.0 / 5.0) * (1.0 - gas_params.Pr) * (Sx*cx + Sy*cy + Sz*cz) * ((c2 - (5.0 / 2.0) * v.ones))));
-	Tensor J = nu * (f_plus - f); // TODO
+	Tensor f_plus = fmax * (v.ones + ((4.0 / 5.0) * (1.0 - gas_params.Pr) * (Sx*cx + Sy*cy + Sz*cz) * ((c2 + (- 5.0 / 2.0) * v.ones))));
+	Tensor J = nu * (f_plus - f);
 	J.round(1e-7);
 
 	delete [] tmp;
@@ -254,12 +327,227 @@ Tensor comp_j(const vector <double> params, const Tensor& f, const VelocityGrid&
 	return J;
 }
 
-Solution::Solution()
+Solution::Solution(
+		const GasParams & gas_params_,
+		const Mesh & mesh_,
+		const VelocityGrid & v_,
+		const Problem & problem_,
+		const Config & config_
+		)
+: gas_params(gas_params_),
+  mesh(mesh_),
+  v(v_),
+  problem(problem_),
+  config(config_)
 {
-	path = "../job-"; // dummy
+//	path = "./" + "job_tuck_" + config.solver_type + '_' + '/'; // TODO datetime.now().strftime("%Y.%m.%d_%H:%M:%S") + '/';
+	path = "./";
+	// TODO make directory
+
+	vn.resize(mesh.nf, Tensor());
+	double* vn_tmp = new double[v.nv];
+	vnm.resize(mesh.nf, Tensor());
+	double* vnm_tmp = new double[v.nv];
+	vnp.resize(mesh.nf, Tensor());
+	double* vnp_tmp = new double[v.nv];
+	vn_abs.resize(mesh.nf, Tensor());
+	double* vn_abs_tmp = new double[v.nv];
+
+	for (int jf = 0; jf < mesh.nf; ++jf) {
+		for (int i = 0; i < v.nv; ++i) {
+			vn_tmp[i] = mesh.face_normals[jf][0] * v.vx[i] +
+					mesh.face_normals[jf][1] * v.vy[i] +
+					mesh.face_normals[jf][2] * v.vz[i];
+			if (vn_tmp[i] <= 0.0) {
+				vnm_tmp[i] = vn_tmp[i];
+				vnp_tmp[i] = 0.0;
+			}
+			else {
+				vnm_tmp[i] = 0.0;
+				vnp_tmp[i] = vn_tmp[i];
+			}
+			vn_abs_tmp[i] = vnp_tmp[i] - vnm_tmp[i];
+		}
+		vn[jf] = Tensor(v.nvx, v.nvy, v.nvz, vn_tmp, 1e-3);
+		vnm[jf] = Tensor(v.nvx, v.nvy, v.nvz, vnm_tmp, config.tol);
+		vnp[jf] = Tensor(v.nvx, v.nvy, v.nvz, vnp_tmp, config.tol);
+		vn_abs[jf] = Tensor(v.nvx, v.nvy, v.nvz, vn_abs_tmp);
+		vn_abs[jf].round(1e-14, 6);
+	}
+
+	h = *min_element(mesh.cell_diam.begin(), mesh.cell_diam.end());
+	tau = h * config.CFL / (*max_element(v.vx_, v.vx_ + v.nvx) * (pow(3.0, 0.5)));
+
+	diag.resize(mesh.nc, Tensor());
+	diag_r1.resize(mesh.nc, Tensor());
+
+	for (int i = 0; i < v.nv; ++i) {
+		vn_tmp[i] = pow(v.vx[i] * v.vx[i] + v.vy[i] * v.vy[i] + v.vz[i] * v.vz[i], 0.5);
+	}
+	vn_abs_r1 = Tensor(v.nvx, v.nvy, v.nvz, vn_tmp);
+	vn_abs_r1.round(1e-14, 1);
+
+/* TODO
+	double *diag_temp;
+	double diag_sc;
+
+	for (int ic = 0; ic < mesh.nc; ++ic) {
+        diag_temp = new double [v.nv];
+        diag_sc = 0.0;
+
+        for (int j = 0; j < 6; ++j) {
+        	int jf = mesh.cell_face_list[ic][j];
+
+        	for (int i = 0; i < v.nv; ++i) {
+        		vn_tmp[i] = (mesh.face_normals[jf][0] * v.vx[i] + mesh.face_normals[jf][1] * v.vy[i] +
+        				mesh.face_normals[jf][2] * v.vz[i]) * mesh.cell_face_normal_direction[ic][j];
+        		if (vn_tmp[i] > 0.0) {
+        			vnp_tmp[i] = vn_tmp[i];
+        			vn_abs_tmp[i] = vn_tmp[i];
+        		}
+        		else {
+        			vnp_tmp[i] = 0.0;
+        			vn_abs_tmp[i] = -vn_tmp[i];
+        		}
+        	}
+
+
+
+
+        }
+	}
+*/
+
+	f.resize(mesh.nc, Tensor());
+
+	if (config.init_type == "default") {
+		double x;
+		double y;
+		double z;
+		for (int i = 0; i < mesh.nc; ++i) {
+			x = mesh.cell_center_coo[i][0];
+			y = mesh.cell_center_coo[i][1];
+			z = mesh.cell_center_coo[i][2];
+			f[i] = problem.f_init(x, y, z);
+		}
+	}
+	// TODO: other inits
+
+	fp.resize(mesh.nf, Tensor());
+	fm.resize(mesh.nf, Tensor());
+	flux.resize(mesh.nf, Tensor());
+	rhs.resize(mesh.nc, Tensor());
+//	df.resize(mesh.nc, Tensor()); // TODO
+
+	n.resize(mesh.nc, 0.0);
+	rho.resize(mesh.nc, 0.0);
+	ux.resize(mesh.nc, 0.0);
+	uy.resize(mesh.nc, 0.0);
+	uz.resize(mesh.nc, 0.0);
+	p.resize(mesh.nc, 0.0);
+	T.resize(mesh.nc, 0.0);
+	nu.resize(mesh.nc, 0.0);
+	rank.resize(mesh.nc, 0.0);
+	data.resize(mesh.nc, vector < double >(10, 0.0));
+
+	it = 0;
+//  TODO: create_res
+
+	delete [] vn_tmp;
+	delete [] vnm_tmp;
+	delete [] vnp_tmp;
+	delete [] vn_abs_tmp;
 }
 
-int main()
+void Solution::make_time_steps(const Config& config_, int nt)
 {
-	return 0;
+	config = config_;
+	tau = h * config.CFL / (*max_element(v.vx_, v.vx_ + v.nvx) * (pow(3.0, 0.5)));
+
+	it = 0;
+
+	while(it < nt) {
+		cout << "Step " << it << endl;
+		it += 1;
+		// reconstruction for inner faces
+		// 1st order
+		for (int ic = 0; ic < mesh.nc; ++ic) {
+			for (int j = 0; j < 6; ++j) {
+				int jf = mesh.cell_face_list[ic][j];
+				if (mesh.cell_face_normal_direction[ic][j] == 1) {
+					fm[jf] = f[ic];
+				}
+				else {
+					fp[jf] = f[ic];
+				}
+			}
+		}
+		// boundary condition
+		// loop over all boundary faces
+		for (int j = 0; j < mesh.nbf; ++j) {
+			int jf = mesh.bound_face_info[j][0]; // global face index
+			int bc_num = mesh.bound_face_info[j][1];
+
+			if (mesh.bound_face_info[j][2] == 1) {
+				fp[jf] = problem.set_bc(gas_params, v, problem.bc_types[bc_num], problem.bc_data[bc_num],
+						fm[jf], vn[jf], vnp[jf], vnm[jf], config.tol);
+			}
+			else {
+				fm[jf] = problem.set_bc(gas_params, v, problem.bc_types[bc_num], problem.bc_data[bc_num],
+						fp[jf], -vn[jf], -vnm[jf], -vnp[jf], config.tol);
+			}
+		}
+		// Riemann solver - compute fluxes
+		for (int jf = 0; jf < mesh.nf; ++jf) {
+			flux[jf] = 0.5 * mesh.face_areas[jf] *
+					((fp[jf] + fm[jf]) * vn[jf] - (fp[jf] - fm[jf]) * vn_abs[jf]);
+			flux[jf].round(config.tol);
+		}
+		// computation of the right hand side
+		vector < double > params(8, 0.0); // for J
+		Tensor J;
+		for (int ic = 0; ic < mesh.nc; ++ic) {
+			rhs[ic] = v.zero;
+			// sum up fluxes from all faces of this cell
+			for (int j = 0; j < 6; ++j) {
+				int jf = mesh.cell_face_list[ic][j];
+				rhs[ic] = rhs[ic] - (mesh.cell_face_normal_direction[ic][j]) * (1.0 / mesh.cell_volumes[ic]) * flux[jf];
+				rhs[ic].round(config.tol);
+			}
+			// compute macroparameters and collision integral
+			params = comp_macro_params(f[ic], v, gas_params);
+
+			n[ic] = params[0];
+			ux[ic] = params[1];
+			uy[ic] = params[2];
+			uz[ic] = params[3];
+			T[ic] = params[4];
+			rho[ic] = params[5];
+			p[ic] = params[6];
+			nu[ic] = params[7];
+
+//			data[ic] = {};
+
+			J = comp_j(params, f[ic], v, gas_params);
+			rhs[ic] = rhs[ic] + J;
+			rhs[ic].round(config.tol);
+		}
+
+		double frob_norm = 0.0;
+		for (int ic = 0; ic < mesh.nc; ++ic) {
+			frob_norm += pow(rhs[ic].norm(), 2.0);
+		}
+		frob_norm = pow(frob_norm / mesh.nc, 0.5);
+		frob_norm_iter.push_back(frob_norm);
+
+		if (config.solver_type == "explicit") {
+			for (int ic = 0; ic < mesh.nc; ++ic) {
+				f[ic] = f[ic] + tau * rhs[ic];
+				f[ic].round(config.tol);
+			}
+		}
+
+		// TODO implicit
+		// TODO save
+	}
 }

@@ -44,7 +44,12 @@ vector < vector < int > > Mesh::get_faces_for_cell(int ic) {
 	return faces;
 }
 
-void Mesh::read_starcd(const string& path, const double scale) {
+Mesh::Mesh(const string& path, double scale) {
+	read_starcd(path, scale);
+}
+
+void Mesh::read_starcd(const string& path, double scale) {
+
 	int max_vert_in_face = 4;
 	int max_vert_in_cell = 8;
 /*
@@ -88,10 +93,13 @@ void Mesh::read_starcd(const string& path, const double scale) {
 	Construct list of boundary faces indices for each bctype
 */
 	set <int> bc(bcface_bctype.begin(), bcface_bctype.end());
-	nbc = bc.size();
+	for (auto a : bc) {
+		cout << a << endl;
+	}
+	nbc = *bc.rbegin() + 1; // TODO was bc.size() problem if not every condition is present
 	cout << "Number of boundary conditions = " << nbc << endl;
 
-	bf_for_each_bc.resize(nbc, vector <int>());
+	bf_for_each_bc.resize(nbc, vector <int>()); // TODO
 	for (int i = 0; i < nbf; ++i) {
 		bf_for_each_bc[bcface_bctype[i]].push_back(i);
 	}
@@ -312,12 +320,19 @@ void Mesh::read_starcd(const string& path, const double scale) {
 		vec2[0] = 0.5 * (verts_coo3[0] + verts_coo2[0]) - 0.5 * (verts_coo1[0] + verts_coo0[0]);
 		vec2[1] = 0.5 * (verts_coo3[1] + verts_coo2[1]) - 0.5 * (verts_coo1[1] + verts_coo0[1]);
 		vec2[2] = 0.5 * (verts_coo3[2] + verts_coo2[2]) - 0.5 * (verts_coo1[2] + verts_coo0[2]);
-
+		// TODO: посмотреть готовую функцию для векторного произведения и для нормы
 		face_areas[jf] = sqrt(pow(vec1[1]*vec2[2] - vec1[2]*vec2[1], 2) +
 				pow(vec1[2]*vec2[0] - vec1[0]*vec2[2], 2) +
 				pow(vec1[0]*vec2[1] - vec1[1]*vec2[0], 2));
 
+		face_normals[jf][0] = (vec1[1]*vec2[2] - vec1[2]*vec2[1]) / face_areas[jf];
+		face_normals[jf][1] = (vec1[2]*vec2[0] - vec1[0]*vec2[2]) / face_areas[jf];
+		face_normals[jf][2] = (vec1[0]*vec2[1] - vec1[1]*vec2[0]) / face_areas[jf];
 		// TODO: Complicated procedure to overcome problems when area is tiny
+//		double len1 = sqrt(vec1[0] * vec1[0] + vec1[1] * vec1[1] + vec1[2] * vec1[2]);
+//		len1 = min
+//		double len2 = sqrt(vec2[0] * vec2[0] + vec2[1] * vec2[1] + vec2[2] * vec2[2]);
+//		vector <double> bec1 = {vec1[0]};
 	}
 
 	// face centers
@@ -438,74 +453,4 @@ void Mesh::write_tecplot(vector < vector <double> > data, string filename,
 		file << verts[2] + 1 << " ";
 		file << "\n";
 	}
-}
-
-int main() {
-
-	Mesh mesh;
-
-	mesh.read_starcd("/home/egor/git/boltz-t-cpp/mesh-cyl/");
-/*
-	cout << "Vertices" << endl;
-	for (int i = 0; i < (mesh.bcface_vert_lists.size() / 100); ++i) {
-		set <int> face = mesh.bcface_vert_set_lists[i];
-		for (auto it = mesh.bcface_vert_lists[i].begin(); it != mesh.bcface_vert_lists[i].end(); ++it)
-		        cout << " " << *it;
-		cout << "\n";
-	}
-	cout << "Boundary condition type" << endl;
-	for (int n : mesh.bcface_bctype) {
-		cout << n << " ";
-	}
-	cout << "\nBf for each bc\n";
-	for (int i = 0; i < (mesh.bf_for_each_bc.size()); ++i) {
-		cout << mesh.bf_for_each_bc[i][0] << endl;
-	}
-
-	cout << "\nCell center coo\n";
-	for (int i = 0; i < (mesh.nc); ++i) {
-		cout << mesh.cell_center_coo[i][1] << " ";
-	}
-
-	cout << "\n";
-	for (int i = 0; i < (mesh.nc); ++i) {
-		cout << mesh.cell_center_coo[i][1] << " ";
-	}
-	cout << "\n";
-	for (int i = 0; i < (mesh.nc); ++i) {
-		cout << mesh.cell_center_coo[i][2] << " ";
-	}
-
-	cout << "Cell volumes" << endl;
-	for (double c : mesh.cell_volumes) {
-		cout << c << " ";
-	}
-
-	cout << "\nFace areas" << endl;
-	for (double c : mesh.face_areas) {
-		cout << c << " ";
-	}
-*/
-
-	cout << "\n";
-	for (auto c : mesh.face_areas) {
-		cout << c << " ";
-	}
-
-	vector < vector < double > > data;
-	data.resize(mesh.nv, {0.0, 0.0, 0.0});
-
-	vector <string> var_names {"A", "B", "C"};
-
-	mesh.write_tecplot(data, "file.dat", var_names);
-
-/*
-	vector < vector <double> > tetra;
-	tetra.push_back(vector <double> {0, 0, 0});
-	tetra.push_back(vector <double> {2, 5, -3});
-	tetra.push_back(vector <double> {1, 4, -2});
-	tetra.push_back(vector <double> {-7, 3, 0});
-	cout << "\n" << mesh.compute_tetra_volume(tetra) << "\n";
-*/
-	return 0;
 }
