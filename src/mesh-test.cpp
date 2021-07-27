@@ -77,7 +77,7 @@ int main() {
 	for (int i = 0; i < (mesh.bcface_vert_lists.size() / 100); ++i) {
 		set <int> face = mesh.bcface_vert_set_lists[i];
 		for (auto it = mesh.bcface_vert_lists[i].begin(); it != mesh.bcface_vert_lists[i].end(); ++it)
-		        cout << " " << *it;
+				cout << " " << *it;
 		cout << "\n";
 	}
 	cout << "Boundary condition type" << endl;

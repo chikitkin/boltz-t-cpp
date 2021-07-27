@@ -115,29 +115,29 @@ void sum(MKL_INT n1, MKL_INT n2, MKL_INT n3,
 
 void full(MKL_INT n1, MKL_INT n2, MKL_INT n3, MKL_INT r1, MKL_INT r2, MKL_INT r3, double **tuc, double *res) {
 
-    const double alpha = 1.0;
-    const double beta = 0.0;
-    //TODO: if r > n
-    double *z1 = new double[n1*n2*n3];
-    double *z2 = new double[n1*n2*n3];
+	const double alpha = 1.0;
+	const double beta = 0.0;
+	//TODO: if r > n
+	double *z1 = new double[n1*n2*n3];
+	double *z2 = new double[n1*n2*n3];
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                            n1, r2*r3, r1, alpha, tuc[1], r1, tuc[0], r2*r3, beta, z1, r2*r3);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+							n1, r2*r3, r1, alpha, tuc[1], r1, tuc[0], r2*r3, beta, z1, r2*r3);
 
-    mkl_dimatcopy ('R', 'T', n1, r2*r3, alpha, z1, r2*r3, n1);
+	mkl_dimatcopy ('R', 'T', n1, r2*r3, alpha, z1, r2*r3, n1);
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                            n2, r3*n1, r2, alpha, tuc[2], r2, z1, r3*n1, beta, z2, r3*n1);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+							n2, r3*n1, r2, alpha, tuc[2], r2, z1, r3*n1, beta, z2, r3*n1);
 
-    mkl_dimatcopy ('R', 'T', n2, r3*n1, alpha, z2, r3*n1, n2);
+	mkl_dimatcopy ('R', 'T', n2, r3*n1, alpha, z2, r3*n1, n2);
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                            n3, n1*n2, r3, alpha, tuc[3], r3, z2, n1*n2, beta, res, n1*n2);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+							n3, n1*n2, r3, alpha, tuc[3], r3, z2, n1*n2, beta, res, n1*n2);
 
-    mkl_dimatcopy ('R', 'T', n3, n1*n2, alpha, res, n1*n2, n3);
+	mkl_dimatcopy ('R', 'T', n3, n1*n2, alpha, res, n1*n2, n3);
 
-    delete [] z1;
-    delete [] z2;
+	delete [] z1;
+	delete [] z2;
 
 }
 
@@ -145,46 +145,46 @@ double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL
 
 	double **result = new double *[4];
 
-    const double alpha = 1.0;
-    const double beta = 0.0;
+	const double alpha = 1.0;
+	const double beta = 0.0;
 
-    double *q1, *q2, *q3;
+	double *q1, *q2, *q3;
 
-    double *z1 = new double[n1*n2*n3];
-    double *z2 = new double[n1*n2*n3];
-    double *z3 = new double[n1*n2*n3];
+	double *z1 = new double[n1*n2*n3];
+	double *z2 = new double[n1*n2*n3];
+	double *z3 = new double[n1*n2*n3];
 
-    LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z1, 1);
-    LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z2, 1);
-    mkl_dimatcopy ('R', 'T', n1, n2*n3, alpha, z2, n2*n3, n1);
-    LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z3, 1);
-    mkl_dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z1, 1);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z2, 1);
+	mkl_dimatcopy ('R', 'T', n1, n2*n3, alpha, z2, n2*n3, n1);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z3, 1);
+	mkl_dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
 
-    q1 = svd_trunc(n1, (n2 * n3), z1, eps, r1);
-    q2 = svd_trunc(n2, (n1 * n3), z2, eps, r2);
-    q3 = svd_trunc(n3, (n1 * n2), z3, eps, r3);
+	q1 = svd_trunc(n1, (n2 * n3), z1, eps, r1);
+	q2 = svd_trunc(n2, (n1 * n3), z2, eps, r2);
+	q3 = svd_trunc(n3, (n1 * n2), z3, eps, r3);
 
-    double *h = new double[r1*r2*r3]();
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                            n1*n2, r3, n3, alpha, a, n3, q3, r3, beta, z3, r3);
-    mkl_dimatcopy ('R', 'T', n1*n2, r3, alpha, z3, r3, n1*n2);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                            r3*n1, r2, n2, alpha, z3, n2, q2, r2, beta, z2, r2);
-    mkl_dimatcopy ('R', 'T', r3*n1, r2, alpha, z2, r2, r3*n1);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                            r2*r3, r1, n1, alpha, z2, n1, q1, r1, beta, h, r1);
-    mkl_dimatcopy ('R', 'T', r2*r3, r1, alpha, h, r1, r2*r3);
+	double *h = new double[r1*r2*r3]();
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+							n1*n2, r3, n3, alpha, a, n3, q3, r3, beta, z3, r3);
+	mkl_dimatcopy ('R', 'T', n1*n2, r3, alpha, z3, r3, n1*n2);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+							r3*n1, r2, n2, alpha, z3, n2, q2, r2, beta, z2, r2);
+	mkl_dimatcopy ('R', 'T', r3*n1, r2, alpha, z2, r2, r3*n1);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+							r2*r3, r1, n1, alpha, z2, n1, q1, r1, beta, h, r1);
+	mkl_dimatcopy ('R', 'T', r2*r3, r1, alpha, h, r1, r2*r3);
 
-    result[0] = h;
-    result[1] = q1;
-    result[2] = q2;
-    result[3] = q3;
+	result[0] = h;
+	result[1] = q1;
+	result[2] = q2;
+	result[3] = q3;
 
-    delete[] z1;
-    delete[] z2;
-    delete[] z3;
+	delete[] z1;
+	delete[] z2;
+	delete[] z3;
 
-    return result;
+	return result;
 }
 
 double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r) {
@@ -192,47 +192,47 @@ double *svd_trunc(MKL_INT m, MKL_INT n, double *a, double eps, MKL_INT &r) {
 	MKL_INT info;
 
 	double *U = new double[m*m];
-    double *S = new double[min(m,n)];
-    double *VT = new double[n*n];
-    double *superb = new double[min(m,n)-1];
+	double *S = new double[min(m,n)];
+	double *VT = new double[n*n];
+	double *superb = new double[min(m,n)-1];
 
 	info = LAPACKE_dgesvd( LAPACK_ROW_MAJOR, 'A', 'N', m, n, a, n,
-	                        S, U, m, VT, n, superb );
+							S, U, m, VT, n, superb );
 
-    if( info > 0 ) {
-            printf( "The algorithm computing SVD failed to converge.\n" );
-            exit( 1 );
-    }
+	if( info > 0 ) {
+			printf( "The algorithm computing SVD failed to converge.\n" );
+			exit( 1 );
+	}
 
-    eps = eps * S[0] / sqrt(3);
+	eps = eps * S[0] / sqrt(3);
 
-    r = min(m, n);
+	r = min(m, n);
 
-    for( int i = 0; i < min(m, n); ++i ) {
-        if (S[i] <= eps) {
-            r = i;
-            break;
-        }
-    }
+	for( int i = 0; i < min(m, n); ++i ) {
+		if (S[i] <= eps) {
+			r = i;
+			break;
+		}
+	}
 
-    double *u = new double[m*r];
+	double *u = new double[m*r];
 
-    LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, r, U, m, u, r);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, r, U, m, u, r);
 
-    delete[] U;
-    delete[] S;
-    delete[] VT;
-    delete[] superb;
+	delete[] U;
+	delete[] S;
+	delete[] VT;
+	delete[] superb;
 
-    return u;
+	return u;
 
 }
 
 void print_matrix( char* desc, MKL_INT m, MKL_INT n, double* a, MKL_INT lda ) {
-        MKL_INT i, j;
-        printf( "\n %s\n", desc );
-        for( i = 0; i < m; i++ ) {
-                for( j = 0; j < n; j++ ) printf( " %6.2f", a[i*lda+j] );
-                printf( "\n" );
-        }
+		MKL_INT i, j;
+		printf( "\n %s\n", desc );
+		for( i = 0; i < m; i++ ) {
+				for( j = 0; j < n; j++ ) printf( " %6.2f", a[i*lda+j] );
+				printf( "\n" );
+		}
 }

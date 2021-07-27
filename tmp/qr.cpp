@@ -18,8 +18,8 @@ int main() {
 
 	MKL_INT n1 = N1, n2 = N2;
 
-    const double alpha = 1.0;
-    const double beta = 0.0;
+	const double alpha = 1.0;
+	const double beta = 0.0;
 
 	double eps = 0.01;
 
@@ -59,7 +59,7 @@ int main() {
 	double *a_ = new double[n1*n2];
 
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-	                            n1, n2, size, alpha, a, n2, r, n2, beta, a_, n2);
+								n1, n2, size, alpha, a, n2, r, n2, beta, a_, n2);
 
 	print_matrix("a_", n1, n2, a_, n2);
 
@@ -71,10 +71,10 @@ int main() {
 }
 
 void print_matrix( char* desc, MKL_INT m, MKL_INT n, double* a, MKL_INT lda ) {
-        MKL_INT i, j;
-        printf( "\n %s\n", desc );
-        for( i = 0; i < m; i++ ) {
-                for( j = 0; j < n; j++ ) printf( " %6.2f", a[i*lda+j] );
-                printf( "\n" );
-        }
+		MKL_INT i, j;
+		printf( "\n %s\n", desc );
+		for( i = 0; i < m; i++ ) {
+				for( j = 0; j < n; j++ ) printf( " %6.2f", a[i*lda+j] );
+				printf( "\n" );
+		}
 }

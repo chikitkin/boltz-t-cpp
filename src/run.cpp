@@ -12,13 +12,17 @@
 #include <math.h>
 #include <algorithm>
 #include <numeric>
+
+#include "full.h"
+#include "tucker.h"
 #include "mesh.h"
-#include "tensor.h"
 #include "solver.h"
 using namespace std;
 
 int main()
 {
+	typedef Full Tensor;
+
 	GasParams gas_params;
 
 	double Mach = 6.5;
@@ -60,15 +64,15 @@ int main()
 		vx_[i] = - vmax + (hv / 2.0) + i * hv;
 	}
 
-	VelocityGrid v(nv, nv, nv, vx_, vx_, vx_);
+	VelocityGrid<Tensor> v(nv, nv, nv, vx_, vx_, vx_);
 
-	Tensor f_in = f_maxwell_t(v, n_l, u_l, 0.0, 0.0, T_l, gas_params.Rg);
+	Tensor f_in = f_maxwell_t<Tensor>(v, n_l, u_l, 0.0, 0.0, T_l, gas_params.Rg);
 //	Tensor f_out(f_in);
-	Tensor f_out = f_maxwell_t(v, n_r, u_r, 0.0, 0.0, T_r, gas_params.Rg);
+	Tensor f_out = f_maxwell_t<Tensor>(v, n_r, u_r, 0.0, 0.0, T_r, gas_params.Rg);
 
 	vector < double > params;
 
-	params = comp_macro_params(f_in, v, gas_params);
+	params = comp_macro_params<Tensor>(f_in, v, gas_params);
 
 	cout << "n " << (params[0] - n_l) / n_l << " = 0" << endl;
 	cout << "ux " << (params[1] - u_l) / u_l << " = 0" << endl;
@@ -77,17 +81,19 @@ int main()
 	cout << "T " << (params[4] - T_l) / T_l << " = 0" << endl;
 
 
-	Problem problem;
+	Problem<Tensor> problem;
 	problem.init_tensor_list = {f_in, f_out};
 
-	Tensor fmax = f_maxwell_t(v, 1.0, 0.0, 0.0, 0.0, T_w, gas_params.Rg);
+	Tensor fmax = f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_w, gas_params.Rg);
 
 	problem.bc_types = {'Z', 'I', 'O', 'W', 'Y'};
 	problem.bc_data = {Tensor(), f_in, f_out, fmax, Tensor()};
 
 	Config config;
+	config.solver_type = "implicit";
+	config.CFL = 50.0;
 
-	Solution S(gas_params, mesh, v, problem, config);
+	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 
 	S.make_time_steps(config, 100);
 

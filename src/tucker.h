@@ -1,5 +1,5 @@
-#ifndef TENSOR_H_
-#define TENSOR_H_
+#ifndef TUCKER_H_
+#define TUCKER_H_
 
 #include <iostream>
 #include <vector>
@@ -19,29 +19,29 @@ double **compress(int n1, int n2, int n3,
 
 double **qr(int m, int n, const double *a);
 
-class Tensor {
+class Tucker {
 public:
 	// Constructors
 	// Default constructor
-	Tensor();
+	Tucker();
 	// Zero tensor with given ranks
-	Tensor(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_);
+	Tucker(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_);
 	// Compress a tensor with given accuracy
-	Tensor(int n1_, int n2_, int n3_, double *a, double eps = 1e-14);
+	Tucker(int n1_, int n2_, int n3_, double *a, double eps = 1e-14);
 	// Create a rank-1 tensor from given factors
-	Tensor(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_);
+	Tucker(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_);
 	// Copy constructor
-	Tensor(const Tensor& t);
+	Tucker(const Tucker& t);
 	// Copy assignment operator
-	Tensor& operator =(const Tensor& t);
+	Tucker& operator =(const Tucker& t);
 	// Destructor
-	~Tensor();
+	~Tucker();
 
 	// Print ranks
 	vector<int> n() const;
 	vector<int> r() const;
 	// Print tensor
-	friend ostream& operator << (ostream &out, const Tensor& t);
+	friend ostream& operator << (ostream &out, const Tucker& t);
 	// Get element
 	double At(int i1, int i2, int i3) const;
 
@@ -54,18 +54,18 @@ public:
 	double sum() const;
 	double norm();
 
-	friend Tensor operator -(const Tensor& t);
+	friend Tucker operator -(const Tucker& t);
 	// Element-wise summation
-	friend Tensor operator +(const Tensor& t1, const Tensor& t2);
-	friend Tensor operator -(const Tensor& t1, const Tensor& t2);
+	friend Tucker operator +(const Tucker& t1, const Tucker& t2);
+	friend Tucker operator -(const Tucker& t1, const Tucker& t2);
 	// Element-wise multiplication
-	friend Tensor operator *(const Tensor& t1, const Tensor& t2);
-	friend Tensor operator *(const double alpha, const Tensor& t);
-	friend Tensor operator *(const Tensor& t, const double alpha);
-	friend Tensor operator /(const Tensor& t1, const Tensor& t2);
-	friend Tensor reflect(const Tensor& t, char axis);
+	friend Tucker operator *(const Tucker& t1, const Tucker& t2);
+	friend Tucker operator *(const double alpha, const Tucker& t);
+	friend Tucker operator *(const Tucker& t, const double alpha);
+	friend Tucker operator /(const Tucker& t1, const Tucker& t2);
+	friend Tucker reflect(const Tucker& t, char axis);
 
-	friend Tensor round_t(const Tensor& t, double tol = 1e-14, int rmax = 1e+6);
+	friend Tucker round_t(const Tucker& t, double tol = 1e-14, int rmax = 1e+6);
 
 private:
 	int I(int i1, int i2, int i3);
@@ -82,4 +82,4 @@ private:
 	double* u3;
 };
 
-#endif /* TENSOR_H_ */
+#endif /* TUCKER_H_ */

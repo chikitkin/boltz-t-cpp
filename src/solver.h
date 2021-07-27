@@ -15,8 +15,10 @@
 #include <math.h>
 #include <algorithm>
 #include <numeric>
+
+#include "full.h"
+#include "tucker.h"
 #include "mesh.h"
-#include "tensor.h"
 using namespace std;
 
 const double PI = acos(-1.0); // TODO
@@ -25,20 +27,20 @@ class GasParams {
 public:
 	// Default constructor
 
-    double Na = 6.02214129e+23; // Avogadro constant
-    double kB = 1.381e-23; // Boltzmann constant, J / K
-    double Ru = 8.3144598; // Universal gas constant
+	double Na = 6.02214129e+23; // Avogadro constant
+	double kB = 1.381e-23; // Boltzmann constant, J / K
+	double Ru = 8.3144598; // Universal gas constant
 
-    double Mol = 40e-3; // = Mol
-    double Rg = Ru / Mol; // = self.Ru  / self.Mol  # J / (kg * K)
-    double m = Mol / Na; // # kg
+	double Mol = 40e-3; // = Mol
+	double Rg = Ru / Mol; // = self.Ru  / self.Mol  # J / (kg * K)
+	double m = Mol / Na; // # kg
 
 	double g = 5.0 / 3.0; // # specific heat ratio
 	double d = 3.418e-10; // # diameter of molecule
 
-    double Pr = 2.0 / 3.0;
+	double Pr = 2.0 / 3.0;
 
-    double C = 144.4;
+	double C = 144.4;
 	double T_0 = 273.11;
 	double mu_0 = 2.125e-5;
 
@@ -46,12 +48,13 @@ public:
 	double mu(double T) const;
 };
 
+template <class Tensor>
 class VelocityGrid {
 public:
 	// Constructor
 	VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *vy__, double *vz__);
 	// Copy constructor
-	VelocityGrid(const VelocityGrid& v);
+	VelocityGrid(const VelocityGrid<Tensor>& v);
 	// Destructor
 	~VelocityGrid();
 
@@ -92,6 +95,7 @@ public:
  * И в солвере задаём г.у. на всех гранях с одним г.у., потом с другим и т.д.
  */
 
+template <class Tensor>
 class Problem {
 public:
 	vector < Tensor > init_tensor_list;
@@ -99,7 +103,7 @@ public:
 
 	vector < char > bc_types;
 	vector < Tensor > bc_data;
-	Tensor set_bc(const GasParams& gas_params, const VelocityGrid& v,
+	Tensor set_bc(const GasParams& gas_params, const VelocityGrid<Tensor>& v,
 			char bc_type, const Tensor& bc_data,
 			const Tensor& f,
 			const Tensor& vn, const Tensor& vnp, const Tensor& vnm,
@@ -109,27 +113,28 @@ public:
 struct Config {
 	string solver_type = "explicit";
 
-    double CFL = 0.5;
+	double CFL = 0.5;
 	double tol = 1e-7;
 
 	string init_type = "default";
 	string init_filename = "";
 
-    int save_tec_step = 1e+5;
-    int save_macro_step = 1e+5;
+	int save_tec_step = 1e+5;
+	int save_macro_step = 1e+5;
 };
 
-vector <double> comp_macro_params(const Tensor& f, const VelocityGrid& v, const GasParams& gas_params);
-Tensor comp_j(const vector <double>& params, const Tensor& f, const VelocityGrid& v, const GasParams& gas_params);
+template <class Tensor> vector <double> comp_macro_params(const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params);
+template <class Tensor> Tensor comp_j(const vector <double>& params, const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params);
 
+template <class Tensor>
 class Solution {
 public:
 	// Constructor
 	Solution(
 			const GasParams & gas_params_,
 			const Mesh & mesh_,
-			const VelocityGrid & v_,
-			const Problem & problem_,
+			const VelocityGrid<Tensor> & v_,
+			const Problem<Tensor> & problem_,
 			const Config & config_
 			);
 	// Destructor
@@ -137,9 +142,9 @@ public:
 
 	GasParams gas_params;
 	Mesh mesh;
-	VelocityGrid v;
+	VelocityGrid<Tensor> v;
 
-	Problem problem;
+	Problem<Tensor> problem;
 
 	Config config;
 
@@ -150,14 +155,13 @@ public:
 	vector < Tensor > vnm;
 	vector < Tensor > vnp;
 	vector < Tensor > vn_abs;
+	Tensor vn_abs_r1;
 
 	double h;
 	double tau;
 
 	vector < Tensor > diag;
 	vector < Tensor > diag_r1;
-
-	Tensor vn_abs_r1;
 
 	vector < Tensor > f;
 
@@ -166,6 +170,11 @@ public:
 	vector < Tensor > flux;
 	vector < Tensor > rhs;
 	vector < Tensor > df;
+
+	Tensor J;
+	Tensor vnm_loc;
+	Tensor div_tmp;
+	Tensor incr;
 
 	// Arrays for macroparameters
 	vector < double > n;
@@ -194,11 +203,11 @@ public:
 	void make_time_steps(const Config& config_, int nt);
 };
 
-double *f_maxwell(const VelocityGrid & v,
+template <class Tensor> double *f_maxwell(const VelocityGrid<Tensor> & v,
 		double n, double ux, double uy, double uz,
 		double T, double Rg);
 
-Tensor f_maxwell_t(const VelocityGrid & v,
+template <class Tensor> Tensor f_maxwell_t(const VelocityGrid<Tensor> & v,
 		double n, double ux, double uy, double uz,
 		double T, double Rg);
 

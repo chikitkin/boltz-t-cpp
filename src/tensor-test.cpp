@@ -1,4 +1,4 @@
-#include "tensor.h"
+#include "tucker.h"
 
 #include <iostream>
 #include <vector>

@@ -415,8 +415,8 @@ void Mesh::write_tecplot(vector < vector <double> > data, string filename,
 	file.open(filename);
 	if (file.fail())
 	{
-	    cout << "Could not open " << filename << endl;
-	    exit(1);
+		cout << "Could not open " << filename << endl;
+		exit(1);
 	}
 	file << "TITLE = \"VolumeData\"\n";
 	file << "VARIABLES = \"x\" \"y\" \"z\" ";
@@ -425,8 +425,8 @@ void Mesh::write_tecplot(vector < vector <double> > data, string filename,
 	}
 	file << "\n";
 	file << "ZONE T= my_zone, SolutionTime = " << time <<
-            ", DATAPACKING=Block, ZONETYPE=FEBRICK Nodes= " << nv <<
-           " Elements= " << nc;
+			", DATAPACKING=Block, ZONETYPE=FEBRICK Nodes= " << nv <<
+		   " Elements= " << nc;
 	file << " VarLocation=([4-" << 3+nv << "]=CellCentered)";
 	// Write vertices' coo;
 	for (int i = 0; i < 3; ++i) {

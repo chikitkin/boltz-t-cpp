@@ -4,11 +4,14 @@ CFLAGS=-g -Wall -O0 -mkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include"
 
 all: run.o
 
-run.o: tensor.o mesh.o solver.o run.cpp
-	$(CC) $(CFLAGS) tensor.o mesh.o solver.o run.cpp -o run.o
+run.o: full.o tucker.o mesh.o solver.o run.cpp
+	$(CC) $(CFLAGS) full.o tucker.o mesh.o solver.o run.cpp -o run.o
 	
-tensor.o: tensor.cpp
-	$(CC) $(CFLAGS) -c tensor.cpp -o tensor.o
+full.o: full.cpp
+	$(CC) $(CFLAGS) -c full.cpp -o full.o
+
+tucker.o: tucker.cpp
+	$(CC) $(CFLAGS) -c tucker.cpp -o tucker.o
 	
 mesh.o: mesh.cpp
 	$(CC) $(CFLAGS) -c mesh.cpp -o mesh.o

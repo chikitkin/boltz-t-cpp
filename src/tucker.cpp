@@ -1,4 +1,4 @@
-#include "tensor.h"
+#include "tucker.h"
 
 #include <iostream>
 #include <vector>
@@ -40,7 +40,7 @@ void transpose(int n1, int n2, int n3, double* a, int dim)
 }
 // Constructors
 // Default constructor
-Tensor::Tensor()
+Tucker::Tucker()
 : n1(1), n2(1), n3(1)
 {
 //	cout << "Default constructor called" << endl;
@@ -53,7 +53,7 @@ Tensor::Tensor()
 	u3 = new double[1];
 }
 // Zero tensor with given ranks
-Tensor::Tensor(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_)
+Tucker::Tucker(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_)
 : n1(n1_), n2(n2_), n3(n3_)
 {
 //	cout << "Zero constructor called" << endl;
@@ -67,7 +67,7 @@ Tensor::Tensor(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_)
 	u3 = new double[n3 * r3];
 }
 // Compress a tensor with given accuracy
-Tensor::Tensor(int n1_, int n2_, int n3_, double *a, double eps)
+Tucker::Tucker(int n1_, int n2_, int n3_, double *a, double eps)
 : n1(n1_), n2(n2_), n3(n3_)
 {
 //	cout << "Compress constructor called" << endl;
@@ -88,7 +88,7 @@ Tensor::Tensor(int n1_, int n2_, int n3_, double *a, double eps)
 	delete [] A;
 }
 // Create a rank-1 tensor from given factors
-Tensor::Tensor(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_)
+Tucker::Tucker(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_)
 : n1(n1_), n2(n2_), n3(n3_)
 {
 	r1 = 1;
@@ -106,7 +106,7 @@ Tensor::Tensor(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_)
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3*r3, 1, u3_, 1, u3, 1);
 }
 // Copy constructor
-Tensor::Tensor(const Tensor& t)
+Tucker::Tucker(const Tucker& t)
 : n1(t.n1), n2(t.n2), n3(t.n3)
 {
 //	cout << "Copy constructor called" << endl;
@@ -125,7 +125,7 @@ Tensor::Tensor(const Tensor& t)
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n3*r3, 1, t.u3, 1, u3, 1);
 }
 // Copy assignment operator
-Tensor& Tensor::operator =(const Tensor& t)
+Tucker& Tucker::operator =(const Tucker& t)
 {
 //	cout << "Copy assignment operator called" << endl;
 	if (this == &t)
@@ -162,7 +162,7 @@ Tensor& Tensor::operator =(const Tensor& t)
 	return *this;
 }
 // Destructor
-Tensor::~Tensor()
+Tucker::~Tucker()
 {
 //	cout << "Destructor called" << endl;
 	delete [] g;
@@ -171,30 +171,30 @@ Tensor::~Tensor()
 	delete [] u3;
 }
 
-vector<int> Tensor::n() const
+vector<int> Tucker::n() const
 {
 	vector<int> n = {n1, n2, n3};
 	return n;
 }
 
-vector<int> Tensor::r() const
+vector<int> Tucker::r() const
 {
 	vector<int> ranks = {r1, r2, r3};
 	return ranks;
 }
 // Print tensor
-ostream& operator << (ostream &out, const Tensor& t)
+ostream& operator << (ostream &out, const Tucker& t)
 {
-    out << "\n";
-    out << "This is a 3D tensor in the Tucker format with \n";
-    out << "r1 = " << t.r1 << ", n1 = " << t.n1 << "\n";
-    out << "r2 = " << t.r2 << ", n2 = " << t.n2 << "\n";
-    out << "r3 = " << t.r3 << ", n3 = " << t.n3 << "\n";
+	out << "\n";
+	out << "This is a 3D tensor in the Tucker format with \n";
+	out << "r1 = " << t.r1 << ", n1 = " << t.n1 << "\n";
+	out << "r2 = " << t.r2 << ", n2 = " << t.n2 << "\n";
+	out << "r3 = " << t.r3 << ", n3 = " << t.n3 << "\n";
 
-    return out;
+	return out;
 }
 // Get element
-double Tensor::At(int i1, int i2, int i3) const
+double Tucker::At(int i1, int i2, int i3) const
 {
 	double a = 0.0;
 	for(int j1 = 0; j1 < r1; j1++) {
@@ -207,7 +207,7 @@ double Tensor::At(int i1, int i2, int i3) const
 	return a;
 }
 // Orthogonalize factors with QR
-void Tensor::orthogonalize()
+void Tucker::orthogonalize()
 {
 	const double alpha = 1.0;
 	const double beta = 0.0;
@@ -276,7 +276,7 @@ void Tensor::orthogonalize()
 	r3 = min(n3, r3);
 }
 // Recompress tensor
-void Tensor::round(double eps, int rmax)
+void Tucker::round(double eps, int rmax)
 {
 	const double alpha = 1.0;
 	const double beta = 0.0;
@@ -321,7 +321,7 @@ void Tensor::round(double eps, int rmax)
 	delete [] A;
 }
 
-double *Tensor::full() const
+double *Tucker::full() const
 {
 	const double alpha = 1.0;
 	const double beta = 0.0;
@@ -351,13 +351,13 @@ double *Tensor::full() const
 	return res;
 }
 // Compute sum of all elements
-double Tensor::sum() const
+double Tucker::sum() const
 {
 	const double alpha = 1.0;
 	const double beta = 0.0;
 
 	double *S;
-	Tensor tmp(1, 1, 1, r1, r2, r3);
+	Tucker tmp(1, 1, 1, r1, r2, r3);
 	MKL_Domatcopy ('R', 'N', r1*r2, r3, alpha, g, r3, tmp.g, r3);
 	int n = max({n1, n2, n3});
 	double* ones = new double[n];
@@ -380,7 +380,7 @@ double Tensor::sum() const
 	return S[0];
 }
 
-double Tensor::norm()
+double Tucker::norm()
 {
 	orthogonalize();
 
@@ -390,19 +390,19 @@ double Tensor::norm()
 	return norm;
 }
 
-Tensor operator -(const Tensor& t)
+Tucker operator -(const Tucker& t)
 {
 	return (-1.0) * t;
 }
 
-Tensor operator +(const Tensor& t1, const Tensor& t2) // TODO return reference (or not)
+Tucker operator +(const Tucker& t1, const Tucker& t2) // TODO return reference (or not)
 {
 	// check that shapes are equal
 	if (t1.n() != t2.n()){
 		cout << "Different shapes in sum!" << endl;
 		exit(-1);
 	}
-	Tensor result(t1.n1, t1.n2, t1.n3, t1.r1+t2.r1, t1.r2+t2.r2, t1.r3+t2.r3);
+	Tucker result(t1.n1, t1.n2, t1.n3, t1.r1+t2.r1, t1.r2+t2.r2, t1.r3+t2.r3);
 
 	for (int i = 0; i < t1.r1; ++i) {
 		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', t1.r2, t1.r3, t1.g+i*t1.r2*t1.r3, t1.r3, result.g+
@@ -423,7 +423,7 @@ Tensor operator +(const Tensor& t1, const Tensor& t2) // TODO return reference (
 	return result;
 }
 
-Tensor operator -(const Tensor& t1, const Tensor& t2) // TODO return reference (or not)
+Tucker operator -(const Tucker& t1, const Tucker& t2) // TODO return reference (or not)
 {
 	// check that shapes are equal
 	if (t1.n() != t2.n()){
@@ -434,7 +434,7 @@ Tensor operator -(const Tensor& t1, const Tensor& t2) // TODO return reference (
 	return t1 + (-1.0) * t2;
 }
 /*// TODO
-Tensor& operator+=(Tensor& t, const Tensor& t1)
+Tucker& operator+=(Tucker& t, const Tucker& t1)
 {
 	// TODO
 	if (this == &t1)
@@ -449,14 +449,14 @@ Tensor& operator+=(Tensor& t, const Tensor& t1)
 
 }
 */
-Tensor operator *(const Tensor& t1, const Tensor& t2)
+Tucker operator *(const Tucker& t1, const Tucker& t2)
 {
 	// check that shapes are equal;
 	if (t1.n() != t2.n()){
 		cout << "Different shapes in mult!" << endl;
 		exit(-1);
 	}
-	Tensor result(t1.n1, t1.n2, t1.n3, t1.r1*t2.r1, t1.r2*t2.r2, t1.r3*t2.r3);
+	Tucker result(t1.n1, t1.n2, t1.n3, t1.r1*t2.r1, t1.r2*t2.r2, t1.r3*t2.r3);
 
 	for (int i = 0; i < t1.r1; ++i) {
 		for (int j = 0; j < t1.r2; ++j) {
@@ -494,28 +494,28 @@ Tensor operator *(const Tensor& t1, const Tensor& t2)
 	return result;
 }
 
-Tensor operator *(const double alpha, const Tensor& t)
+Tucker operator *(const double alpha, const Tucker& t)
 {
-	Tensor res(t);
+	Tucker res(t);
 
 	MKL_Dimatcopy('R', 'N', 1, t.r1 * t.r2 * t.r3, alpha, res.g, 1, t.r1 * t.r2 * t.r3);
 
 	return res;
 }
 
-Tensor operator *(const Tensor& t, const double alpha)
+Tucker operator *(const Tucker& t, const double alpha)
 {
 	return alpha * t;
 }
 
-Tensor operator /(const Tensor& t1, const Tensor& t2)
+Tucker operator /(const Tucker& t1, const Tucker& t2)
 {
 	if (t2.r() != vector<int>{1, 1, 1}) {
 		cout << "Invalid ranks in divide!" << endl;
 		exit(-1);
 	}
 
-	Tensor t = t1;
+	Tucker t = t1;
 
 	MKL_Dimatcopy('R', 'N', 1, t1.r1 * t1.r2 * t1.r3, 1.0 / t2.g[0], t.g, 1, t1.r1 * t1.r2 * t1.r3);
 	for (int i = 0; i < t1.n1; ++i){
@@ -531,9 +531,9 @@ Tensor operator /(const Tensor& t1, const Tensor& t2)
 	return t;
 }
 
-Tensor reflect(const Tensor& t, char axis)
+Tucker reflect(const Tucker& t, char axis)
 {
-	Tensor res(t);
+	Tucker res(t);
 	switch (axis) // TODO use enum
 	{
 	case 'X':
@@ -560,21 +560,21 @@ Tensor reflect(const Tensor& t, char axis)
 	}
 }
 
-Tensor round_t(const Tensor& t, double tol, int rmax)
+Tucker round_t(const Tucker& t, double tol, int rmax)
 {
-	Tensor res(t);
+	Tucker res(t);
 
 	res.round(tol, rmax);
 
 	return res;
 }
 
-int Tensor::I(int i1, int i2, int i3)
+int Tucker::I(int i1, int i2, int i3)
 {
 	return i1 * n2 * n3 + i2 * n3 + i3;
 }
 
-vector<int> Tensor::multiI(int I)
+vector<int> Tucker::multiI(int I)
 {
 	// TODO: implement
 	return {0, 0, 0};
@@ -585,39 +585,39 @@ double *svd_trunc(int m, int n, double *a, double eps, int &r)
 	int info;
 
 	double *U = new double[m*m];
-    double *S = new double[min(m,n)];
-    double *VT = new double[n*n];
-    double *superb = new double[min(m,n)-1];
+	double *S = new double[min(m,n)];
+	double *VT = new double[n*n];
+	double *superb = new double[min(m,n)-1];
 
 	info = LAPACKE_dgesvd( LAPACK_ROW_MAJOR, 'A', 'N', m, n, a, n,
-	                        S, U, m, VT, n, superb );
+							S, U, m, VT, n, superb );
 
-    if( info > 0 ) {
-            printf( "The algorithm computing SVD failed to converge.\n" );
-            exit( 1 );
-    }
+	if( info > 0 ) {
+			printf( "The algorithm computing SVD failed to converge.\n" );
+			exit( 1 );
+	}
 
-    eps = eps * S[0] / sqrt(3);
+	eps = eps * S[0] / sqrt(3);
 
-    r = min(m, n);
+	r = min(m, n);
 
-    for( int i = 0; i < min(m, n); ++i ) {
-        if (S[i] <= eps) {
-            r = i;
-            break;
-        }
-    }
+	for( int i = 0; i < min(m, n); ++i ) {
+		if (S[i] <= eps) {
+			r = i;
+			break;
+		}
+	}
 
-    double *u = new double[m*r]; // TODO can be optimized
+	double *u = new double[m*r]; // TODO can be optimized
 
-    LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, r, U, m, u, r);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, r, U, m, u, r);
 
-    delete[] U;
-    delete[] S;
-    delete[] VT;
-    delete[] superb;
+	delete[] U;
+	delete[] S;
+	delete[] VT;
+	delete[] superb;
 
-    return u;
+	return u;
 }
 
 double *svd_trunc_rmax(int m, int n, double *a, int rmax)
@@ -625,95 +625,95 @@ double *svd_trunc_rmax(int m, int n, double *a, int rmax)
 	int info;
 
 	double *U = new double[m*m];
-    double *S = new double[min(m,n)];
-    double *VT = new double[n*n];
-    double *superb = new double[min(m,n)-1];
+	double *S = new double[min(m,n)];
+	double *VT = new double[n*n];
+	double *superb = new double[min(m,n)-1];
 
 	info = LAPACKE_dgesvd( LAPACK_ROW_MAJOR, 'A', 'N', m, n, a, n,
-	                        S, U, m, VT, n, superb );
+							S, U, m, VT, n, superb );
 
-    if( info > 0 ) {
-            printf( "The algorithm computing SVD failed to converge.\n" );
-            exit( 1 );
-    }
+	if( info > 0 ) {
+			printf( "The algorithm computing SVD failed to converge.\n" );
+			exit( 1 );
+	}
 
-    double *u = new double[m*rmax]; // TODO can be optimized
+	double *u = new double[m*rmax]; // TODO can be optimized
 
-    LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, rmax, U, m, u, rmax);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, rmax, U, m, u, rmax);
 
-    delete[] U;
-    delete[] S;
-    delete[] VT;
-    delete[] superb;
+	delete[] U;
+	delete[] S;
+	delete[] VT;
+	delete[] superb;
 
-    return u;
+	return u;
 }
 
 double **compress(int n1, int n2, int n3, double *a, double eps, int &r1, int &r2, int &r3, int rmax)
 {
 	double **result = new double *[4]; //TODO: tuple
 
-    const double alpha = 1.0;
-    const double beta = 0.0;
+	const double alpha = 1.0;
+	const double beta = 0.0;
 
-    double *u1, *u2, *u3;
+	double *u1, *u2, *u3;
 
-    double *z1 = new double[n1*n2*n3];
-    double *z2 = new double[n1*n2*n3];
-    double *z3 = new double[n1*n2*n3];
+	double *z1 = new double[n1*n2*n3];
+	double *z2 = new double[n1*n2*n3];
+	double *z3 = new double[n1*n2*n3];
 
-    LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z1, 1);
-    LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z2, 1);
-    MKL_Dimatcopy ('R', 'T', n1, n2*n3, alpha, z2, n2*n3, n1);
-    LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z3, 1);
-    MKL_Dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z1, 1);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z2, 1);
+	MKL_Dimatcopy ('R', 'T', n1, n2*n3, alpha, z2, n2*n3, n1);
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z3, 1);
+	MKL_Dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
 
-    u1 = svd_trunc(n1, (n2 * n3), z1, eps, r1);
-    u2 = svd_trunc(n2, (n1 * n3), z2, eps, r2);
-    u3 = svd_trunc(n3, (n1 * n2), z3, eps, r3);
+	u1 = svd_trunc(n1, (n2 * n3), z1, eps, r1);
+	u2 = svd_trunc(n2, (n1 * n3), z2, eps, r2);
+	u3 = svd_trunc(n3, (n1 * n2), z3, eps, r3);
 
-    // TODO can just copy part
-    if (r1 > rmax) {
-    	delete [] u1;
-    	u1 = svd_trunc_rmax(n1, (n2 * n3), z1, rmax);
-    	r1 = rmax;
-    }
-    if (r2 > rmax) {
-    	delete [] u2;
-    	u2 = svd_trunc_rmax(n2, (n1 * n3), z2, rmax);
-    	r2 = rmax;
-    }
-    if (r3 > rmax) {
-    	delete [] u3;
-    	u3 = svd_trunc_rmax(n3, (n1 * n2), z3, rmax);
-    	r3 = rmax;
-    }
+	// TODO can just copy part
+	if (r1 > rmax) {
+		delete [] u1;
+		u1 = svd_trunc_rmax(n1, (n2 * n3), z1, rmax);
+		r1 = rmax;
+	}
+	if (r2 > rmax) {
+		delete [] u2;
+		u2 = svd_trunc_rmax(n2, (n1 * n3), z2, rmax);
+		r2 = rmax;
+	}
+	if (r3 > rmax) {
+		delete [] u3;
+		u3 = svd_trunc_rmax(n3, (n1 * n2), z3, rmax);
+		r3 = rmax;
+	}
 
-    double *g = new double[r1*r2*r3];
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                            n1*n2, r3, n3, alpha, a, n3, u3, r3, beta, z3, r3); // TODO trans
+	double *g = new double[r1*r2*r3];
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+							n1*n2, r3, n3, alpha, a, n3, u3, r3, beta, z3, r3); // TODO trans
 
-    MKL_Dimatcopy ('R', 'T', n1*n2, r3, alpha, z3, r3, n1*n2);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                            r3*n1, r2, n2, alpha, z3, n2, u2, r2, beta, z2, r2);
+	MKL_Dimatcopy ('R', 'T', n1*n2, r3, alpha, z3, r3, n1*n2);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+							r3*n1, r2, n2, alpha, z3, n2, u2, r2, beta, z2, r2);
 
-    MKL_Dimatcopy ('R', 'T', r3*n1, r2, alpha, z2, r2, r3*n1);
-    // g = z2 x u1
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                            r2*r3, r1, n1, alpha, z2, n1, u1, r1, beta, g, r1);
+	MKL_Dimatcopy ('R', 'T', r3*n1, r2, alpha, z2, r2, r3*n1);
+	// g = z2 x u1
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+							r2*r3, r1, n1, alpha, z2, n1, u1, r1, beta, g, r1);
 
-    MKL_Dimatcopy ('R', 'T', r2*r3, r1, alpha, g, r1, r2*r3);
+	MKL_Dimatcopy ('R', 'T', r2*r3, r1, alpha, g, r1, r2*r3);
 
-    result[0] = g;
-    result[1] = u1;
-    result[2] = u2;
-    result[3] = u3;
+	result[0] = g;
+	result[1] = u1;
+	result[2] = u2;
+	result[3] = u3;
 
-    delete[] z1;
-    delete[] z2;
-    delete[] z3;
+	delete[] z1;
+	delete[] z2;
+	delete[] z3;
 
-    return result;
+	return result;
 }
 // QR-decomposition of matrix a
 double **qr(int n1, int n2, const double *a)
