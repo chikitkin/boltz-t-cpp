@@ -1,17 +1,4 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-// #include <filesystem>
-#include <string>
-#include <vector>
-#include <set>
-#include <stdlib.h>
-#include <stdio.h>
-#include "mkl.h"
-#include "mkl_lapacke.h"
-#include <math.h>
-#include <algorithm>
-#include <numeric>
+#include "header.h"
 
 #include "full.h"
 #include "tucker.h"

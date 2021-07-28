@@ -1,16 +1,6 @@
+#include "header.h"
 #include "mesh.h"
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <set>
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <algorithm>
-#include <numeric>
 using namespace std;
 
 int main() {

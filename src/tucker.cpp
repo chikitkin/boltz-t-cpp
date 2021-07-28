@@ -1,14 +1,6 @@
+#include "header.h"
 #include "tucker.h"
 
-#include <iostream>
-#include <vector>
-#include <stdlib.h>
-#include <stdio.h>
-#include "mkl.h"
-#include "mkl_lapacke.h"
-#include <math.h>
-#include <algorithm>
-#include <memory>
 using namespace std;
 
 void transpose(int n1, int n2, int n3, double* a, int dim)

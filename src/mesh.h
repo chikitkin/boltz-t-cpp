@@ -1,17 +1,8 @@
 #ifndef MESH_H_
 #define MESH_H_
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <set>
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <algorithm>
-#include <numeric>
+#include "header.h"
+
 using namespace std;
 /*
  * Header for Mesh class

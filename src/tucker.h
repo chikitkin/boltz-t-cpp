@@ -1,14 +1,8 @@
 #ifndef TUCKER_H_
 #define TUCKER_H_
 
-#include <iostream>
-#include <vector>
-#include <stdlib.h>
-#include <stdio.h>
-#include "mkl.h"
-#include "mkl_lapacke.h"
-#include <math.h>
-#include <algorithm>
+#include "header.h"
+
 using namespace std;
 
 double *svd_trunc(int m, int n, double *a, double eps, int &r);

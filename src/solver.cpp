@@ -1,22 +1,10 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-// #include <filesystem>
-#include <string>
-#include <vector>
-#include <set>
-#include <stdlib.h>
-#include <stdio.h>
-#include "mkl.h"
-#include "mkl_lapacke.h"
-#include <math.h>
-#include <algorithm>
-#include <numeric>
+#include "header.h"
+#include "solver.h"
 
 #include "full.h"
 #include "tucker.h"
 #include "mesh.h"
-#include "solver.h"
+
 using namespace std;
 
 template <class Tensor> double *f_maxwell(const VelocityGrid<Tensor> & v,

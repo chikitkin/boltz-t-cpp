@@ -1,13 +1,6 @@
+#include "header.h"
 #include "tucker.h"
 
-#include <iostream>
-#include <vector>
-#include <stdlib.h>
-#include <stdio.h>
-#include "mkl.h"
-#include "mkl_lapacke.h"
-#include <algorithm>
-#include <memory>
 using namespace std;
 
 void print_matrix( char* desc, int m, int n, double* a, int lda )

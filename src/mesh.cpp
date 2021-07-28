@@ -1,15 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <set>
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <algorithm>
-#include <numeric>
+#include "header.h"
 #include "mesh.h"
+
 using namespace std;
 
 double Mesh::compute_tetra_volume(vector < vector < double > > tetra) {
