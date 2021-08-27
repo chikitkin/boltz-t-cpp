@@ -7,7 +7,8 @@
 
 using namespace std;
 
-template <class Tensor> double *f_maxwell(const VelocityGrid<Tensor> & v,
+template <class Tensor>
+double *f_maxwell(const VelocityGrid<Tensor> & v,
 		double n, double ux, double uy, double uz,
 		double T, double Rg)
 {
@@ -23,7 +24,8 @@ template <class Tensor> double *f_maxwell(const VelocityGrid<Tensor> & v,
 	return fmax;
 }
 
-template <class Tensor> Tensor f_maxwell_t(const VelocityGrid<Tensor> & v,
+template <class Tensor>
+Tensor f_maxwell_t(const VelocityGrid<Tensor> & v,
 		double n, double ux, double uy, double uz,
 		double T, double Rg)
 {
@@ -62,7 +64,8 @@ double GasParams::mu(double T) const {
 	return mu_suth(200.0) * (pow(T / 200.0, 0.734));
 }
 
-template <class Tensor> Tensor Problem<Tensor>::f_init(double x, double y, double z) {
+template <class Tensor>
+Tensor Problem<Tensor>::f_init(double x, double y, double z) {
 	if (x < 0.0) {
 		return init_tensor_list[0];
 	}
@@ -71,7 +74,8 @@ template <class Tensor> Tensor Problem<Tensor>::f_init(double x, double y, doubl
 	}
 }
 
-template <class Tensor> Tensor Problem<Tensor>::set_bc(const GasParams& gas_params, const VelocityGrid<Tensor>& v,
+template <class Tensor>
+Tensor Problem<Tensor>::set_bc(const GasParams& gas_params, const VelocityGrid<Tensor>& v,
 		char bc_type, const Tensor& bc_data,
 		const Tensor& f,
 		const Tensor& vn, const Tensor& vnp, const Tensor& vnm,
@@ -103,7 +107,8 @@ template <class Tensor> Tensor Problem<Tensor>::set_bc(const GasParams& gas_para
 	}
 }
 
-template <class Tensor> VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *vy__, double *vz__)
+template <class Tensor>
+VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *vy__, double *vz__)
 : nvx(nvx_), nvy(nvy_), nvz(nvz_)
 {
 	nv = nvx * nvy * nvz;
@@ -163,7 +168,8 @@ template <class Tensor> VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, i
 	ones = Tensor(nvx, nvy, nvz, onesx, onesy, onesz);
 }
 
-template <class Tensor> VelocityGrid<Tensor>::VelocityGrid(const VelocityGrid<Tensor>& v)
+template <class Tensor>
+VelocityGrid<Tensor>::VelocityGrid(const VelocityGrid<Tensor>& v)
 : nvx(v.nvx), nvy(v.nvy), nvz(v.nvz)
 {
 	nv = nvx * nvy * nvz;
@@ -224,7 +230,8 @@ template <class Tensor> VelocityGrid<Tensor>::VelocityGrid(const VelocityGrid<Te
 	ones = Tensor(nvx, nvy, nvz, onesx, onesy, onesz);
 }
 
-template <class Tensor> VelocityGrid<Tensor>::~VelocityGrid()
+template <class Tensor>
+VelocityGrid<Tensor>::~VelocityGrid()
 {
 	delete [] zerox;
 	delete [] zeroy;
@@ -243,7 +250,8 @@ template <class Tensor> VelocityGrid<Tensor>::~VelocityGrid()
 	delete [] vz;
 }
 
-template <class Tensor> vector <double> comp_macro_params(const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params)
+template <class Tensor>
+vector <double> comp_macro_params(const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params)
 {
 	double n = v.hv3 * f.sum();
 
@@ -271,7 +279,8 @@ template <class Tensor> vector <double> comp_macro_params(const Tensor& f, const
 	return {n, ux, uy, uz, T, rho, p, nu};
 }
 
-template <class Tensor> Tensor comp_j(const vector <double>& params, const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params)
+template <class Tensor>
+Tensor comp_j(const vector <double>& params, const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params)
 {
 	double n = params[0];
 	double ux = params[1];
@@ -317,7 +326,8 @@ template <class Tensor> Tensor comp_j(const vector <double>& params, const Tenso
 	return J;
 }
 
-template <class Tensor> Solution<Tensor>::Solution(
+template <class Tensor>
+Solution<Tensor>::Solution(
 		const GasParams & gas_params_,
 		const Mesh & mesh_,
 		const VelocityGrid<Tensor> & v_,
@@ -375,25 +385,34 @@ template <class Tensor> Solution<Tensor>::Solution(
 		vn_tmp[i] = pow(v.vx[i] * v.vx[i] + v.vy[i] * v.vy[i] + v.vz[i] * v.vz[i], 0.5);
 	}
 	vn_abs_r1 = Tensor(v.nvx, v.nvy, v.nvz, vn_tmp);
-	vn_abs_r1.round(1e-14, 1);
+//	vn_abs_r1.round(1e-14, 1);
 
 	double *zero = new double [v.nv]();
 	double *diag_tmp = new double [v.nv];
 	double diag_sc;
-	double *diag_t_full = new double [v.nv];
-
+	double *diag_t_full;
+	double *ratio = new double [v.nv];
+////	
+	diag_t_full = vn_abs_r1.full();
+	
+	int count = 0;
+	for (int i = 0; i < v.nv; ++i) {
+		if (diag_t_full[i] < 0.0) {cout << i << " " << vn_tmp[i] << endl; ++count;}
+	}
+	cout << count << endl;
+////
 	for (int ic = 0; ic < mesh.nc; ++ic) {
 
 		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', v.nv, 1, zero, 1, diag_tmp, 1);
-			diag_sc = 0.0;
+		diag_sc = 0.0;
 
-			for (int j = 0; j < 6; ++j) {
-				int jf = mesh.cell_face_list[ic][j];
+		for (int j = 0; j < 6; ++j) {
+			int jf = mesh.cell_face_list[ic][j];
 
 			for (int i = 0; i < v.nv; ++i) {
-				vn_tmp[i] = mesh.face_normals[jf][0] * v.vx[i] +
+				vn_tmp[i] = (mesh.face_normals[jf][0] * v.vx[i] +
 						mesh.face_normals[jf][1] * v.vy[i] +
-						mesh.face_normals[jf][2] * v.vz[i];
+						mesh.face_normals[jf][2] * v.vz[i]) * mesh.cell_face_normal_direction[ic][j];
 				if (vn_tmp[i] <= 0.0) {
 					vnm_tmp[i] = vn_tmp[i];
 					vnp_tmp[i] = 0.0;
@@ -403,23 +422,29 @@ template <class Tensor> Solution<Tensor>::Solution(
 					vnp_tmp[i] = vn_tmp[i];
 				}
 				vn_abs_tmp[i] = vnp_tmp[i] - vnm_tmp[i];
-				
+
 				diag_tmp[i] += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_tmp[i];
-				diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic]);
 			}
+			diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic]);
 		}
-
+		
 		diag_r1[ic] = diag_sc * vn_abs_r1;
-
 		diag_t_full = diag_r1[ic].full();
 
 		for (int i = 0; i < v.nv; ++i) {
-			diag_tmp[i] = diag_t_full[i] / diag_tmp[i];
+			ratio[i] = diag_t_full[i] / diag_tmp[i];
+//			if (ratio[i] < 1.0) {cout << "ratio " << ratio[i] << endl;}
+//			if (diag_t_full[i] < 0.0) {cout << "diag_t_full " << diag_t_full[i] << endl;}
 		}
-		int ratio_min_index = cblas_idamin(v.nv, diag_tmp, 1);
 		
-		diag_r1[ic] = (1.0 / diag_tmp[ratio_min_index]) * diag_r1[ic];
-
+//		cout << ic << " " << *min_element(diag_tmp, diag_tmp + v.nv) << "> 1" << endl;
+//		cout << ic << " " << diag_sc << endl;
+		
+		diag_r1[ic] = (1.0 / *min_element(ratio, ratio + v.nv)) * diag_r1[ic];
+		
+		delete [] diag_t_full;
+		
+		diag_t_full = diag_r1[ic].full();
 	}
 
 	f.resize(mesh.nc, Tensor());
@@ -441,7 +466,7 @@ template <class Tensor> Solution<Tensor>::Solution(
 	fm.resize(mesh.nf, Tensor());
 	flux.resize(mesh.nf, Tensor());
 	rhs.resize(mesh.nc, Tensor());
-	df.resize(mesh.nc, Tensor()); // TODO
+	df.resize(mesh.nc, Tensor());
 
 	n.resize(mesh.nc, 0.0);
 	rho.resize(mesh.nc, 0.0);
@@ -464,11 +489,11 @@ template <class Tensor> Solution<Tensor>::Solution(
 
 	delete [] zero;
 	delete [] diag_tmp;
-	delete [] diag_t_full;
 
 }
 
-template <class Tensor> void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
+template <class Tensor>
+void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 {
 	config = config_;
 	tau = h * config.CFL / (*max_element(v.vx_, v.vx_ + v.nvx) * (pow(3.0, 0.5)));
@@ -519,7 +544,7 @@ template <class Tensor> void Solution<Tensor>::make_time_steps(const Config& con
 			// sum up fluxes from all faces of this cell
 			for (int j = 0; j < 6; ++j) {
 				int jf = mesh.cell_face_list[ic][j];
-				rhs[ic] = rhs[ic] - (mesh.cell_face_normal_direction[ic][j]) * (1.0 / mesh.cell_volumes[ic]) * flux[jf];
+				rhs[ic] = rhs[ic] - (mesh.cell_face_normal_direction[ic][j] / mesh.cell_volumes[ic]) * flux[jf];
 				rhs[ic].round(config.tol);
 			}
 			// compute macroparameters and collision integral
@@ -549,12 +574,13 @@ template <class Tensor> void Solution<Tensor>::make_time_steps(const Config& con
 		frob_norm_iter.push_back(frob_norm);
 
 		if (config.solver_type == "explicit") {
+			// Update values
 			for (int ic = 0; ic < mesh.nc; ++ic) {
 				f[ic] = f[ic] + tau * rhs[ic];
 				f[ic].round(config.tol);
 			}
 		}
-
+		
 		if (config.solver_type == "implicit") {
 			for (int ic = mesh.nc - 1; ic >= 0; --ic) {
 				df[ic] = rhs[ic];
@@ -606,12 +632,14 @@ template <class Tensor> void Solution<Tensor>::make_time_steps(const Config& con
 				df[ic] = df[ic] + (incr / div_tmp);
 				df[ic].round(config.tol);
 			}
+			// Update values
 			for (int ic = 0; ic < mesh.nc; ++ic) {
 				f[ic] = f[ic] + df[ic];
 				f[ic].round(config.tol);
 			}
 		}
 		// TODO save
+		cout << f[40] << endl;
 	}
 }
 

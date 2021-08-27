@@ -22,10 +22,12 @@ double g(double x, double y, double z) {
 }
 
 int main(){
+	typedef Tucker Tensor;
+
 	int n1, n2, n3;
-	n1 = 11;
-	n2 = 11;
-	n3 = 11;
+	n1 = 44;
+	n2 = 44;
+	n3 = 44;
 
 	double eps = 1e-5;
 /*************************************************************************************/
@@ -108,7 +110,7 @@ int main(){
 //	cout << endl;
 
 
-	cout << (t_r_t - t_t_r).norm() / t_r_t.norm() << endl;
+	cout << "reflect " << (t_r_t - t_t_r).norm() / t_r_t.norm() << endl;
 
 
 
@@ -181,7 +183,6 @@ int main(){
 	Tensor t2_1(n1, n2, n3, a2, eps);
 	Tensor t3_1;
 	t3_1 = t1_1 + t2_1; //TODO
-//	t3_1.orthogonalize();
 	t3_1.round(eps);
 
 	s_res = t3_1.sum();
@@ -242,14 +243,15 @@ int main(){
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
 				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a2[i*n2*n3 + j*n3 + k] = g(double(i), double(j), double(k));
-				a3[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k)) / g(double(i), double(j), double(k));;
+				a2[i*n2*n3 + j*n3 + k] = 2.0;
+				a3[i*n2*n3 + j*n3 + k] = a1[i*n2*n3 + j*n3 + k] / a2[i*n2*n3 + j*n3 + k];
 				s += a3[i*n2*n3 + j*n3 + k];
 			}
 		}
 	}
 	Tensor t1_3(n1, n2, n3, a1, eps);
 	Tensor t2_3(n1, n2, n3, a2, eps);
+	t2_3.round(1e-14, 1);
 	Tensor t3_3;
 	t3_3 = t1_3 / t2_3;
 	t3_3.round(eps);

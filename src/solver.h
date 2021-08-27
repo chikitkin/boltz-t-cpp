@@ -190,11 +190,13 @@ public:
 	void make_time_steps(const Config& config_, int nt);
 };
 
-template <class Tensor> double *f_maxwell(const VelocityGrid<Tensor> & v,
+template <class Tensor>
+double *f_maxwell(const VelocityGrid<Tensor> & v,
 		double n, double ux, double uy, double uz,
 		double T, double Rg);
 
-template <class Tensor> Tensor f_maxwell_t(const VelocityGrid<Tensor> & v,
+template <class Tensor>
+Tensor f_maxwell_t(const VelocityGrid<Tensor> & v,
 		double n, double ux, double uy, double uz,
 		double T, double Rg);
 

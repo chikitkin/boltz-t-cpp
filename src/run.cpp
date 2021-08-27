@@ -8,7 +8,7 @@ using namespace std;
 
 int main()
 {
-	typedef Full Tensor;
+	typedef Tucker Tensor;
 
 	GasParams gas_params;
 
