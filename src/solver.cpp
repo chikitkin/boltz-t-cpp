@@ -385,7 +385,8 @@ Solution<Tensor>::Solution(
 		vn_tmp[i] = pow(v.vx[i] * v.vx[i] + v.vy[i] * v.vy[i] + v.vz[i] * v.vz[i], 0.5);
 	}
 	vn_abs_r1 = Tensor(v.nvx, v.nvy, v.nvz, vn_tmp);
-//	vn_abs_r1.round(1e-14, 1);
+//	vn_abs_r1.orthogonalize();
+	vn_abs_r1.round(1e-14, 1);
 
 	double *zero = new double [v.nv]();
 	double *diag_tmp = new double [v.nv];
@@ -395,11 +396,13 @@ Solution<Tensor>::Solution(
 ////	
 	diag_t_full = vn_abs_r1.full();
 	
-	int count = 0;
+	double sum1 = 0.0;
+	double sum2 = 0.0;
 	for (int i = 0; i < v.nv; ++i) {
-		if (diag_t_full[i] < 0.0) {cout << i << " " << vn_tmp[i] << endl; ++count;}
+		sum1 += pow(vn_tmp[i] - diag_t_full[i], 2);
+		sum2 += pow(vn_tmp[i], 2);
 	}
-	cout << count << endl;
+	cout << "Frob error " << pow(sum1 / sum2, 0.5) << endl;
 ////
 	for (int ic = 0; ic < mesh.nc; ++ic) {
 
@@ -443,8 +446,6 @@ Solution<Tensor>::Solution(
 		diag_r1[ic] = (1.0 / *min_element(ratio, ratio + v.nv)) * diag_r1[ic];
 		
 		delete [] diag_t_full;
-		
-		diag_t_full = diag_r1[ic].full();
 	}
 
 	f.resize(mesh.nc, Tensor());

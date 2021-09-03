@@ -122,6 +122,10 @@ double Full::At(int i1, int i2, int i3) const
 {
 	return g[i1 * n2 * n3 + i2 * n3 + i3];
 }
+// Orthogonalize factors with QR
+void Full::orthogonalize()
+{
+}
 // Recompress tensor
 void Full::round(double eps, int rmax)
 {

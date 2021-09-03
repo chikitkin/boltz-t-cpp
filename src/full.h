@@ -29,7 +29,9 @@ public:
 	friend ostream& operator << (ostream &out, const Full& t);
 	// Get element
 	double At(int i1, int i2, int i3) const;
-
+	
+	// Orthogonalize factors with QR
+	void orthogonalize();
 	// Recompress tensor
 	void round(double eps = 1e-14, int rmax = 1e+6);
 	double *full() const;
