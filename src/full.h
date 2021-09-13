@@ -33,7 +33,7 @@ public:
 	// Orthogonalize factors with QR
 	void orthogonalize();
 	// Recompress tensor
-	void round(double eps = 1e-14, int rmax = 1e+6);
+	void round(double eps = 1e-14, int rmax = 1000000);
 	double *full() const;
 	// Compute sum of all elements
 	double sum() const;
@@ -50,7 +50,7 @@ public:
 	friend Full operator /(const Full& t1, const Full& t2);
 	friend Full reflect(const Full& t, char axis);
 
-	friend Full round_t(const Full& t, double tol = 1e-14, int rmax = 1e+6);
+	friend Full round_t(const Full& t, double tol = 1e-14, int rmax = 1000000);
 
 private:
 	int I(int i1, int i2, int i3);

@@ -385,8 +385,8 @@ Solution<Tensor>::Solution(
 		vn_tmp[i] = pow(v.vx[i] * v.vx[i] + v.vy[i] * v.vy[i] + v.vz[i] * v.vz[i], 0.5);
 	}
 	vn_abs_r1 = Tensor(v.nvx, v.nvy, v.nvz, vn_tmp);
-//	vn_abs_r1.orthogonalize();
-	vn_abs_r1.round(1e-14, 1);
+	vn_abs_r1.orthogonalize();
+//	vn_abs_r1.round(1e-14, 1);
 
 	double *zero = new double [v.nv]();
 	double *diag_tmp = new double [v.nv];
