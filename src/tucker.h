@@ -3,8 +3,6 @@
 
 #include "header.h"
 
-using namespace std;
-
 double *svd_trunc(int m, int n, double *a, double eps, int &r);
 double *svd_trunc_rmax(int m, int n, double *a, int rmax);
 
@@ -32,10 +30,10 @@ public:
 	~Tucker();
 
 	// Print ranks
-	vector<int> n() const;
-	vector<int> r() const;
+	std::vector<int> n() const;
+	std::vector<int> r() const;
 	// Print tensor
-	friend ostream& operator << (ostream &out, const Tucker& t);
+	friend std::ostream& operator << (std::ostream &out, const Tucker& t);
 	// Get element
 	double At(int i1, int i2, int i3) const;
 
@@ -63,7 +61,7 @@ public:
 
 private:
 	int I(int i1, int i2, int i3);
-	vector <int> multiI(int I);
+	std::vector <int> multiI(int I);
 
 	double* g;
 	// sizes along each dimension;

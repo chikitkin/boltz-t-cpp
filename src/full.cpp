@@ -1,14 +1,12 @@
 #include "header.h"
 #include "full.h"
 
-using namespace std;
-
 // Constructors
 // Default constructor
 Full::Full()
 : n1(1), n2(1), n3(1)
 {
-//	cout << "Default constructor called" << endl;
+//	std::cout << "Default constructor called" << std::endl;
 	r1 = 1;
 	r2 = 1;
 	r3 = 1;
@@ -18,7 +16,7 @@ Full::Full()
 Full::Full(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_)
 : n1(n1_), n2(n2_), n3(n3_)
 {
-//	cout << "Zero constructor called" << endl;
+//	std::cout << "Zero constructor called" << std::endl;
 	// Create zero tensor
 	r1 = r1_;
 	r2 = r2_;
@@ -29,7 +27,7 @@ Full::Full(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_)
 Full::Full(int n1_, int n2_, int n3_, double *a, double eps)
 : n1(n1_), n2(n2_), n3(n3_)
 {
-//	cout << "Compress constructor called" << endl;
+//	std::cout << "Compress constructor called" << std::endl;
 	r1 = 1;
 	r2 = 1;
 	r3 = 1;
@@ -57,7 +55,7 @@ Full::Full(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_)
 Full::Full(const Full& t)
 : n1(t.n1), n2(t.n2), n3(t.n3)
 {
-//	cout << "Copy constructor called" << endl;
+//	std::cout << "Copy constructor called" << std::endl;
 	r1 = t.r1;
 	r2 = t.r2;
 	r3 = t.r3;
@@ -69,7 +67,7 @@ Full::Full(const Full& t)
 // Copy assignment operator
 Full& Full::operator =(const Full& t)
 {
-//	cout << "Copy assignment operator called" << endl;
+//	std::cout << "Copy assignment operator called" << std::endl;
 	if (this == &t)
 		return *this;
 
@@ -91,29 +89,29 @@ Full& Full::operator =(const Full& t)
 // Destructor
 Full::~Full()
 {
-//	cout << "Destructor called" << endl;
+//	std::cout << "Destructor called" << std::endl;
 	delete [] g;
 }
 
-vector<int> Full::n() const
+std::vector<int> Full::n() const
 {
-	vector<int> n = {n1, n2, n3};
+	std::vector<int> n = {n1, n2, n3};
 	return n;
 }
 
-vector<int> Full::r() const
+std::vector<int> Full::r() const
 {
-	vector<int> ranks = {r1, r2, r3};
+	std::vector<int> ranks = {r1, r2, r3};
 	return ranks;
 }
 // Print tensor
-ostream& operator << (ostream &out, const Full& t)
+std::ostream& operator << (std::ostream &out, const Full& t)
 {
 	out << "\n";
 	out << "This is a full 3D tensor with \n";
 	out << "r1 = " << t.r1 << ", n1 = " << t.n1 << "\n";
 	out << "r2 = " << t.r2 << ", n2 = " << t.n2 << "\n";
-	out << "r3 = " << t.r3 << ", n3 = " << t.n3 << "\n";
+	out << "r3 = " << t.r3 << ", n3 = " << t.n3;
 
 	return out;
 }
@@ -174,7 +172,7 @@ Full operator +(const Full& t1, const Full& t2) // TODO return reference (or not
 {
 	// check that shapes are equal
 	if (t1.n() != t2.n()){
-		cout << "Different shapes in sum!" << endl;
+		std::cout << "Different shapes in sum!" << std::endl;
 		exit(-1);
 	}
 	Full result(t1.n1, t1.n2, t1.n3, t1.r1+t2.r1, t1.r2+t2.r2, t1.r3+t2.r3);
@@ -198,7 +196,7 @@ Full operator -(const Full& t1, const Full& t2) // TODO return reference (or not
 {
 	// check that shapes are equal
 	if (t1.n() != t2.n()){
-		cout << "Different shapes in sum!" << endl;
+		std::cout << "Different shapes in sum!" << std::endl;
 		exit(-1);
 	}
 
@@ -212,7 +210,7 @@ Full& operator+=(Full& t, const Full& t1)
 		return 2.0 * (*this);
 
 	if (t.n() != t1.n()){
-		cout << "Different shapes!" << endl;
+		std::cout << "Different shapes!" << std::endl;
 		exit(-1);
 	}
 
@@ -224,7 +222,7 @@ Full operator *(const Full& t1, const Full& t2)
 {
 	// check that shapes are equal
 	if (t1.n() != t2.n()){
-		cout << "Different shapes in sum!" << endl;
+		std::cout << "Different shapes in sum!" << std::endl;
 		exit(-1);
 	}
 	Full result(t1.n1, t1.n2, t1.n3, t1.r1+t2.r1, t1.r2+t2.r2, t1.r3+t2.r3);
@@ -325,7 +323,7 @@ Full reflect(const Full& t, char axis)
 		}
 		return res;
 	default:
-		cout << "Wrong axis, try X, Y, Z." << endl;
+		std::cout << "Wrong axis, try X, Y, Z." << std::endl;
 		exit(-1);
 	}
 }
@@ -344,7 +342,7 @@ int Full::I(int i1, int i2, int i3)
 	return i1 * n2 * n3 + i2 * n3 + i3;
 }
 
-vector<int> Full::multiI(int I)
+std::vector<int> Full::multiI(int I)
 {
 	// TODO: implement
 	return {0, 0, 0};

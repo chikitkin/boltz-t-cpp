@@ -1,9 +1,7 @@
 #include "header.h"
 #include "mesh.h"
 
-using namespace std;
-
-double Mesh::compute_tetra_volume(vector < vector < double > > tetra) {
+double Mesh::compute_tetra_volume(std::vector < std::vector < double > > tetra) {
 	// tetra - (4, 3)
 	double a00 = tetra[1][0] - tetra[0][0];
 	double a01 = tetra[1][1] - tetra[0][1];
@@ -19,47 +17,47 @@ double Mesh::compute_tetra_volume(vector < vector < double > > tetra) {
 			(a02 * a11 * a20 + a00 * a12 * a21 + a01 * a10 * a22)) / 6.0;
 }
 
-vector < vector < int > > Mesh::get_faces_for_cell(int ic) {
+std::vector < std::vector < int > > Mesh::get_faces_for_cell(int ic) {
 
-	vector < vector < int > > faces;
+	std::vector < std::vector < int > > faces;
 	faces.reserve(6);
-	vector <int> verts = vert_list_for_cell[ic];
+	std::vector <int> verts = vert_list_for_cell[ic];
 
-	faces.push_back(vector <int> {verts[0], verts[1], verts[5], verts[4]});
-	faces.push_back(vector <int> {verts[1], verts[3], verts[7], verts[5]});
-	faces.push_back(vector <int> {verts[3], verts[2], verts[6], verts[7]});
-	faces.push_back(vector <int> {verts[2], verts[0], verts[4], verts[6]});
-	faces.push_back(vector <int> {verts[1], verts[0], verts[2], verts[3]});
-	faces.push_back(vector <int> {verts[4], verts[5], verts[7], verts[6]});
+	faces.push_back(std::vector <int> {verts[0], verts[1], verts[5], verts[4]});
+	faces.push_back(std::vector <int> {verts[1], verts[3], verts[7], verts[5]});
+	faces.push_back(std::vector <int> {verts[3], verts[2], verts[6], verts[7]});
+	faces.push_back(std::vector <int> {verts[2], verts[0], verts[4], verts[6]});
+	faces.push_back(std::vector <int> {verts[1], verts[0], verts[2], verts[3]});
+	faces.push_back(std::vector <int> {verts[4], verts[5], verts[7], verts[6]});
 
 	return faces;
 }
 
-Mesh::Mesh(const string& path, double scale) {
+Mesh::Mesh(const std::string& path, double scale) {
 	read_starcd(path, scale);
 }
 
-void Mesh::read_starcd(const string& path, double scale) {
+void Mesh::read_starcd(const std::string& path, double scale) {
 
 	int max_vert_in_face = 4;
 	int max_vert_in_cell = 8;
 /*
 	Read vertex list and bc type for each boundary face
 */
-	ifstream bnd_data;
+	std::ifstream bnd_data;
 	bnd_data.open(path + "star.bnd");
 	if (bnd_data.fail())
 	{
-		cout << "Could not open star.bnd" << endl;
+		std::cout << "Could not open star.bnd" << std::endl;
 		exit(1);
 	}
-	string line;
+	std::string line;
 	while (getline(bnd_data, line)) {
-		istringstream iss(line);
+		std::istringstream iss(line);
 		int n, v0, v1, v2, v3, type;
 		if (!(iss >> n >> v0 >> v1 >> v2 >> v3 >> type)) { break; }
-		vector <int> bcface;
-		set <int> bcface_set;
+		std::vector <int> bcface;
+		std::set <int> bcface_set;
 		bcface.push_back(v0 - 1);
 		bcface_set.insert(v0 - 1);
 		bcface.push_back(v1 - 1);
@@ -79,18 +77,18 @@ void Mesh::read_starcd(const string& path, double scale) {
 
 	nbf = bcface_bctype.size();
 
-	cout << "Number of boundary faces = " << nbf << endl;
+	std::cout << "Number of boundary faces = " << nbf << std::endl;
 /*
 	Construct list of boundary faces indices for each bctype
 */
-	set <int> bc(bcface_bctype.begin(), bcface_bctype.end());
+	std::set <int> bc(bcface_bctype.begin(), bcface_bctype.end());
 	for (auto a : bc) {
-		cout << a << endl;
+		std::cout << a << std::endl;
 	}
 	nbc = *bc.rbegin() + 1; // TODO was bc.size() problem if not every condition is present
-	cout << "Number of boundary conditions = " << nbc << endl;
+	std::cout << "Number of boundary conditions = " << nbc << std::endl;
 
-	bf_for_each_bc.resize(nbc, vector <int>()); // TODO
+	bf_for_each_bc.resize(nbc, std::vector <int>()); // TODO
 	for (int i = 0; i < nbf; ++i) {
 		bf_for_each_bc[bcface_bctype[i]].push_back(i);
 	}
@@ -98,18 +96,18 @@ void Mesh::read_starcd(const string& path, double scale) {
 /*
 	Count number of cells
 */
-	ifstream cel_data;
+	std::ifstream cel_data;
 	cel_data.open(path + "star.cel");
 	if (cel_data.fail())
 	{
-		cout << "Could not open star.cel" << endl;
+		std::cout << "Could not open star.cel" << std::endl;
 		exit(1);
 	}
 	while (getline(cel_data, line)) {
-		istringstream iss(line);
+		std::istringstream iss(line);
 		int n, v0, v1, v2, v3, v4, v5, v6, v7;
 		if (!(iss >> n >> v0 >> v1 >> v2 >> v3 >> v4 >> v5 >> v6 >> v7)) { break; }
-		vector <int> cell;
+		std::vector <int> cell;
 		cell.push_back(v0 - 1);
 		cell.push_back(v1 - 1);
 		cell.push_back(v2 - 1);
@@ -147,25 +145,25 @@ void Mesh::read_starcd(const string& path, double scale) {
 			vert_list_for_cell[i][7] = v5;
 		}
 	}
-	cout << "Number of cells = " << nc << endl;
+	std::cout << "Number of cells = " << nc << std::endl;
 /*
 	Count number of vertices
 */
-	ifstream vrt_data;
+	std::ifstream vrt_data;
 	vrt_data.open(path + "star.vrt");
 	if (vrt_data.fail())
 	{
-		cout << "Could not open star.vrt" << endl;
+		std::cout << "Could not open star.vrt" << std::endl;
 		exit(1);
 	}
 	nv = 0;
 	while (getline(vrt_data, line)) {
 		nv += 1;
-		istringstream iss(line);
+		std::istringstream iss(line);
 		int n;
 		double x0, x1, x2;
 		if (!(iss >> n >> x0 >> x1 >> x2)) { break; }
-		vector <double> vert;
+		std::vector <double> vert;
 		vert.push_back(scale * x0);
 		vert.push_back(scale * x1);
 		vert.push_back(scale * x2);
@@ -173,11 +171,11 @@ void Mesh::read_starcd(const string& path, double scale) {
 	}
 	vrt_data.close();
 	vert_coo.shrink_to_fit();
-	cout << "Number of vertices = " << nv << endl;
+	std::cout << "Number of vertices = " << nv << std::endl;
 /*
 	Calculate cell centers - arithmetic mean of vertises' coordinates
 */
-	cell_center_coo.resize(nc, vector <double>(3));
+	cell_center_coo.resize(nc, std::vector <double>(3));
 	for (int i = 0; i < nc; ++i) {
 		double x0 = 0;
 		double x1 = 0;
@@ -196,39 +194,39 @@ void Mesh::read_starcd(const string& path, double scale) {
 */
 	cell_volumes.resize(nc, 0.0);
 	for (int ic = 0; ic < nc; ++ic) {
-		vector < vector < int > > faces = get_faces_for_cell(ic);
+		std::vector < std::vector < int > > faces = get_faces_for_cell(ic);
 		// Loop over faces, for each face construct 4 tetras
 		// and compute their volumes
 		for (int jf = 0; jf < 6; ++jf) {
-			vector <double> face_center = {0.0, 0.0, 0.0};
+			std::vector <double> face_center = {0.0, 0.0, 0.0};
 			for (int kf = 0; kf < 4; ++kf) {
 				face_center[0] += (vert_coo[faces[jf][kf]][0] / 4.0);
 				face_center[1] += (vert_coo[faces[jf][kf]][1] / 4.0);
 				face_center[2] += (vert_coo[faces[jf][kf]][2] / 4.0);
 			}
-			vector <double> x1 = vert_coo[faces[jf][0]];
-			vector <double> x2 = vert_coo[faces[jf][1]];
-			vector <double> x3 = vert_coo[faces[jf][2]];
-			vector <double> x4 = vert_coo[faces[jf][3]];
-			vector <vector < double > > tetra1;
+			std::vector <double> x1 = vert_coo[faces[jf][0]];
+			std::vector <double> x2 = vert_coo[faces[jf][1]];
+			std::vector <double> x3 = vert_coo[faces[jf][2]];
+			std::vector <double> x4 = vert_coo[faces[jf][3]];
+			std::vector <std::vector < double > > tetra1;
 			tetra1.push_back(cell_center_coo[ic]);
 			tetra1.push_back(x1);
 			tetra1.push_back(x2);
 			tetra1.push_back(face_center);
 			cell_volumes[ic] += compute_tetra_volume(tetra1);
-			vector <vector < double > > tetra2;
+			std::vector <std::vector < double > > tetra2;
 			tetra2.push_back(cell_center_coo[ic]);
 			tetra2.push_back(x2);
 			tetra2.push_back(x3);
 			tetra2.push_back(face_center);
 			cell_volumes[ic] += compute_tetra_volume(tetra2);
-			vector <vector < double > > tetra3;
+			std::vector <std::vector < double > > tetra3;
 			tetra3.push_back(cell_center_coo[ic]);
 			tetra3.push_back(x3);
 			tetra3.push_back(x4);
 			tetra3.push_back(face_center);
 			cell_volumes[ic] += compute_tetra_volume(tetra3);
-			vector <vector < double > > tetra4;
+			std::vector <std::vector < double > > tetra4;
 			tetra4.push_back(cell_center_coo[ic]);
 			tetra4.push_back(x4);
 			tetra4.push_back(x1);
@@ -239,7 +237,7 @@ void Mesh::read_starcd(const string& path, double scale) {
 /*
 	Construct for each vertex list of cells to which it belongs
 */
-	cell_list_for_vertex.resize(nv, vector <int> {-1, -1, -1, -1, -1, -1, -1, -1}); // it may be > 8!
+	cell_list_for_vertex.resize(nv, std::vector <int> {-1, -1, -1, -1, -1, -1, -1, -1}); // it may be > 8!
 	cell_num_for_vertex.resize(nv, 0); // Number of cells, adjacent to each vertex
 	for (int ic = 0; ic < nc; ++ic) {
 		for (int jv = 0; jv < max_vert_in_cell; ++jv) {
@@ -251,12 +249,12 @@ void Mesh::read_starcd(const string& path, double scale) {
 /*
 	Construct for each cell list of neighboring cells
 */
-	cell_neighbors_list.resize(nc, vector <int> {-1, -1, -1, -1, -1, -1});
-	face_vert_list.resize(6 * nc, vector <int> {0, 0, 0, 0});
-	cell_face_list.resize(nc, vector <int> {-1, -1, -1, -1, -1, -1});
+	cell_neighbors_list.resize(nc, std::vector <int> {-1, -1, -1, -1, -1, -1});
+	face_vert_list.resize(6 * nc, std::vector <int> {0, 0, 0, 0});
+	cell_face_list.resize(nc, std::vector <int> {-1, -1, -1, -1, -1, -1});
 	nf = 0;
 	for (int ic = 0; ic < nc; ic++) {
-		vector < vector < int > > faces = get_faces_for_cell(ic);
+		std::vector < std::vector < int > > faces = get_faces_for_cell(ic);
 		for (int jf = 0; jf < 6; ++jf) {
 			if  (cell_neighbors_list[ic][jf] >= 0) { // if face is already assigned - skip
 				continue;
@@ -268,10 +266,10 @@ void Mesh::read_starcd(const string& path, double scale) {
 				// loop over all cells containing this vertex
 				for (int kc = 0; kc < cell_num_for_vertex[faces[jf][iv]]; ++kc) {
 					int icell = cell_list_for_vertex[faces[jf][iv]][kc];
-					vector < vector < int > > faces_neigh = get_faces_for_cell(icell);
+					std::vector < std::vector < int > > faces_neigh = get_faces_for_cell(icell);
 					// Now compare these faces with face
-					vector <int> faces_sorted(4);
-					vector <int> faces_neigh_sorted(4);
+					std::vector <int> faces_sorted(4);
+					std::vector <int> faces_neigh_sorted(4);
 					for (int lf = 0; lf < 6; ++lf) {
 						partial_sort_copy(faces[jf].begin(), faces[jf].end(), faces_sorted.begin(), faces_sorted.end());
 						partial_sort_copy(faces_neigh[lf].begin(), faces_neigh[lf].end(), faces_neigh_sorted.begin(), faces_neigh_sorted.end());
@@ -287,27 +285,27 @@ void Mesh::read_starcd(const string& path, double scale) {
 		}
 	}
 
-	cout << "Number of faces = " << nf << endl;
+	std::cout << "Number of faces = " << nf << std::endl;
 	face_vert_list.resize(nf); // exclude extra rows
-	cout << "Sum of volumes = " << accumulate(cell_volumes.begin(), cell_volumes.end(), 0.0) << endl;
+	std::cout << "Sum of volumes = " << accumulate(cell_volumes.begin(), cell_volumes.end(), 0.0) << std::endl;
 /*
 	Compute face areas and normals
 */
 	face_areas.resize(nf);
-	face_normals.resize(nf, vector <double>(3));
+	face_normals.resize(nf, std::vector <double>(3));
 	for (int jf = 0; jf < nf; ++jf) {
-		vector <int> verts = face_vert_list[jf];
-		vector <double> verts_coo0 = vert_coo[verts[0]];
-		vector <double> verts_coo1 = vert_coo[verts[1]];
-		vector <double> verts_coo2 = vert_coo[verts[2]];
-		vector <double> verts_coo3 = vert_coo[verts[3]];
+		std::vector <int> verts = face_vert_list[jf];
+		std::vector <double> verts_coo0 = vert_coo[verts[0]];
+		std::vector <double> verts_coo1 = vert_coo[verts[1]];
+		std::vector <double> verts_coo2 = vert_coo[verts[2]];
+		std::vector <double> verts_coo3 = vert_coo[verts[3]];
 
-		vector <double> vec1(3);
+		std::vector <double> vec1(3);
 		vec1[0] = 0.5 * (verts_coo2[0] + verts_coo1[0]) - 0.5 * (verts_coo0[0] + verts_coo3[0]);
 		vec1[1] = 0.5 * (verts_coo2[1] + verts_coo1[1]) - 0.5 * (verts_coo0[1] + verts_coo3[1]);
 		vec1[2] = 0.5 * (verts_coo2[2] + verts_coo1[2]) - 0.5 * (verts_coo0[2] + verts_coo3[2]);
 
-		vector <double> vec2(3);
+		std::vector <double> vec2(3);
 		vec2[0] = 0.5 * (verts_coo3[0] + verts_coo2[0]) - 0.5 * (verts_coo1[0] + verts_coo0[0]);
 		vec2[1] = 0.5 * (verts_coo3[1] + verts_coo2[1]) - 0.5 * (verts_coo1[1] + verts_coo0[1]);
 		vec2[2] = 0.5 * (verts_coo3[2] + verts_coo2[2]) - 0.5 * (verts_coo1[2] + verts_coo0[2]);
@@ -323,13 +321,13 @@ void Mesh::read_starcd(const string& path, double scale) {
 //		double len1 = sqrt(vec1[0] * vec1[0] + vec1[1] * vec1[1] + vec1[2] * vec1[2]);
 //		len1 = min
 //		double len2 = sqrt(vec2[0] * vec2[0] + vec2[1] * vec2[1] + vec2[2] * vec2[2]);
-//		vector <double> bec1 = {vec1[0]};
+//		std::vector <double> bec1 = {vec1[0]};
 	}
 
 	// face centers
 	for (int jf = 0; jf < nf; ++jf) {
-		vector <int> face_verts = face_vert_list[jf];
-		vector <double> face_center = {0.0, 0.0, 0.0};
+		std::vector <int> face_verts = face_vert_list[jf];
+		std::vector <double> face_center = {0.0, 0.0, 0.0};
 		for (int i = 0; i < 4; ++i) {
 			face_center[0] += vert_coo[face_verts[i]][0] / 4.0;
 			face_center[1] += vert_coo[face_verts[i]][1] / 4.0;
@@ -344,13 +342,13 @@ void Mesh::read_starcd(const string& path, double scale) {
 
 	+1 - outer normal, -1 - inner normal (directed in cell)
 */
-	cell_face_normal_direction.resize(nc, vector <int>(6));
+	cell_face_normal_direction.resize(nc, std::vector <int>(6));
 	for (int ic = 0; ic < nc; ++ic) {
 		for (int jf = 0; jf < 6; ++jf) {
 			int face = cell_face_list[ic][jf];
-			vector <double> face_normal = face_normals[face];
+			std::vector <double> face_normal = face_normals[face];
 			// Compute vector from cell center to center of face
-			vector <double> vec = {face_centers[face][0] - cell_center_coo[ic][0],
+			std::vector <double> vec = {face_centers[face][0] - cell_center_coo[ic][0],
 					face_centers[face][1] - cell_center_coo[ic][1], face_centers[face][2] - cell_center_coo[ic][2]};
 			double dot_prod = vec[0] * face_normal[0] + vec[1] * face_normal[1] + vec[2] * face_normal[2];
 			if (dot_prod >= 0) {
@@ -362,11 +360,11 @@ void Mesh::read_starcd(const string& path, double scale) {
 		}
 	}
 	// TODO: comment
-	bound_face_info.resize(nbf, vector <int>(3));
+	bound_face_info.resize(nbf, std::vector <int>(3));
 	for (int ibf = 0; ibf < nbf; ++ibf) {
 		for (int jf = 0; jf < nf; ++jf) {
-			vector <int> bcface_vert_sorted(4);
-			vector <int> face_vert_sorted(4);
+			std::vector <int> bcface_vert_sorted(4);
+			std::vector <int> face_vert_sorted(4);
 			partial_sort_copy(bcface_vert_lists[ibf].begin(), bcface_vert_lists[ibf].end(), bcface_vert_sorted.begin(), bcface_vert_sorted.end());
 			partial_sort_copy(face_vert_list[jf].begin(), face_vert_list[jf].end(), face_vert_sorted.begin(), face_vert_sorted.end());
 			if (bcface_vert_sorted == face_vert_sorted) {
@@ -385,10 +383,10 @@ void Mesh::read_starcd(const string& path, double scale) {
 	// TODO: comment
 	cell_diam.resize(nc, 0.0);
 	for (int ic = 0; ic < nc; ++ic) {
-		vector <double> face_diam(6);
+		std::vector <double> face_diam(6);
 		for (int jf = 0; jf < 6; ++jf) {
 			int face = cell_face_list[ic][jf];
-			vector <double> vec = {face_centers[face][0] - cell_center_coo[ic][0],
+			std::vector <double> vec = {face_centers[face][0] - cell_center_coo[ic][0],
 					face_centers[face][1] - cell_center_coo[ic][1], face_centers[face][2] - cell_center_coo[ic][2]};
 			face_diam[jf] = 2.0 * sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2]);
 		}
@@ -398,15 +396,15 @@ void Mesh::read_starcd(const string& path, double scale) {
 	// end of function
 }
 
-void Mesh::write_tecplot(vector < vector <double> > data, string filename,
-		vector <string> var_names, double time) {
+void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string filename,
+		std::vector <std::string> var_names, double time) {
 
 	int nv = data[0].size();
-	ofstream file;
+	std::ofstream file;
 	file.open(filename);
 	if (file.fail())
 	{
-		cout << "Could not open " << filename << endl;
+		std::cout << "Could not open " << filename << std::endl;
 		exit(1);
 	}
 	file << "TITLE = \"VolumeData\"\n";
@@ -433,7 +431,7 @@ void Mesh::write_tecplot(vector < vector <double> > data, string filename,
 	}
 	// Write cell-to-vertices connectivity
 	for (int ic = 0; ic < nc; ++ic) {
-		vector <int> verts = vert_list_for_cell[ic]; // TODO: format
+		std::vector <int> verts = vert_list_for_cell[ic]; // TODO: format
 		file << verts[4] + 1 << " ";
 		file << verts[5] + 1 << " ";
 		file << verts[1] + 1 << " ";

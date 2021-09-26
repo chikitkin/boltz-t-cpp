@@ -2,8 +2,6 @@
 #define MESH_H_
 
 #include "header.h"
-
-using namespace std;
 /*
  * Header for Mesh class
  * Чтобы не напрягаться из-за ручной работы с памятью
@@ -31,11 +29,11 @@ using namespace std;
 class Mesh {
 public:
 	// Constructor
-	Mesh(const string& path, double scale = 1.0);
-	void read_starcd(const string& path, double scale = 1.0);
+	Mesh(const std::string& path, double scale = 1.0);
+	void read_starcd(const std::string& path, double scale = 1.0);
 
-	double compute_tetra_volume(vector < vector < double > > tetra);
-	vector < vector < int > > get_faces_for_cell(int ic);
+	double compute_tetra_volume(std::vector < std::vector < double > > tetra);
+	std::vector < std::vector < int > > get_faces_for_cell(int ic);
 
 	int nbf;
 	int nbc;
@@ -43,28 +41,28 @@ public:
 	int nv;
 	int nf;
 
-	vector < vector < int > > bcface_vert_lists;
-	vector < set < int > > bcface_vert_set_lists; // TODO: Don't need set
-	vector < int > bcface_bctype;
-	vector < vector < int > > vert_list_for_cell;
-	vector < vector < int > > bf_for_each_bc;
-	vector < vector < double > > vert_coo;
-	vector < vector < double > > cell_center_coo;
-	vector < double > cell_volumes;
-	vector < vector < int > > cell_list_for_vertex;
-	vector < int > cell_num_for_vertex;
-	vector < vector < int > > cell_neighbors_list;
-	vector < vector < int > > face_vert_list;
-	vector < vector < int > > cell_face_list;
-	vector < double > face_areas;
-	vector < vector < double > > face_normals;
-	vector < vector < int > > cell_face_normal_direction;
-	vector < vector < int > > bound_face_info;
-	vector < double > cell_diam;
-	vector < vector < double > > face_centers;
+	std::vector < std::vector < int > > bcface_vert_lists;
+	std::vector < std::set < int > > bcface_vert_set_lists; // TODO: Don't need set
+	std::vector < int > bcface_bctype;
+	std::vector < std::vector < int > > vert_list_for_cell;
+	std::vector < std::vector < int > > bf_for_each_bc;
+	std::vector < std::vector < double > > vert_coo;
+	std::vector < std::vector < double > > cell_center_coo;
+	std::vector < double > cell_volumes;
+	std::vector < std::vector < int > > cell_list_for_vertex;
+	std::vector < int > cell_num_for_vertex;
+	std::vector < std::vector < int > > cell_neighbors_list;
+	std::vector < std::vector < int > > face_vert_list;
+	std::vector < std::vector < int > > cell_face_list;
+	std::vector < double > face_areas;
+	std::vector < std::vector < double > > face_normals;
+	std::vector < std::vector < int > > cell_face_normal_direction;
+	std::vector < std::vector < int > > bound_face_info;
+	std::vector < double > cell_diam;
+	std::vector < std::vector < double > > face_centers;
 
-	void write_tecplot(vector < vector <double> > data, string filename,
-			vector <string> var_names, double time = 0.0);
+	void write_tecplot(std::vector < std::vector <double> > data, std::string filename,
+			std::vector <std::string> var_names, double time = 0.0);
 };
 
 #endif /* MESH_H_ */

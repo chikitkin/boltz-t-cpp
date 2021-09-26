@@ -2,7 +2,6 @@
 #define FULL_H_
 
 #include "header.h"
-using namespace std;
 
 class Full {
 public:
@@ -23,10 +22,10 @@ public:
 	~Full();
 
 	// Print ranks
-	vector<int> n() const;
-	vector<int> r() const;
+	std::vector<int> n() const;
+	std::vector<int> r() const;
 	// Print tensor
-	friend ostream& operator << (ostream &out, const Full& t);
+	friend std::ostream& operator << (std::ostream &out, const Full& t);
 	// Get element
 	double At(int i1, int i2, int i3) const;
 	
@@ -54,7 +53,7 @@ public:
 
 private:
 	int I(int i1, int i2, int i3);
-	vector <int> multiI(int I);
+	std::vector <int> multiI(int I);
 
 	double* g;
 	// sizes along each dimension;

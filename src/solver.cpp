@@ -5,8 +5,6 @@
 #include "tucker.h"
 #include "mesh.h"
 
-using namespace std;
-
 template <class Tensor>
 double *f_maxwell(const VelocityGrid<Tensor> & v,
 		double n, double ux, double uy, double uz,
@@ -102,7 +100,7 @@ Tensor Problem<Tensor>::set_bc(const GasParams& gas_params, const VelocityGrid<T
 		return -(Ni / Nr) * bc_data;
 	}
 	default:
-		cout << "Wrong BC type." << endl;
+		std::cout << "Wrong BC type." << std::endl;
 		exit(-1);
 	}
 }
@@ -166,13 +164,23 @@ VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, d
 
 	zero = Tensor(nvx, nvy, nvz, zerox, zeroy, zeroz);
 	ones = Tensor(nvx, nvy, nvz, onesx, onesy, onesz);
+	
+	double* vn_abs_r1_tmp = new double[nv];
+	for (int i = 0; i < nv; ++i) {
+		vn_abs_r1_tmp[i] = pow(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i], 0.5);
+	}
+	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp, 1e-3);
+	delete [] vn_abs_r1_tmp;
+//	vn_abs_r1.round(1e-14, 1);
+	std::cout << vn_abs_r1 << std::endl;
+	std::cout << vn_abs_r1.norm() << std::endl;
 }
 
 template <class Tensor>
 VelocityGrid<Tensor>::VelocityGrid(const VelocityGrid<Tensor>& v)
 : nvx(v.nvx), nvy(v.nvy), nvz(v.nvz)
 {
-	nv = nvx * nvy * nvz;
+	nv = v.nv;
 
 	vx_ = new double[nvx];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvx, 1, v.vx_, 1, vx_, 1);
@@ -181,26 +189,19 @@ VelocityGrid<Tensor>::VelocityGrid(const VelocityGrid<Tensor>& v)
 	vz_ = new double[nvz];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvz, 1, v.vz_, 1, vz_, 1);
 
-	hvx = vx_[1] - vx_[0];
-	hvy = vy_[1] - vy_[0];
-	hvz = vz_[1] - vz_[0];
-	hv3 = hvx * hvy * hvz; // TODO better designations
+	hvx = v.hvx;
+	hvy = v.hvy;
+	hvz = v.hvz;
+	hv3 = v.hv3; // TODO better designations
 
 	// TODO vx vy vz
 	vx = new double[nv];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nv, 1, v.vx, 1, vx, 1);
 	vy = new double[nv];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nv, 1, v.vy, 1, vy, 1);
 	vz = new double[nv];
-
-	for (int i = 0; i < nvx; ++i) {
-		for (int j = 0; j < nvy; ++j) {
-			for (int k = 0; k < nvz; ++k) {
-				vx[i * nvy * nvz + j * nvz + k] = vx_[i];
-				vy[i * nvy * nvz + j * nvz + k] = vy_[j];
-				vz[i * nvy * nvz + j * nvz + k] = vz_[k];
-			}
-		}
-	}
-
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nv, 1, v.vz, 1, vz, 1);
+	
 	zerox = new double[nvx]();
 	onesx = new double[nvx];
 	for (int i = 0; i < nvx; ++i) {
@@ -219,15 +220,16 @@ VelocityGrid<Tensor>::VelocityGrid(const VelocityGrid<Tensor>& v)
 		onesz[i] = 1.0;
 	}
 
-	vx_t = Tensor(nvx, nvy, nvz, vx_, onesy, onesz);
-	vy_t = Tensor(nvx, nvy, nvz, onesx, vy_, onesz);
-	vz_t = Tensor(nvx, nvy, nvz, onesx, onesy, vz_);
+	vx_t = v.vx_t;
+	vy_t = v.vy_t;
+	vz_t = v.vz_t;
 
-	v2 = vx_t * vx_t + vy_t * vy_t + vz_t * vz_t;
-	v2.round(1e-7);
+	v2 = v.v2;
 
-	zero = Tensor(nvx, nvy, nvz, zerox, zeroy, zeroz);
-	ones = Tensor(nvx, nvy, nvz, onesx, onesy, onesz);
+	zero = v.zero;
+	ones = v.ones;
+	
+	vn_abs_r1 = v.vn_abs_r1;
 }
 
 template <class Tensor>
@@ -251,7 +253,7 @@ VelocityGrid<Tensor>::~VelocityGrid()
 }
 
 template <class Tensor>
-vector <double> comp_macro_params(const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params)
+std::vector <double> comp_macro_params(const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params)
 {
 	double n = v.hv3 * f.sum();
 
@@ -280,7 +282,7 @@ vector <double> comp_macro_params(const Tensor& f, const VelocityGrid<Tensor>& v
 }
 
 template <class Tensor>
-Tensor comp_j(const vector <double>& params, const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params)
+Tensor comp_j(const std::vector <double>& params, const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params)
 {
 	double n = params[0];
 	double ux = params[1];
@@ -291,7 +293,7 @@ Tensor comp_j(const vector <double>& params, const Tensor& f, const VelocityGrid
 	double p = params[6];
 	double nu = params[7];
 
-	double *tmp = new double[max(v.nvx, max(v.nvy, v.nvz))];
+	double *tmp = new double[std::max({v.nvx, v.nvy, v.nvz})];
 
 	for (int i = 0; i < v.nvx; ++i) {
 		tmp[i] = (1.0 / pow(2.0 * gas_params.Rg * T, 0.5)) * (v.vx_[i] - ux);
@@ -355,7 +357,8 @@ Solution<Tensor>::Solution(
 
 	for (int jf = 0; jf < mesh.nf; ++jf) {
 		for (int i = 0; i < v.nv; ++i) {
-			vn_tmp[i] = mesh.face_normals[jf][0] * v.vx[i] +
+			vn_tmp[i] = 
+					mesh.face_normals[jf][0] * v.vx[i] +
 					mesh.face_normals[jf][1] * v.vy[i] +
 					mesh.face_normals[jf][2] * v.vz[i];
 			if (vn_tmp[i] <= 0.0) {
@@ -375,35 +378,18 @@ Solution<Tensor>::Solution(
 		vn_abs[jf].round(1e-14, 6);
 	}
 
-	h = *min_element(mesh.cell_diam.begin(), mesh.cell_diam.end());
-	tau = h * config.CFL / (*max_element(v.vx_, v.vx_ + v.nvx) * (pow(3.0, 0.5)));
+	h = *std::min_element(mesh.cell_diam.begin(), mesh.cell_diam.end());
+	tau = h * config.CFL / (*std::max_element(v.vx_, v.vx_ + v.nvx) * (pow(3.0, 0.5)));
 
 	diag.resize(mesh.nc, Tensor());
 	diag_r1.resize(mesh.nc, Tensor());
-
-	for (int i = 0; i < v.nv; ++i) {
-		vn_tmp[i] = pow(v.vx[i] * v.vx[i] + v.vy[i] * v.vy[i] + v.vz[i] * v.vz[i], 0.5);
-	}
-	vn_abs_r1 = Tensor(v.nvx, v.nvy, v.nvz, vn_tmp);
-	vn_abs_r1.orthogonalize();
-//	vn_abs_r1.round(1e-14, 1);
-
-	double *zero = new double [v.nv]();
+	
 	double *diag_tmp = new double [v.nv];
 	double diag_sc;
 	double *diag_t_full;
 	double *ratio = new double [v.nv];
-////	
-	diag_t_full = vn_abs_r1.full();
-	
-	double sum1 = 0.0;
-	double sum2 = 0.0;
-	for (int i = 0; i < v.nv; ++i) {
-		sum1 += pow(vn_tmp[i] - diag_t_full[i], 2);
-		sum2 += pow(vn_tmp[i], 2);
-	}
-	cout << "Frob error " << pow(sum1 / sum2, 0.5) << endl;
-////
+
+	double *zero = new double [v.nv]();
 	for (int ic = 0; ic < mesh.nc; ++ic) {
 
 		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', v.nv, 1, zero, 1, diag_tmp, 1);
@@ -413,9 +399,10 @@ Solution<Tensor>::Solution(
 			int jf = mesh.cell_face_list[ic][j];
 
 			for (int i = 0; i < v.nv; ++i) {
-				vn_tmp[i] = (mesh.face_normals[jf][0] * v.vx[i] +
-						mesh.face_normals[jf][1] * v.vy[i] +
-						mesh.face_normals[jf][2] * v.vz[i]) * mesh.cell_face_normal_direction[ic][j];
+				vn_tmp[i] = mesh.cell_face_normal_direction[ic][j] * (
+				mesh.face_normals[jf][0] * v.vx[i] +
+				mesh.face_normals[jf][1] * v.vy[i] +
+				mesh.face_normals[jf][2] * v.vz[i]);
 				if (vn_tmp[i] <= 0.0) {
 					vnm_tmp[i] = vn_tmp[i];
 					vnp_tmp[i] = 0.0;
@@ -431,19 +418,14 @@ Solution<Tensor>::Solution(
 			diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic]);
 		}
 		
-		diag_r1[ic] = diag_sc * vn_abs_r1;
+		diag_r1[ic] = diag_sc * v.vn_abs_r1;
 		diag_t_full = diag_r1[ic].full();
 
 		for (int i = 0; i < v.nv; ++i) {
 			ratio[i] = diag_t_full[i] / diag_tmp[i];
-//			if (ratio[i] < 1.0) {cout << "ratio " << ratio[i] << endl;}
-//			if (diag_t_full[i] < 0.0) {cout << "diag_t_full " << diag_t_full[i] << endl;}
 		}
 		
-//		cout << ic << " " << *min_element(diag_tmp, diag_tmp + v.nv) << "> 1" << endl;
-//		cout << ic << " " << diag_sc << endl;
-		
-		diag_r1[ic] = (1.0 / *min_element(ratio, ratio + v.nv)) * diag_r1[ic];
+		diag_r1[ic] = (1.0 / *std::min_element(ratio, ratio + v.nv)) * diag_r1[ic];
 		
 		delete [] diag_t_full;
 	}
@@ -478,7 +460,7 @@ Solution<Tensor>::Solution(
 	T.resize(mesh.nc, 0.0);
 	nu.resize(mesh.nc, 0.0);
 	rank.resize(mesh.nc, 0.0);
-	data.resize(mesh.nc, vector < double >(10, 0.0));
+	data.resize(mesh.nc, std::vector < double >(10, 0.0));
 
 	it = 0;
 	//  TODO: create_res
@@ -497,12 +479,18 @@ template <class Tensor>
 void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 {
 	config = config_;
-	tau = h * config.CFL / (*max_element(v.vx_, v.vx_ + v.nvx) * (pow(3.0, 0.5)));
+	tau = h * config.CFL / (*std::max_element(v.vx_, v.vx_ + v.nvx) * (pow(3.0, 0.5)));
+
+	Tensor J;
+	
+	Tensor vnm_loc;
+	Tensor div_tmp;
+	Tensor incr;
 
 	it = 0;
 
 	while(it < nt) {
-		cout << "Step " << it << endl;
+		std::cout << "Step " << it << std::endl;
 		it += 1;
 		// reconstruction for inner faces
 		// 1st order
@@ -539,7 +527,7 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 			flux[jf].round(config.tol);
 		}
 		// computation of the right hand side
-		vector < double > params(8, 0.0); // for J
+		std::vector < double > params(8, 0.0); // for J
 		for (int ic = 0; ic < mesh.nc; ++ic) {
 			rhs[ic] = v.zero;
 			// sum up fluxes from all faces of this cell
@@ -581,7 +569,7 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 				f[ic].round(config.tol);
 			}
 		}
-		
+	
 		if (config.solver_type == "implicit") {
 			for (int ic = mesh.nc - 1; ic >= 0; --ic) {
 				df[ic] = rhs[ic];
@@ -593,10 +581,10 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 					int jf = mesh.cell_face_list[ic][j];
 					int icn = mesh.cell_neighbors_list[ic][j]; // index of neighbor
 					if (mesh.cell_face_normal_direction[ic][j] == 1) {
-						vnm_loc = 0.5 * (vn[jf] - vn_abs_r1); // vnm[jf]
+						vnm_loc = 0.5 * (vn[jf] - v.vn_abs_r1); // vnm[jf]
 					}
 					else {
-						vnm_loc = - 0.5 * (vn[jf] + vn_abs_r1); // -vnp[jf]
+						vnm_loc = - 0.5 * (vn[jf] + v.vn_abs_r1); // -vnp[jf]
 					}
 					if ((icn >= 0) && (icn > ic)) {
 						df[ic] = df[ic] - (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnm_loc * df[icn];
@@ -604,6 +592,7 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 					}
 				}
 				// divide by diagonal coefficient
+				std::cout << ic << std::endl;
 				div_tmp = ((1.0 / tau + nu[ic]) * v.ones + diag_r1[ic]);
 				div_tmp.round(1e-3, 1);
 				df[ic] = df[ic] / div_tmp;
@@ -640,7 +629,8 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 			}
 		}
 		// TODO save
-		cout << f[40] << endl;
+		std::cout << "f[40] " << f[40] << std::endl;
+		std::cout << "diag_r1[40] " << diag_r1[40] << std::endl;
 	}
 }
 

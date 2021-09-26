@@ -1,8 +1,6 @@
 #include "header.h"
 #include "tucker.h"
 
-using namespace std;
-
 void transpose(int n1, int n2, int n3, double* a, int dim)
 {
 	switch (dim) // TODO enum
@@ -26,7 +24,7 @@ void transpose(int n1, int n2, int n3, double* a, int dim)
 		delete [] a_tmp;
 		break;
 	default:
-		cout << "Wrong dim, try 120, 201, 210." << endl;
+		std::cout << "Wrong dim, try 120, 201, 210." << std::endl;
 		exit(-1);
 	}
 }
@@ -35,7 +33,7 @@ void transpose(int n1, int n2, int n3, double* a, int dim)
 Tucker::Tucker()
 : n1(1), n2(1), n3(1)
 {
-//	cout << "Default constructor called" << endl;
+//	std::cout << "Default constructor called" << std::endl;
 	r1 = 1;
 	r2 = 1;
 	r3 = 1;
@@ -48,7 +46,7 @@ Tucker::Tucker()
 Tucker::Tucker(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_)
 : n1(n1_), n2(n2_), n3(n3_)
 {
-//	cout << "Zero constructor called" << endl;
+//	std::cout << "Zero constructor called" << std::endl;
 	// Create zero tensor
 	r1 = r1_;
 	r2 = r2_;
@@ -62,7 +60,7 @@ Tucker::Tucker(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_)
 Tucker::Tucker(int n1_, int n2_, int n3_, double *a, double eps)
 : n1(n1_), n2(n2_), n3(n3_)
 {
-//	cout << "Compress constructor called" << endl;
+//	std::cout << "Compress constructor called" << std::endl;
 	double **A;
 	A = compress(n1, n2, n3, a, eps, r1, r2, r3);
 	g = new double[r1 * r2 * r3];
@@ -101,7 +99,7 @@ Tucker::Tucker(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_)
 Tucker::Tucker(const Tucker& t)
 : n1(t.n1), n2(t.n2), n3(t.n3)
 {
-//	cout << "Copy constructor called" << endl;
+//	std::cout << "Copy constructor called" << std::endl;
 	r1 = t.r1;
 	r2 = t.r2;
 	r3 = t.r3;
@@ -119,7 +117,7 @@ Tucker::Tucker(const Tucker& t)
 // Copy assignment operator
 Tucker& Tucker::operator =(const Tucker& t)
 {
-//	cout << "Copy assignment operator called" << endl;
+//	std::cout << "Copy assignment operator called" << std::endl;
 	if (this == &t)
 		return *this;
 
@@ -156,32 +154,32 @@ Tucker& Tucker::operator =(const Tucker& t)
 // Destructor
 Tucker::~Tucker()
 {
-//	cout << "Destructor called" << endl;
+//	std::cout << "Destructor called" << std::endl;
 	delete [] g;
 	delete [] u1;
 	delete [] u2;
 	delete [] u3;
 }
 
-vector<int> Tucker::n() const
+std::vector<int> Tucker::n() const
 {
-	vector<int> n = {n1, n2, n3};
+	std::vector<int> n = {n1, n2, n3};
 	return n;
 }
 
-vector<int> Tucker::r() const
+std::vector<int> Tucker::r() const
 {
-	vector<int> ranks = {r1, r2, r3};
+	std::vector<int> ranks = {r1, r2, r3};
 	return ranks;
 }
 // Print tensor
-ostream& operator << (ostream &out, const Tucker& t)
+std::ostream& operator << (std::ostream &out, const Tucker& t)
 {
 	out << "\n";
 	out << "This is a 3D tensor in the Tucker format with \n";
 	out << "r1 = " << t.r1 << ", n1 = " << t.n1 << "\n";
 	out << "r2 = " << t.r2 << ", n2 = " << t.n2 << "\n";
-	out << "r3 = " << t.r3 << ", n3 = " << t.n3 << "\n";
+	out << "r3 = " << t.r3 << ", n3 = " << t.n3;
 
 	return out;
 }
@@ -219,43 +217,43 @@ void Tucker::orthogonalize()
 	u3 = QR3[0];
 	// z1.shape = (r1, r2, r3)
 
-	double* g_tmp = new double[min(n1, r1)*min(n2, r2)*min(n3, r3)];
+	double* g_tmp = new double[std::min(n1, r1)*std::min(n2, r2)*std::min(n3, r3)];
 
 	// z1.shape = (r3, r2, r1)
 	transpose(r1, r2, r3, g, 210);
-	// R1.shape = (r1, min(n1, r1))
-	MKL_Dimatcopy ('R', 'T', min(n1, r1), r1, alpha, QR1[1], r1, min(n1, r1));
-	double *z2 = new double[r3*r2*min(n1, r1)];
-	// z2.shape = (r3, r2, min(n1, r1))
+	// R1.shape = (r1, std::min(n1, r1))
+	MKL_Dimatcopy ('R', 'T', std::min(n1, r1), r1, alpha, QR1[1], r1, std::min(n1, r1));
+	double *z2 = new double[r3*r2*std::min(n1, r1)];
+	// z2.shape = (r3, r2, std::min(n1, r1))
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-			r3*r2, min(n1, r1), r1, alpha, g, r1, QR1[1], min(n1, r1), beta, z2, min(n1, r1));
+			r3*r2, std::min(n1, r1), r1, alpha, g, r1, QR1[1], std::min(n1, r1), beta, z2, std::min(n1, r1));
 
 	delete [] g;
 	delete [] QR1[1];
 	delete [] QR1;
 
-	// z2.shape = (min(n1, r1), r2, r3)
-	transpose(r3, r2, min(n1, r1), z2, 210); // TODO
-	// z2.shape = (r3, min(n1, r1), r2)
-	transpose(min(n1, r1), r2, r3, z2, 201);
-	// R2.shape = (r2, min(n2, r2))
-	MKL_Dimatcopy ('R', 'T', min(n2, r2), r2, alpha, QR2[1], r2, min(n2, r2));
-	double *z3 = new double[r3*min(n1, r1)*min(n2, r2)];
-	// z3.shape = (r3, min(n1, r1), min(n2, r2))
+	// z2.shape = (std::min(n1, r1), r2, r3)
+	transpose(r3, r2, std::min(n1, r1), z2, 210); // TODO
+	// z2.shape = (r3, std::min(n1, r1), r2)
+	transpose(std::min(n1, r1), r2, r3, z2, 201);
+	// R2.shape = (r2, std::min(n2, r2))
+	MKL_Dimatcopy ('R', 'T', std::min(n2, r2), r2, alpha, QR2[1], r2, std::min(n2, r2));
+	double *z3 = new double[r3*std::min(n1, r1)*std::min(n2, r2)];
+	// z3.shape = (r3, std::min(n1, r1), std::min(n2, r2))
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-			r3*min(n1, r1), min(n2, r2), r2, alpha, z2, r2, QR2[1], min(n2, r2), beta, z3, min(n2, r2));
+			r3*std::min(n1, r1), std::min(n2, r2), r2, alpha, z2, r2, QR2[1], std::min(n2, r2), beta, z3, std::min(n2, r2));
 
 	delete [] z2;
 	delete [] QR2[1];
 	delete [] QR2;
 
-	// z3.shape = (min(n1, r1), min(n2, r2), r3)
-	transpose(r3, min(n1, r1), min(n2, r2), z3, 120);
-	// R3.shape = (r3, min(n3, r3))
-	MKL_Dimatcopy ('R', 'T', min(n3, r3), r3, alpha, QR3[1], r3, min(n3, r3));
-	// g_tmp.shape = (min(n1, r1), min(n2, r2), min(n3, r3))
+	// z3.shape = (std::min(n1, r1), std::min(n2, r2), r3)
+	transpose(r3, std::min(n1, r1), std::min(n2, r2), z3, 120);
+	// R3.shape = (r3, std::min(n3, r3))
+	MKL_Dimatcopy ('R', 'T', std::min(n3, r3), r3, alpha, QR3[1], r3, std::min(n3, r3));
+	// g_tmp.shape = (std::min(n1, r1), std::min(n2, r2), std::min(n3, r3))
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-			min(n1, r1)*min(n2, r2), min(n3, r3), r3, alpha, z3, r3, QR3[1], min(n3, r3), beta, g_tmp, min(n3, r3));
+			std::min(n1, r1)*std::min(n2, r2), std::min(n3, r3), r3, alpha, z3, r3, QR3[1], std::min(n3, r3), beta, g_tmp, std::min(n3, r3));
 
 	delete [] z3;
 	delete [] QR3[1];
@@ -263,9 +261,9 @@ void Tucker::orthogonalize()
 
 	g = g_tmp;
 
-	r1 = min(n1, r1);
-	r2 = min(n2, r2);
-	r3 = min(n3, r3);
+	r1 = std::min(n1, r1);
+	r2 = std::min(n2, r2);
+	r3 = std::min(n3, r3);
 }
 // Recompress tensor
 void Tucker::round(double eps, int rmax)
@@ -351,7 +349,7 @@ double Tucker::sum() const
 	double *S;
 	Tucker tmp(1, 1, 1, r1, r2, r3);
 	MKL_Domatcopy ('R', 'N', r1*r2, r3, alpha, g, r3, tmp.g, r3);
-	int n = max({n1, n2, n3});
+	int n = std::max({n1, n2, n3});
 	double* ones = new double[n];
 	for (int i = 0; i < n; ++i) {
 		ones[i] = 1.0;
@@ -391,7 +389,7 @@ Tucker operator +(const Tucker& t1, const Tucker& t2) // TODO return reference (
 {
 	// check that shapes are equal
 	if (t1.n() != t2.n()){
-		cout << "Different shapes in sum!" << endl;
+		std::cout << "Different shapes in sum!" << std::endl;
 		exit(-1);
 	}
 	Tucker result(t1.n1, t1.n2, t1.n3, t1.r1+t2.r1, t1.r2+t2.r2, t1.r3+t2.r3);
@@ -419,7 +417,7 @@ Tucker operator -(const Tucker& t1, const Tucker& t2) // TODO return reference (
 {
 	// check that shapes are equal
 	if (t1.n() != t2.n()){
-		cout << "Different shapes in sum!" << endl;
+		std::cout << "Different shapes in sum!" << std::endl;
 		exit(-1);
 	}
 
@@ -433,7 +431,7 @@ Tucker& operator+=(Tucker& t, const Tucker& t1)
 		return 2.0 * (*this);
 
 	if (t.n() != t1.n()){
-		cout << "Different shapes!" << endl;
+		std::cout << "Different shapes!" << std::endl;
 		exit(-1);
 	}
 
@@ -445,7 +443,7 @@ Tucker operator *(const Tucker& t1, const Tucker& t2)
 {
 	// check that shapes are equal;
 	if (t1.n() != t2.n()){
-		cout << "Different shapes in mult!" << endl;
+		std::cout << "Different shapes in mult!" << std::endl;
 		exit(-1);
 	}
 	Tucker result(t1.n1, t1.n2, t1.n3, t1.r1*t2.r1, t1.r2*t2.r2, t1.r3*t2.r3);
@@ -502,8 +500,8 @@ Tucker operator *(const Tucker& t, const double alpha)
 
 Tucker operator /(const Tucker& t1, const Tucker& t2)
 {
-	if (t2.r() != vector<int>{1, 1, 1}) {
-		cout << "Invalid ranks in divide!" << endl;
+	if (t2.r() != std::vector<int>{1, 1, 1}) {
+		std::cout << "Invalid ranks in divide!" << std::endl;
 		exit(-1);
 	}
 
@@ -547,7 +545,7 @@ Tucker reflect(const Tucker& t, char axis)
 		}
 		return res;
 	default:
-		cout << "Wrong axis, try X, Y, Z." << endl;
+		std::cout << "Wrong axis, try X, Y, Z." << std::endl;
 		exit(-1);
 	}
 }
@@ -566,7 +564,7 @@ int Tucker::I(int i1, int i2, int i3)
 	return i1 * n2 * n3 + i2 * n3 + i3;
 }
 
-vector<int> Tucker::multiI(int I)
+std::vector<int> Tucker::multiI(int I)
 {
 	// TODO: implement
 	return {0, 0, 0};
@@ -577,9 +575,9 @@ double *svd_trunc(int m, int n, double *a, double eps, int &r)
 	int info;
 
 	double *U = new double[m*m];
-	double *S = new double[min(m,n)];
+	double *S = new double[std::min(m,n)];
 	double *VT = new double[n*n];
-	double *superb = new double[min(m,n)-1];
+	double *superb = new double[std::min(m,n)-1];
 
 	info = LAPACKE_dgesvd( LAPACK_ROW_MAJOR, 'A', 'N', m, n, a, n,
 							S, U, m, VT, n, superb );
@@ -591,9 +589,9 @@ double *svd_trunc(int m, int n, double *a, double eps, int &r)
 
 	eps = eps * S[0] / sqrt(3);
 
-	r = min(m, n);
+	r = std::min(m, n);
 
-	for( int i = 0; i < min(m, n); ++i ) {
+	for( int i = 0; i < std::min(m, n); ++i ) {
 		if (S[i] <= eps) {
 			r = i;
 			break;
@@ -617,9 +615,9 @@ double *svd_trunc_rmax(int m, int n, double *a, int rmax)
 	int info;
 
 	double *U = new double[m*m];
-	double *S = new double[min(m,n)];
+	double *S = new double[std::min(m,n)];
 	double *VT = new double[n*n];
-	double *superb = new double[min(m,n)-1];
+	double *superb = new double[std::min(m,n)-1];
 
 	info = LAPACKE_dgesvd( LAPACK_ROW_MAJOR, 'A', 'N', m, n, a, n,
 							S, U, m, VT, n, superb );
@@ -712,7 +710,7 @@ double **qr(int n1, int n2, const double *a)
 {
 	double **result = new double *[2];
 
-	int size = min(n1, n2);
+	int size = std::min(n1, n2);
 
 	double *tau = new double[size];
 

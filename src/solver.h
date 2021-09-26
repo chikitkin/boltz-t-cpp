@@ -6,7 +6,6 @@
 #include "full.h"
 #include "tucker.h"
 #include "mesh.h"
-using namespace std;
 
 const double PI = acos(-1.0); // TODO
 
@@ -72,6 +71,7 @@ public:
 	Tensor vz_t;
 
 	Tensor v2;
+	Tensor vn_abs_r1;
 
 	Tensor zero;
 	Tensor ones;
@@ -85,11 +85,11 @@ public:
 template <class Tensor>
 class Problem {
 public:
-	vector < Tensor > init_tensor_list;
+	std::vector < Tensor > init_tensor_list;
 	Tensor f_init(double x, double y, double z);
 
-	vector < char > bc_types;
-	vector < Tensor > bc_data;
+	std::vector < char > bc_types;
+	std::vector < Tensor > bc_data;
 	Tensor set_bc(const GasParams& gas_params, const VelocityGrid<Tensor>& v,
 			char bc_type, const Tensor& bc_data,
 			const Tensor& f,
@@ -98,20 +98,20 @@ public:
 };
 
 struct Config {
-	string solver_type = "explicit";
+	std::string solver_type = "explicit";
 
 	double CFL = 0.5;
 	double tol = 1e-7;
 
-	string init_type = "default";
-	string init_filename = "";
+	std::string init_type = "default";
+	std::string init_filename = "";
 
 	int save_tec_step = 1e+5;
 	int save_macro_step = 1e+5;
 };
 
-template <class Tensor> vector <double> comp_macro_params(const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params);
-template <class Tensor> Tensor comp_j(const vector <double>& params, const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params);
+template <class Tensor> std::vector <double> comp_macro_params(const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params);
+template <class Tensor> Tensor comp_j(const std::vector <double>& params, const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params);
 
 template <class Tensor>
 class Solution {
@@ -136,45 +136,40 @@ public:
 	Config config;
 
 	// path to folder with output
-	string path;
+	std::string path;
 
-	vector < Tensor > vn;
-	vector < Tensor > vnm;
-	vector < Tensor > vnp;
-	vector < Tensor > vn_abs;
+	std::vector < Tensor > vn;
+	std::vector < Tensor > vnm;
+	std::vector < Tensor > vnp;
+	std::vector < Tensor > vn_abs;
 	Tensor vn_abs_r1;
 
 	double h;
 	double tau;
 
-	vector < Tensor > diag;
-	vector < Tensor > diag_r1;
+	std::vector < Tensor > diag;
+	std::vector < Tensor > diag_r1;
 
-	vector < Tensor > f;
+	std::vector < Tensor > f;
 
-	vector < Tensor > fp;
-	vector < Tensor > fm;
-	vector < Tensor > flux;
-	vector < Tensor > rhs;
-	vector < Tensor > df;
-
-	Tensor J;
-	Tensor vnm_loc;
-	Tensor div_tmp;
-	Tensor incr;
+	std::vector < Tensor > fp;
+	std::vector < Tensor > fm;
+	std::vector < Tensor > flux;
+	std::vector < Tensor > rhs;
+	std::vector < Tensor > df;
 
 	// Arrays for macroparameters
-	vector < double > n;
-	vector < double > rho;
-	vector < double > ux, uy, uz;
-	vector < double > p;
-	vector < double > T;
-	vector < double > nu;
-	vector < double > rank;
-	vector < vector < double > > data;
+	std::vector < double > n;
+	std::vector < double > rho;
+	std::vector < double > ux, uy, uz;
+	std::vector < double > p;
+	std::vector < double > T;
+	std::vector < double > nu;
+	std::vector < double > rank;
+	std::vector < std::vector < double > > data;
 
 	int it;
-	vector <double> frob_norm_iter;
+	std::vector <double> frob_norm_iter;
 
 	void create_res();
 	void update_res();

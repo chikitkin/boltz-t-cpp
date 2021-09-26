@@ -39,18 +39,18 @@ int main()
 	Mesh mesh("/home/egor/git/boltz-t-cpp/mesh-1d/", l_s);
 //	Mesh mesh("/home/egor/git/boltz-t-cpp/mesh-cyl/", l_s);
 
-	int nv_ = 44;
+	int nv = 44;
 	double vmax = 22.0 * v_s;
 
-	double hv = 2.0 * vmax / nv_;
+	double hv = 2.0 * vmax / nv;
 
-	double *vx_ = new double[nv_];
+	double *vx_ = new double[nv];
 
-	for (int i = 0; i < nv_; ++i) {
+	for (int i = 0; i < nv; ++i) {
 		vx_[i] = - vmax + (hv / 2.0) + i * hv;
 	}
 
-	VelocityGrid<Tensor> v(nv_, nv_, nv_, vx_, vx_, vx_);
+	VelocityGrid<Tensor> v(nv, nv, nv, vx_, vx_, vx_);
 
 	Tensor f_in = f_maxwell_t<Tensor>(v, n_l, u_l, 0.0, 0.0, T_l, gas_params.Rg);
 //	Tensor f_out(f_in);
@@ -76,8 +76,8 @@ int main()
 	problem.bc_data = {Tensor(), f_in, f_out, fmax, Tensor()};
 
 	Config config;
-	config.solver_type = "explicit";
-	config.CFL = 0.5;
+	config.solver_type = "implicit";
+	config.CFL = 50.0;
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 
