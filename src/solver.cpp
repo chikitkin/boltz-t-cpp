@@ -169,7 +169,7 @@ VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, d
 	for (int i = 0; i < nv; ++i) {
 		vn_abs_r1_tmp[i] = pow(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i], 0.5);
 	}
-	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp, 1e-3);
+	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp);
 	delete [] vn_abs_r1_tmp;
 //	vn_abs_r1.round(1e-14, 1);
 	std::cout << vn_abs_r1 << std::endl;

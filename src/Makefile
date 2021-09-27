@@ -19,9 +19,9 @@ mesh.o: mesh.cpp
 solver.o: solver.cpp
 	$(CC) $(CFLAGS) -c solver.cpp -o solver.o
 	
-tensor-test.o: tensor-test.cpp tucker.o
-	$(CC) $(CFLAGS) tucker.o tensor-test.cpp -o tensor-test.o
-	
+tensor-test.o: tensor-test.cpp full.o tucker.o solver.o
+	$(CC) $(CFLAGS) full.o tucker.o solver.o tensor-test.cpp -o tensor-test.o
+
 mesh-test.o: mesh-test.cpp mesh.o
 	$(CC) $(CFLAGS) mesh.o mesh-test.cpp -o mesh-test.o
 	

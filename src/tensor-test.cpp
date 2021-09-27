@@ -1,5 +1,7 @@
 #include "header.h"
+#include "full.h"
 #include "tucker.h"
+#include "solver.h"
 
 void print_matrix( char* desc, int m, int n, double* a, int lda )
 {
@@ -68,9 +70,14 @@ int main(){
 	}
 	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_tmp, 1e-3);
 	delete [] vn_tmp;
-//	vn_abs_r1.round(1e-14, 1);
+	vn_abs_r1.round(1e-14, 1);
 	std::cout << vn_abs_r1.norm() << std::endl;
 	std::cout << vn_abs_r1 << std::endl;
+	
+	VelocityGrid<Tensor> v(nvx, nvy, nvz, vx_, vx_, vx_);
+	
+	std::cout << v.vn_abs_r1.norm() << std::endl;
+	std::cout << v.vn_abs_r1 << std::endl;	
 	
 /*************************************************************************************/
 // Reflect test
