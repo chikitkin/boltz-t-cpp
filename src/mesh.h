@@ -25,6 +25,16 @@
  * Декомпозицию на тэтраэдры -
  * желательно вынести в отдельную функцию (# 1st tetra и т.д.)
  */
+ 
+enum bc_type
+{
+    SYMMETRYZ = 0,
+    INLET = 1,
+    OUTLET = 2,
+    WALL = 3,
+    SYMMETRYY = 4,
+    SYMMETRYX = 5 
+};
 
 class Mesh {
 public:

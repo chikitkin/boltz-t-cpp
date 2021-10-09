@@ -22,7 +22,7 @@ double g(double x, double y, double z) {
 }
 
 int main(){
-	typedef Tucker Tensor;
+	typedef Full Tensor;
 	
 // vn_abs_r1 test
 	

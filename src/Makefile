@@ -4,6 +4,9 @@ CFLAGS=-g -Wall -O0 -mkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include"
 
 all: run.o
 
+cli.o: full.o tucker.o mesh.o solver.o cli.cpp
+	$(CC) $(CFLAGS) full.o tucker.o mesh.o solver.o cli.cpp -o cli.o
+
 run.o: full.o tucker.o mesh.o solver.o run.cpp
 	$(CC) $(CFLAGS) full.o tucker.o mesh.o solver.o run.cpp -o run.o
 	

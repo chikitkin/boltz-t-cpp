@@ -5,19 +5,71 @@
 #include "mesh.h"
 #include "solver.h"
 
-int main()
+int main(int argc, char *argv[])
 {
 	typedef Tucker Tensor;
 
 	GasParams gas_params;
+    
+    double Mach;
+	double Kn;
+	double delta;
+	
+	double n_l;
+	double u_l;
+	double T_l;
+	double T_w;
+	
+	double n_r;
+	double u_r;
+	double T_r;
 
-	double Mach = 6.5;
-	double Kn = 0.564;
-	double delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
-	double n_l = 2e+23;
-	double T_l = 200.0;
-	double u_l = Mach * pow(gas_params.g * gas_params.Rg * T_l, 0.5);
-	double T_w = 5.0 * T_l;
+	int nv;
+	
+	Config config;
+	
+	int steps;
+		
+	std::string mesh_path;
+	
+	
+    std::string cfg_path = argv[1];
+	std::ifstream cfg(cfg_path);
+    std::string line;
+    
+    while (getline(cfg, line)) {
+        std::istringstream sin(line.substr(line.find("=") + 1));
+        if (line.find("mesh_path") != -1)
+            sin >> mesh_path;
+            
+        else if (line.find("Mach") != -1)
+            sin >> Mach;
+        else if (line.find("Kn") != -1)
+            sin >> Kn;
+        else if (line.find("delta") != -1)
+            sin >> delta;
+        else if (line.find("n_l") != -1)
+            sin >> n_l;
+        else if (line.find("u_l") != -1)
+            sin >> u_l;
+        else if (line.find("T_l") != -1)
+            sin >> T_l;
+        else if (line.find("T_w") != -1)
+            sin >> T_w;
+        
+        else if (line.find("nv") != -1)
+            sin >> nv;
+        else if (line.find("solver_type") != -1)
+            sin >> config.solver_type;
+        else if (line.find("CFL") != -1)
+            sin >> config.CFL;
+            
+        else if (line.find("steps") != -1)
+            sin >> steps;
+    }
+
+	delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
+	u_l = Mach * pow(gas_params.g * gas_params.Rg * T_l, 0.5);
 
 	double n_s = n_l;
 	double T_s = T_l;
@@ -29,17 +81,21 @@ int main()
 
 	double l_s = delta * mu_s * v_s / p_s;
 
-	double n_r = (gas_params.g + 1.0) * Mach * Mach /
+	Mesh mesh(mesh_path, l_s);
+	if (mesh_path == "/home/egor/git/boltz-t-cpp/mesh-1d/") {
+		n_r = (gas_params.g + 1.0) * Mach * Mach /
 			((gas_params.g - 1.0) * Mach * Mach + 2.0) * n_l;
-	double u_r = ((gas_params.g - 1.0) * Mach * Mach + 2.0) /
+	    u_r = ((gas_params.g - 1.0) * Mach * Mach + 2.0) /
 			((gas_params.g + 1.0) * Mach * Mach) * u_l;
-	double T_r = (2.0 * gas_params.g * Mach * Mach - (gas_params.g - 1.0)) * ((gas_params.g - 1.0) * Mach * Mach + 2.0) /
+	    T_r = (2.0 * gas_params.g * Mach * Mach - (gas_params.g - 1.0)) * ((gas_params.g - 1.0) * Mach * Mach + 2.0) /
 			(pow(gas_params.g + 1.0, 2.0) * Mach * Mach) * T_l;
+	}
+	else if (mesh_path == "/home/egor/git/boltz-t-cpp/mesh-cyl/") {
+	    n_r = n_l;
+	    u_r = u_l;
+	    T_r = T_l;
+	}
 
-	Mesh mesh("/home/egor/git/boltz-t-cpp/mesh-1d/", l_s);
-//	Mesh mesh("/home/egor/git/boltz-t-cpp/mesh-cyl/", l_s);
-
-	int nv = 44;
 	double vmax = 22.0 * v_s;
 
 	double hv = 2.0 * vmax / nv;
@@ -51,9 +107,8 @@ int main()
 	}
 
 	VelocityGrid<Tensor> v(nv, nv, nv, vx_, vx_, vx_);
-
+	
 	Tensor f_in = f_maxwell_t<Tensor>(v, n_l, u_l, 0.0, 0.0, T_l, gas_params.Rg);
-//	Tensor f_out(f_in);
 	Tensor f_out = f_maxwell_t<Tensor>(v, n_r, u_r, 0.0, 0.0, T_r, gas_params.Rg);
 
 	std::vector < double > params;
@@ -72,16 +127,11 @@ int main()
 
 	Tensor fmax = f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_w, gas_params.Rg);
 
-	problem.bc_types = {'Z', 'I', 'O', 'W', 'Y'};
 	problem.bc_data = {Tensor(), f_in, f_out, fmax, Tensor()};
-
-	Config config;
-	config.solver_type = "implicit";
-	config.CFL = 50.0;
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 
-	S.make_time_steps(config, 100);
+	S.make_time_steps(config, steps);
 
 	std::cout << "n = " << S.n[40] << std::endl;
 	std::cout << "ux = " << S.ux[40] << std::endl;

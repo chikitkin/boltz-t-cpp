@@ -88,10 +88,9 @@ public:
 	std::vector < Tensor > init_tensor_list;
 	Tensor f_init(double x, double y, double z);
 
-	std::vector < char > bc_types;
 	std::vector < Tensor > bc_data;
 	Tensor set_bc(const GasParams& gas_params, const VelocityGrid<Tensor>& v,
-			char bc_type, const Tensor& bc_data,
+			int bc_type, const Tensor& bc_data,
 			const Tensor& f,
 			const Tensor& vn, const Tensor& vnp, const Tensor& vnm,
 			double tol);

@@ -74,26 +74,24 @@ Tensor Problem<Tensor>::f_init(double x, double y, double z) {
 
 template <class Tensor>
 Tensor Problem<Tensor>::set_bc(const GasParams& gas_params, const VelocityGrid<Tensor>& v,
-		char bc_type, const Tensor& bc_data,
+		int bc_type, const Tensor& bc_data,
 		const Tensor& f,
 		const Tensor& vn, const Tensor& vnp, const Tensor& vnm,
 		double tol)
 {
 	switch (bc_type) // TODO use enum
 	{
-	case 'X':
+	case SYMMETRYX:
 		return reflect(f, 'X');
-	case 'Y':
+	case SYMMETRYY:
 		return reflect(f, 'Y');
-	case 'Z':
+	case SYMMETRYZ:
 		return reflect(f, 'Z');
-	case 'S':
-		return Tensor(f);
-	case 'I':
+	case INLET:
 		return Tensor(bc_data);
-	case 'O':
+	case OUTLET:
 		return Tensor(bc_data);
-	case 'W':
+	case WALL:
 	{
 		double Ni = v.hv3 * (round_t(f * vnp, tol, 1e+6)).sum();
 		double Nr = v.hv3 * (round_t(bc_data * vnm, tol, 1e+6)).sum();
@@ -171,7 +169,8 @@ VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, d
 	}
 	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp);
 	delete [] vn_abs_r1_tmp;
-//	vn_abs_r1.round(1e-14, 1);
+	vn_abs_r1 = v2;
+	vn_abs_r1.round(1e-14, 1);
 	std::cout << vn_abs_r1 << std::endl;
 	std::cout << vn_abs_r1.norm() << std::endl;
 }
@@ -512,11 +511,11 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 			int bc_num = mesh.bound_face_info[j][1];
 
 			if (mesh.bound_face_info[j][2] == 1) {
-				fp[jf] = problem.set_bc(gas_params, v, problem.bc_types[bc_num], problem.bc_data[bc_num],
+				fp[jf] = problem.set_bc(gas_params, v, bc_num, problem.bc_data[bc_num],
 						fm[jf], vn[jf], vnp[jf], vnm[jf], config.tol);
 			}
 			else {
-				fm[jf] = problem.set_bc(gas_params, v, problem.bc_types[bc_num], problem.bc_data[bc_num],
+				fm[jf] = problem.set_bc(gas_params, v, bc_num, problem.bc_data[bc_num],
 						fp[jf], -vn[jf], -vnm[jf], -vnp[jf], config.tol);
 			}
 		}

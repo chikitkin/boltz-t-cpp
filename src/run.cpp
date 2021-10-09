@@ -7,7 +7,7 @@
 
 int main()
 {
-	typedef Tucker Tensor;
+	typedef Full Tensor;
 
 	GasParams gas_params;
 
@@ -76,8 +76,8 @@ int main()
 	problem.bc_data = {Tensor(), f_in, f_out, fmax, Tensor()};
 
 	Config config;
-	config.solver_type = "explicit";
-	config.CFL = 0.5;
+	config.solver_type = "implicit";
+	config.CFL = 50.0;
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 
