@@ -5,6 +5,8 @@
 #include "mesh.h"
 #include "solver.h"
 
+#include <ctime>
+
 int main(int argc, char *argv[])
 {
 	typedef Tucker Tensor;
@@ -131,7 +133,11 @@ int main(int argc, char *argv[])
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 
+	std::time_t t0 = std::time(nullptr);
 	S.make_time_steps(config, steps);
+	std::time_t t1 = std::time(nullptr);
+
+	std::cout << "Time: " << t1 - t0 << " seconds." << std::endl;
 
 	std::cout << "n = " << S.n[40] << std::endl;
 	std::cout << "ux = " << S.ux[40] << std::endl;

@@ -168,8 +168,12 @@ VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, d
 		vn_abs_r1_tmp[i] = pow(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i], 0.5);
 	}
 	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp);
+	std::cout << "vn_abs_r1" << std::endl;
+	std::cout << vn_abs_r1 << std::endl;
+	std::cout << vn_abs_r1.norm() << std::endl;
 	delete [] vn_abs_r1_tmp;
-	vn_abs_r1 = v2;
+	std::cout << vn_abs_r1 << std::endl;
+	std::cout << vn_abs_r1.norm() << std::endl;
 	vn_abs_r1.round(1e-14, 1);
 	std::cout << vn_abs_r1 << std::endl;
 	std::cout << vn_abs_r1.norm() << std::endl;
@@ -591,7 +595,6 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 					}
 				}
 				// divide by diagonal coefficient
-				std::cout << ic << std::endl;
 				div_tmp = ((1.0 / tau + nu[ic]) * v.ones + diag_r1[ic]);
 				div_tmp.round(1e-3, 1);
 				df[ic] = df[ic] / div_tmp;
