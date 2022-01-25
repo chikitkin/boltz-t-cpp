@@ -1,5 +1,5 @@
+#include <src/read_starcd.h>
 #include "header.h"
-#include "mesh.h"
 
 int main() {
 

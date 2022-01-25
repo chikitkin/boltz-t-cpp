@@ -1,5 +1,5 @@
-#ifndef MESH_H_
-#define MESH_H_
+#ifndef READ_MESH_H_
+#define READ_MESH_H_
 
 #include "header.h"
 /*
@@ -40,7 +40,7 @@ class Mesh {
 public:
 	// Constructor
 	Mesh(const std::string& path, double scale = 1.0);
-	void read_starcd(const std::string& path, double scale = 1.0);
+	void read(const std::string& path, double scale = 1.0);
 
 	double compute_tetra_volume(std::vector < std::vector < double > > tetra);
 	std::vector < std::vector < int > > get_faces_for_cell(int ic);
@@ -75,4 +75,4 @@ public:
 			std::vector <std::string> var_names, double time = 0.0);
 };
 
-#endif /* MESH_H_ */
+#endif /* READ_MESH_H_ */

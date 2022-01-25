@@ -57,7 +57,7 @@ public:
 	friend Tucker operator /(const Tucker& t1, const Tucker& t2);
 	friend Tucker reflect(const Tucker& t, char axis);
 
-	friend Tucker round_t(const Tucker& t, double tol = 1e-14, int rmax = 1000000);
+	friend Tucker round_t(const Tucker& t, double tol, int rmax);
 
 private:
 	int I(int i1, int i2, int i3);

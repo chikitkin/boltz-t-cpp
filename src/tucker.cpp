@@ -5,27 +5,31 @@ void transpose(int n1, int n2, int n3, double* a, int dim)
 {
 	switch (dim) // TODO enum
 	{
-	case 120:
-		MKL_Dimatcopy ('R', 'T', n1, n2 * n3, 1.0, a, n2 * n3, n1);
-		break;
-	case 201:
-		MKL_Dimatcopy ('R', 'T', n1 * n2, n3, 1.0, a, n3, n1 * n2);
-		break;
-	case 210:
-		double* a_tmp = new double [n1 * n2 * n3];
-		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1 * n2 * n3, 1, a, 1, a_tmp, 1);
-		for (int i = 0; i < n1; ++i) {
-			for (int j = 0; j < n2; ++j) {
-				for (int k = 0; k < n3; ++k) {
-					a[k * n2 * n1 + j * n1 + i] = a_tmp[i * n2 * n3 + j * n3 + k];
+		case 120: {
+			MKL_Dimatcopy ('R', 'T', n1, n2 * n3, 1.0, a, n2 * n3, n1);
+			break;
+		}
+		case 201: {
+			MKL_Dimatcopy ('R', 'T', n1 * n2, n3, 1.0, a, n3, n1 * n2);
+			break;
+		}
+		case 210: {
+			double* a_tmp = new double [n1 * n2 * n3];
+			LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1 * n2 * n3, 1, a, 1, a_tmp, 1);
+			for (int i = 0; i < n1; ++i) {
+				for (int j = 0; j < n2; ++j) {
+					for (int k = 0; k < n3; ++k) {
+						a[k * n2 * n1 + j * n1 + i] = a_tmp[i * n2 * n3 + j * n3 + k];
+					}
 				}
 			}
+			delete [] a_tmp;
+			break;
 		}
-		delete [] a_tmp;
-		break;
-	default:
-		std::cout << "Wrong dim, try 120, 201, 210." << std::endl;
-		exit(-1);
+		default: {
+			std::cout << "Wrong dim, try 120, 201, 210." << std::endl;
+			exit(-1);
+		}
 	}
 }
 // Constructors
@@ -175,7 +179,6 @@ std::vector<int> Tucker::r() const
 // Print tensor
 std::ostream& operator << (std::ostream &out, const Tucker& t)
 {
-	out << "\n";
 	out << "This is a 3D tensor in the Tucker format with \n";
 	out << "r1 = " << t.r1 << ", n1 = " << t.n1 << "\n";
 	out << "r2 = " << t.r2 << ", n2 = " << t.n2 << "\n";
@@ -550,7 +553,7 @@ Tucker reflect(const Tucker& t, char axis)
 	}
 }
 
-Tucker round_t(const Tucker& t, double tol, int rmax)
+Tucker round_t(const Tucker& t, double tol = 1e-14, int rmax = 1000000)
 {
 	Tucker res(t);
 
@@ -579,7 +582,10 @@ double *svd_trunc(int m, int n, double *a, double eps, int &r)
 	double *VT = new double[n*n];
 	double *superb = new double[std::min(m,n)-1];
 
-	info = LAPACKE_dgesvd( LAPACK_ROW_MAJOR, 'A', 'N', m, n, a, n,
+	double *a_copy = new double[m*n];
+
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m*n, 1, a, 1, a_copy, 1);
+	info = LAPACKE_dgesvd( LAPACK_ROW_MAJOR, 'A', 'N', m, n, a_copy, n,
 							S, U, m, VT, n, superb );
 
 	if( info > 0 ) {
@@ -602,6 +608,7 @@ double *svd_trunc(int m, int n, double *a, double eps, int &r)
 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, r, U, m, u, r);
 
+	delete[] a_copy;
 	delete[] U;
 	delete[] S;
 	delete[] VT;
@@ -619,6 +626,9 @@ double *svd_trunc_rmax(int m, int n, double *a, int rmax)
 	double *VT = new double[n*n];
 	double *superb = new double[std::min(m,n)-1];
 
+	double *a_copy = new double[m*n];
+
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m*n, 1, a, 1, a_copy, 1);
 	info = LAPACKE_dgesvd( LAPACK_ROW_MAJOR, 'A', 'N', m, n, a, n,
 							S, U, m, VT, n, superb );
 
@@ -631,6 +641,7 @@ double *svd_trunc_rmax(int m, int n, double *a, int rmax)
 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, rmax, U, m, u, rmax);
 
+	delete[] a_copy;
 	delete[] U;
 	delete[] S;
 	delete[] VT;

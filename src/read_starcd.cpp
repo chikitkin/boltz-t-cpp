@@ -1,5 +1,5 @@
+#include "read_starcd.h"
 #include "header.h"
-#include "mesh.h"
 
 double Mesh::compute_tetra_volume(std::vector < std::vector < double > > tetra) {
 	// tetra - (4, 3)
@@ -34,7 +34,7 @@ std::vector < std::vector < int > > Mesh::get_faces_for_cell(int ic) {
 }
 
 Mesh::Mesh(const std::string& path, double scale) {
-	read_starcd(path, scale);
+	read(path, scale);
 }
 
 void Mesh::read_starcd(const std::string& path, double scale) {

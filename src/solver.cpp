@@ -1,9 +1,9 @@
+#include "read_starcd.h"
 #include "header.h"
 #include "solver.h"
 
 #include "full.h"
 #include "tucker.h"
-#include "mesh.h"
 
 template <class Tensor>
 double *f_maxwell(const VelocityGrid<Tensor> & v,
@@ -168,15 +168,8 @@ VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, d
 		vn_abs_r1_tmp[i] = pow(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i], 0.5);
 	}
 	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp);
-	std::cout << "vn_abs_r1" << std::endl;
-	std::cout << vn_abs_r1 << std::endl;
-	std::cout << vn_abs_r1.norm() << std::endl;
 	delete [] vn_abs_r1_tmp;
-	std::cout << vn_abs_r1 << std::endl;
-	std::cout << vn_abs_r1.norm() << std::endl;
 	vn_abs_r1.round(1e-14, 1);
-	std::cout << vn_abs_r1 << std::endl;
-	std::cout << vn_abs_r1.norm() << std::endl;
 }
 
 template <class Tensor>
@@ -608,10 +601,10 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 					int jf = mesh.cell_face_list[ic][j];
 					int icn = mesh.cell_neighbors_list[ic][j]; // index of neighbor
 					if (mesh.cell_face_normal_direction[ic][j] == 1) {
-						vnm_loc = 0.5 * (vn[jf] - vn_abs_r1); // vnm[jf]
+						vnm_loc = 0.5 * (vn[jf] - v.vn_abs_r1); // vnm[jf]
 					}
 					else {
-						vnm_loc = - 0.5 * (vn[jf] + vn_abs_r1); // -vnp[jf]
+						vnm_loc = - 0.5 * (vn[jf] + v.vn_abs_r1); // -vnp[jf]
 					}
 					if ((icn >= 0) && (icn < ic)) {
 						incr = incr - (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnm_loc * df[icn];
@@ -631,8 +624,6 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 			}
 		}
 		// TODO save
-		std::cout << "f[40] " << f[40] << std::endl;
-		std::cout << "diag_r1[40] " << diag_r1[40] << std::endl;
 	}
 }
 

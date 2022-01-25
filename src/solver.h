@@ -1,11 +1,11 @@
 #ifndef SOLVER_H_
 #define SOLVER_H_
 
+#include "read_starcd.h"
 #include "header.h"
 
 #include "full.h"
 #include "tucker.h"
-#include "mesh.h"
 
 const double PI = acos(-1.0); // TODO
 

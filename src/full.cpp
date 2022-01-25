@@ -107,7 +107,6 @@ std::vector<int> Full::r() const
 // Print tensor
 std::ostream& operator << (std::ostream &out, const Full& t)
 {
-	out << "\n";
 	out << "This is a full 3D tensor with \n";
 	out << "r1 = " << t.r1 << ", n1 = " << t.n1 << "\n";
 	out << "r2 = " << t.r2 << ", n2 = " << t.n2 << "\n";
@@ -328,7 +327,7 @@ Full reflect(const Full& t, char axis)
 	}
 }
 
-Full round_t(const Full& t, double tol, int rmax)
+Full round_t(const Full& t, double tol = 1e-14, int rmax = 1000000)
 {
 	Full res(t);
 

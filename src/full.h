@@ -49,7 +49,7 @@ public:
 	friend Full operator /(const Full& t1, const Full& t2);
 	friend Full reflect(const Full& t, char axis);
 
-	friend Full round_t(const Full& t, double tol = 1e-14, int rmax = 1000000);
+	friend Full round_t(const Full& t, double tol, int rmax);
 
 private:
 	int I(int i1, int i2, int i3);

@@ -22,7 +22,7 @@ double g(double x, double y, double z) {
 }
 
 int main(){
-	typedef Full Tensor;
+	typedef Tucker Tensor;
 	
 // vn_abs_r1 test
 	
@@ -42,17 +42,26 @@ int main(){
 	double v_s = pow(2. * Rg * T_s, 0.5);
 	double vmax = 22.0 * v_s;
 
-	double hv = 2.0 * vmax / nv;
+	double hv = 2.0 * vmax / nvx;
 
-	double *vx_ = new double[nvx];
+	double *vx__ = new double[nvx];
 
 	for (int i = 0; i < nvx; ++i) {
-		vx_[i] = - vmax + (hv / 2.0) + i * hv;
+		vx__[i] = - vmax + (hv / 2.0) + i * hv;
 	}
+	std::cout << vmax << std::endl;
+	std::cout << hv << std::endl;
 	
 	double *vx = new double[nv];
 	double *vy = new double[nv];
 	double *vz = new double[nv];
+
+	double *vx_ = new double[nvx];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvx, 1, vx__, 1, vx_, 1);
+	double *vy_ = new double[nvy];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvy, 1, vx__, 1, vy_, 1);
+	double *vz_ = new double[nvz];
+	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvz, 1, vx__, 1, vz_, 1);
 
 	for (int i = 0; i < nvx; ++i) {
 		for (int j = 0; j < nvy; ++j) {
@@ -64,20 +73,26 @@ int main(){
 		}
 	}
 	
-	double* vn_tmp = new double[nv];
+	double* vn_abs_r1_tmp = new double[nv];
+	double sum = 0;
 	for (int i = 0; i < nv; ++i) {
-		vn_tmp[i] = pow(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i], 0.5);
+		vn_abs_r1_tmp[i] = pow(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i], 0.5);
+		sum += vn_abs_r1_tmp[i] * vn_abs_r1_tmp[i];
 	}
-	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_tmp, 1e-3);
-	delete [] vn_tmp;
-	vn_abs_r1.round(1e-14, 1);
-	std::cout << vn_abs_r1.norm() << std::endl;
+	sum = pow(sum, 0.5);
+	std::cout << "sum " << sum << std::endl;
+
+	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp);
+	delete [] vn_abs_r1_tmp;
+
+	std::cout << "vn_abs_r1" << std::endl;
 	std::cout << vn_abs_r1 << std::endl;
-	
-	VelocityGrid<Tensor> v(nvx, nvy, nvz, vx_, vx_, vx_);
-	
-	std::cout << v.vn_abs_r1.norm() << std::endl;
-	std::cout << v.vn_abs_r1 << std::endl;	
+	std::cout << vn_abs_r1.norm() << std::endl;
+
+	vn_abs_r1.round(1e-7, 1);
+
+	std::cout << vn_abs_r1 << std::endl;
+	std::cout << vn_abs_r1.norm() << std::endl;
 	
 /*************************************************************************************/
 // Reflect test

@@ -14,13 +14,6 @@ CPP_SRCS += \
 ../src/tensor-test.cpp \
 ../src/tucker.cpp 
 
-O_SRCS += \
-../src/cli.o \
-../src/full.o \
-../src/mesh.o \
-../src/solver.o \
-../src/tucker.o 
-
 OBJS += \
 ./src/cli.o \
 ./src/full.o \
