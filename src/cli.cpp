@@ -1,4 +1,4 @@
-#include "read_starcd.h"
+#include "read_mesh.h"
 #include "header.h"
 
 #include "full.h"
@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-	typedef Tucker Tensor;
+	typedef Full Tensor;
 
 	GasParams gas_params;
     
@@ -41,33 +41,21 @@ int main(int argc, char *argv[])
     
     while (getline(cfg, line)) {
         std::istringstream sin(line.substr(line.find("=") + 1));
-        if (line.find("mesh_path") != -1)
-            sin >> mesh_path;
+        if (line.find("mesh_path") != -1) sin >> mesh_path;
             
-        else if (line.find("Mach") != -1)
-            sin >> Mach;
-        else if (line.find("Kn") != -1)
-            sin >> Kn;
-        else if (line.find("delta") != -1)
-            sin >> delta;
-        else if (line.find("n_l") != -1)
-            sin >> n_l;
-        else if (line.find("u_l") != -1)
-            sin >> u_l;
-        else if (line.find("T_l") != -1)
-            sin >> T_l;
-        else if (line.find("T_w") != -1)
-            sin >> T_w;
+        else if (line.find("Mach") != -1) sin >> Mach;
+        else if (line.find("Kn") != -1) sin >> Kn;
+        else if (line.find("delta") != -1) sin >> delta;
+        else if (line.find("n_l") != -1) sin >> n_l;
+        else if (line.find("u_l") != -1) sin >> u_l;
+        else if (line.find("T_l") != -1) sin >> T_l;
+        else if (line.find("T_w") != -1) sin >> T_w;
         
-        else if (line.find("nv") != -1)
-            sin >> nv;
-        else if (line.find("solver_type") != -1)
-            sin >> config.solver_type;
-        else if (line.find("CFL") != -1)
-            sin >> config.CFL;
+        else if (line.find("nv") != -1) sin >> nv;
+        else if (line.find("solver_type") != -1) sin >> config.solver_type;
+        else if (line.find("CFL") != -1) sin >> config.CFL;
             
-        else if (line.find("steps") != -1)
-            sin >> steps;
+        else if (line.find("steps") != -1) sin >> steps;
     }
 
 	delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
@@ -84,7 +72,7 @@ int main(int argc, char *argv[])
 	double l_s = delta * mu_s * v_s / p_s;
 
 	Mesh mesh(mesh_path, l_s);
-	if (mesh_path == "/home/egor/git/boltz-t-cpp/mesh-1d/") {
+	if (cfg_path == "/home/egor/git/boltz-t-cpp/mesh-1d/1d.cfg") {
 		n_r = (gas_params.g + 1.0) * Mach * Mach /
 			((gas_params.g - 1.0) * Mach * Mach + 2.0) * n_l;
 	    u_r = ((gas_params.g - 1.0) * Mach * Mach + 2.0) /
@@ -92,7 +80,7 @@ int main(int argc, char *argv[])
 	    T_r = (2.0 * gas_params.g * Mach * Mach - (gas_params.g - 1.0)) * ((gas_params.g - 1.0) * Mach * Mach + 2.0) /
 			(pow(gas_params.g + 1.0, 2.0) * Mach * Mach) * T_l;
 	}
-	else if (mesh_path == "/home/egor/git/boltz-t-cpp/mesh-cyl/") {
+	else if (cfg_path == "/home/egor/git/boltz-t-cpp/mesh-cyl/cyl.cfg") {
 	    n_r = n_l;
 	    u_r = u_l;
 	    T_r = T_l;
@@ -129,7 +117,9 @@ int main(int argc, char *argv[])
 
 	Tensor fmax = f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_w, gas_params.Rg);
 
+	//                 SYMZ      INL   OUTL   WALL  SYMY      SYMX
 	problem.bc_data = {Tensor(), f_in, f_out, fmax, Tensor()};
+	problem.bc_types = {SYMMETRYZ, INLET, OUTLET, WALL, SYMMETRYY};
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 
@@ -139,11 +129,11 @@ int main(int argc, char *argv[])
 
 	std::cout << "Time: " << t1 - t0 << " seconds." << std::endl;
 
-	std::cout << "n = " << S.n[40] << std::endl;
-	std::cout << "ux = " << S.ux[40] << std::endl;
-	std::cout << "uy = " << S.uy[40] << std::endl;
-	std::cout << "uz = " << S.uz[40] << std::endl;
-	std::cout << "T = " << S.T[40] << std::endl;
+	std::cout << "n = " << S.n[39] << std::endl;
+	std::cout << "ux = " << S.ux[39] << std::endl;
+	std::cout << "uy = " << S.uy[39] << std::endl;
+	std::cout << "uz = " << S.uz[39] << std::endl;
+	std::cout << "T = " << S.T[39] << std::endl;
 
 /*
 	int jf = 200;

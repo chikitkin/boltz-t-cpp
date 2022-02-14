@@ -13,6 +13,7 @@ double Mesh::compute_tetra_volume(std::vector < std::vector < double > > tetra) 
 	double a21 = tetra[3][1] - tetra[0][1];
 	double a22 = tetra[3][2] - tetra[0][2];
 
+	// TODO find out the order
 	return ((a00 * a11 * a22 + a01 * a12 * a20 + a02 * a21 * a10) -
 			(a02 * a11 * a20 + a00 * a12 * a21 + a01 * a10 * a22)) / 6.0;
 }
@@ -41,21 +42,84 @@ void Mesh::read(const std::string& path, double scale) {
 
 	int max_vert_in_face = 4;
 	int max_vert_in_cell = 8;
-/*
-	Read vertex list and bc type for each boundary face
-*/
-	std::ifstream bnd_data;
-	bnd_data.open(path + "star.bnd");
-	if (bnd_data.fail())
+
+	std::ifstream data;
+	data.open(path + "mesh.mesh");
+	if (data.fail())
 	{
-		std::cout << "Could not open star.bnd" << std::endl;
+		std::cout << "Could not open mesh data" << std::endl;
 		exit(1);
 	}
+
 	std::string line;
-	while (getline(bnd_data, line)) {
+
+	getline(data, line);
+	getline(data, line);
+	getline(data, line);
+	getline(data, line);
+
+	/*
+		Count number of vertices
+	*/
+	getline(data, line);
+	std::istringstream(line) >> nv;
+	std::cout << "Number of vertices = " << nv << std::endl;
+	vert_coo.reserve(nv);
+	for (int iv = 0; iv < nv; ++iv) {
+		getline(data, line);
 		std::istringstream iss(line);
-		int n, v0, v1, v2, v3, type;
-		if (!(iss >> n >> v0 >> v1 >> v2 >> v3 >> type)) { break; }
+		double x0, x1, x2;
+		int tag;
+		if (!(iss >> x0 >> x1 >> x2 >> tag)) { break; }
+		std::vector <double> vert;
+		vert.push_back(scale * x0);
+		vert.push_back(scale * x1);
+		vert.push_back(scale * x2);
+		vert_coo.push_back(vert);
+	}
+
+	getline(data, line);
+	getline(data, line);
+
+	/*
+		Count number of cells
+	*/
+	getline(data, line);
+	std::istringstream(line) >> nc;
+	std::cout << "Number of cells = " << nc << std::endl;
+	vert_list_for_cell.reserve(nc);
+	for (int ic = 0; ic < nc; ++ic) {
+		getline(data, line);
+		std::istringstream iss(line);
+		int v0, v1, v2, v3, v4, v5, v6, v7, tag;
+		if (!(iss >> v0 >> v1 >> v2 >> v3 >> v4 >> v5 >> v6 >> v7 >> tag)) { break; }
+		std::vector <int> cell; // TODO
+		cell.push_back(v0 - 1);
+		cell.push_back(v1 - 1);
+		cell.push_back(v2 - 1);
+		cell.push_back(v3 - 1);
+		cell.push_back(v4 - 1);
+		cell.push_back(v5 - 1);
+		cell.push_back(v6 - 1);
+		cell.push_back(v7 - 1);
+		vert_list_for_cell.push_back(cell);
+	}
+
+	getline(data, line);
+	getline(data, line);
+
+	/*
+		Read vertex list and bc type for each boundary face
+	*/
+	getline(data, line);
+	std::istringstream(line) >> nbf;
+	std::cout << "Number of boundary faces = " << nbf << std::endl;
+	bcface_vert_lists.reserve(nbf);
+	for (int ibf = 0; ibf < nbf; ++ibf) {
+		getline(data, line);
+		std::istringstream iss(line);
+		int v0, v1, v2, v3, type;
+		if (!(iss >> v0 >> v1 >> v2 >> v3 >> type)) { break; }
 		std::vector <int> bcface;
 		std::set <int> bcface_set;
 		bcface.push_back(v0 - 1);
@@ -68,24 +132,20 @@ void Mesh::read(const std::string& path, double scale) {
 		bcface_set.insert(v3 - 1);
 		bcface_vert_lists.push_back(bcface);
 		bcface_vert_set_lists.push_back(bcface_set);
-		bcface_bctype.push_back(type - 1);
+		bcface_bctype.push_back(type);
 	}
-	bnd_data.close();
+	data.close();
 	bcface_vert_set_lists.shrink_to_fit();
-	bcface_vert_lists.shrink_to_fit();
 	bcface_bctype.shrink_to_fit();
 
-	nbf = bcface_bctype.size();
-
-	std::cout << "Number of boundary faces = " << nbf << std::endl;
 /*
 	Construct list of boundary faces indices for each bctype
 */
-	std::set <int> bc(bcface_bctype.begin(), bcface_bctype.end());
-	for (auto a : bc) {
+	std::set <int> bc_set(bcface_bctype.begin(), bcface_bctype.end());
+	for (auto a : bc_set) {
 		std::cout << a << std::endl;
 	}
-	nbc = *bc.rbegin() + 1; // TODO was bc.size() problem if not every condition is present
+	nbc = *bc_set.rbegin() + 1; // TODO was bc.size() problem if not every condition is present
 	std::cout << "Number of boundary conditions = " << nbc << std::endl;
 
 	bf_for_each_bc.resize(nbc, std::vector <int>()); // TODO
@@ -93,85 +153,27 @@ void Mesh::read(const std::string& path, double scale) {
 		bf_for_each_bc[bcface_bctype[i]].push_back(i);
 	}
 	bf_for_each_bc.shrink_to_fit(); // TODO: Doesnt need?
-/*
-	Count number of cells
-*/
-	std::ifstream cel_data;
-	cel_data.open(path + "star.cel");
-	if (cel_data.fail())
-	{
-		std::cout << "Could not open star.cel" << std::endl;
-		exit(1);
-	}
-	while (getline(cel_data, line)) {
-		std::istringstream iss(line);
-		int n, v0, v1, v2, v3, v4, v5, v6, v7;
-		if (!(iss >> n >> v0 >> v1 >> v2 >> v3 >> v4 >> v5 >> v6 >> v7)) { break; }
-		std::vector <int> cell;
-		cell.push_back(v0 - 1);
-		cell.push_back(v1 - 1);
-		cell.push_back(v2 - 1);
-		cell.push_back(v3 - 1);
-		cell.push_back(v4 - 1);
-		cell.push_back(v5 - 1);
-		cell.push_back(v6 - 1);
-		cell.push_back(v7 - 1);
-		vert_list_for_cell.push_back(cell);
-	}
-	cel_data.close();
-	vert_list_for_cell.shrink_to_fit();
-	nc = 0;
+
 	for (int i = 0; i < vert_list_for_cell.size(); ++i) {
-//			Check, is it "shell" cell?
-		if ((vert_list_for_cell[i][4] != -1) && (vert_list_for_cell[i][5] != -1) &&
-				(vert_list_for_cell[i][6] != -1) && (vert_list_for_cell[i][7] != -1)) {
-			nc += 1; // else it is shell
-			int v0 = vert_list_for_cell[i][0];
-			int v1 = vert_list_for_cell[i][1];
-			int v2 = vert_list_for_cell[i][2];
-			int v3 = vert_list_for_cell[i][3];
-			int v4 = vert_list_for_cell[i][4];
-			int v5 = vert_list_for_cell[i][5];
-			int v6 = vert_list_for_cell[i][6];
-			int v7 = vert_list_for_cell[i][7];
-			// Convert order
-			vert_list_for_cell[i][0] = v3;
-			vert_list_for_cell[i][1] = v2;
-			vert_list_for_cell[i][2] = v7;
-			vert_list_for_cell[i][3] = v6;
-			vert_list_for_cell[i][4] = v0;
-			vert_list_for_cell[i][5] = v1;
-			vert_list_for_cell[i][6] = v4;
-			vert_list_for_cell[i][7] = v5;
-		}
+		int v0 = vert_list_for_cell[i][4];
+		int v1 = vert_list_for_cell[i][5];
+		int v2 = vert_list_for_cell[i][6];
+		int v3 = vert_list_for_cell[i][7];
+		int v4 = vert_list_for_cell[i][0];
+		int v5 = vert_list_for_cell[i][1];
+		int v6 = vert_list_for_cell[i][2];
+		int v7 = vert_list_for_cell[i][3];
+		// Convert order // TODO
+		vert_list_for_cell[i][0] = v3;
+		vert_list_for_cell[i][1] = v2;
+		vert_list_for_cell[i][2] = v7;
+		vert_list_for_cell[i][3] = v6;
+		vert_list_for_cell[i][4] = v0;
+		vert_list_for_cell[i][5] = v1;
+		vert_list_for_cell[i][6] = v4;
+		vert_list_for_cell[i][7] = v5;
 	}
-	std::cout << "Number of cells = " << nc << std::endl;
-/*
-	Count number of vertices
-*/
-	std::ifstream vrt_data;
-	vrt_data.open(path + "star.vrt");
-	if (vrt_data.fail())
-	{
-		std::cout << "Could not open star.vrt" << std::endl;
-		exit(1);
-	}
-	nv = 0;
-	while (getline(vrt_data, line)) {
-		nv += 1;
-		std::istringstream iss(line);
-		int n;
-		double x0, x1, x2;
-		if (!(iss >> n >> x0 >> x1 >> x2)) { break; }
-		std::vector <double> vert;
-		vert.push_back(scale * x0);
-		vert.push_back(scale * x1);
-		vert.push_back(scale * x2);
-		vert_coo.push_back(vert);
-	}
-	vrt_data.close();
-	vert_coo.shrink_to_fit();
-	std::cout << "Number of vertices = " << nv << std::endl;
+
 /*
 	Calculate cell centers - arithmetic mean of vertises' coordinates
 */
@@ -359,7 +361,8 @@ void Mesh::read(const std::string& path, double scale) {
 			}
 		}
 	}
-	// TODO: comment
+	// Used in solver
+	// contains global face index of boundary face, type of bc and normal direction
 	bound_face_info.resize(nbf, std::vector <int>(3));
 	for (int ibf = 0; ibf < nbf; ++ibf) {
 		for (int jf = 0; jf < nf; ++jf) {
@@ -399,7 +402,7 @@ void Mesh::read(const std::string& path, double scale) {
 void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string filename,
 		std::vector <std::string> var_names, double time) {
 
-	int nv = data[0].size();
+	int nvar = data[0].size();
 	std::ofstream file;
 	file.open(filename);
 	if (file.fail())
@@ -409,14 +412,14 @@ void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string 
 	}
 	file << "TITLE = \"VolumeData\"\n";
 	file << "VARIABLES = \"x\" \"y\" \"z\" ";
-	for (int iv = 0; iv < nv; ++iv) {
+	for (int iv = 0; iv < nvar; ++iv) {
 		file << " \"" << var_names[iv] << "\" ";
 	}
 	file << "\n";
-	file << "ZONE T= my_zone, SolutionTime = " << time <<
-			", DATAPACKING=Block, ZONETYPE=FEBRICK Nodes= " << nv <<
-		   " Elements= " << nc;
-	file << " VarLocation=([4-" << 3+nv << "]=CellCentered)";
+	file << "ZONE T=\"my_zone\", SolutionTime=" << time <<
+			", DATAPACKING=Block, ZONETYPE=FEBRICK, Nodes=" << nv <<
+		   ", Elements=" << nc;
+	file << ", VarLocation=([4-" << 3+nvar << "]=CellCentered)";
 	// Write vertices' coo;
 	for (int i = 0; i < 3; ++i) {
 		for (int iv = 0; iv < nv; ++iv) {
@@ -424,7 +427,7 @@ void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string 
 		}
 	}
 	// Write values of variables
-	for (int i = 0; i < nv; ++i) {
+	for (int i = 0; i < nvar; ++i) {
 		for (int ic = 0; ic < nc; ++ic) {
 			file << data[ic][i] << "\n"; // TODO: format
 		}

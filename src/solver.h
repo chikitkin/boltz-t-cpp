@@ -1,7 +1,7 @@
 #ifndef SOLVER_H_
 #define SOLVER_H_
 
-#include "read_starcd.h"
+#include "read_mesh.h"
 #include "header.h"
 
 #include "full.h"
@@ -86,6 +86,7 @@ template <class Tensor>
 class Problem {
 public:
 	std::vector < Tensor > init_tensor_list;
+	std::vector < int > bc_types;
 	Tensor f_init(double x, double y, double z);
 
 	std::vector < Tensor > bc_data;

@@ -37,7 +37,7 @@ Mesh::Mesh(const std::string& path, double scale) {
 	read(path, scale);
 }
 
-void Mesh::read_starcd(const std::string& path, double scale) {
+void Mesh::read(const std::string& path, double scale) {
 
 	int max_vert_in_face = 4;
 	int max_vert_in_cell = 8;
@@ -359,7 +359,8 @@ void Mesh::read_starcd(const std::string& path, double scale) {
 			}
 		}
 	}
-	// TODO: comment
+	// Used in solver
+	// contains global face index of boundary face, type of bc and normal direction
 	bound_face_info.resize(nbf, std::vector <int>(3));
 	for (int ibf = 0; ibf < nbf; ++ibf) {
 		for (int jf = 0; jf < nf; ++jf) {
@@ -399,7 +400,7 @@ void Mesh::read_starcd(const std::string& path, double scale) {
 void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string filename,
 		std::vector <std::string> var_names, double time) {
 
-	int nv = data[0].size();
+	int nvar = data[0].size();
 	std::ofstream file;
 	file.open(filename);
 	if (file.fail())
@@ -409,14 +410,14 @@ void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string 
 	}
 	file << "TITLE = \"VolumeData\"\n";
 	file << "VARIABLES = \"x\" \"y\" \"z\" ";
-	for (int iv = 0; iv < nv; ++iv) {
+	for (int iv = 0; iv < nvar; ++iv) {
 		file << " \"" << var_names[iv] << "\" ";
 	}
 	file << "\n";
-	file << "ZONE T= my_zone, SolutionTime = " << time <<
-			", DATAPACKING=Block, ZONETYPE=FEBRICK Nodes= " << nv <<
-		   " Elements= " << nc;
-	file << " VarLocation=([4-" << 3+nv << "]=CellCentered)";
+	file << "ZONE T=\"my_zone\", SolutionTime=" << time <<
+			", DATAPACKING=Block, ZONETYPE=FEBRICK, Nodes=" << nv <<
+		   ", Elements=" << nc;
+	file << ", VarLocation=([4-" << 3+nvar << "]=CellCentered)";
 	// Write vertices' coo;
 	for (int i = 0; i < 3; ++i) {
 		for (int iv = 0; iv < nv; ++iv) {
@@ -424,7 +425,7 @@ void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string 
 		}
 	}
 	// Write values of variables
-	for (int i = 0; i < nv; ++i) {
+	for (int i = 0; i < nvar; ++i) {
 		for (int ic = 0; ic < nc; ++ic) {
 			file << data[ic][i] << "\n"; // TODO: format
 		}

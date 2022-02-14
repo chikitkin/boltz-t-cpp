@@ -1,4 +1,4 @@
-#include "read_starcd.h"
+#include "read_mesh.h"
 #include "header.h"
 #include "solver.h"
 
@@ -456,7 +456,7 @@ Solution<Tensor>::Solution(
 	T.resize(mesh.nc, 0.0);
 	nu.resize(mesh.nc, 0.0);
 	rank.resize(mesh.nc, 0.0);
-	data.resize(mesh.nc, std::vector < double >(10, 0.0));
+	data.resize(mesh.nc, std::vector < double >());
 
 	it = 0;
 	//  TODO: create_res
@@ -544,7 +544,19 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 			p[ic] = params[6];
 			nu[ic] = params[7];
 
-//			data[ic] = {};
+			double compression =
+					(f[ic].r()[0] * f[ic].r()[1] * f[ic].r()[2] +
+					f[ic].r()[0] * f[ic].n()[0] +
+					f[ic].r()[1] * f[ic].n()[1] +
+					f[ic].r()[2] * f[ic].n()[2]) / (f[ic].n()[0] * f[ic].n()[1] * f[ic].n()[2]);
+
+			data[ic] = {
+					n[ic],
+					ux[ic],
+					uy[ic],
+					uz[ic],
+					T[ic],
+					compression};
 
 			J = comp_j(params, f[ic], v, gas_params);
 			rhs[ic] = rhs[ic] + J;
@@ -557,6 +569,8 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 		}
 		frob_norm = pow(frob_norm / mesh.nc, 0.5);
 		frob_norm_iter.push_back(frob_norm);
+
+		std::cout << "Frob norm = " << frob_norm << std::endl;
 
 		if (config.solver_type == "explicit") {
 			// Update values
@@ -625,6 +639,8 @@ void Solution<Tensor>::make_time_steps(const Config& config_, int nt)
 		}
 		// TODO save
 	}
+	mesh.write_tecplot(data, "tec.dat",
+			{"n", "ux", "uy", "uz", "T", "comp"});
 }
 
 template class VelocityGrid<Full>;
