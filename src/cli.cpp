@@ -9,9 +9,9 @@
 
 int main(int argc, char *argv[])
 {
-	typedef Full Tensor;
+	typedef Tucker Tensor;
 
-	GasParams gas_params;
+	std::shared_ptr < GasParams > gas_params = std::make_shared < GasParams > ();
     
     double Mach;
 	double Kn;
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
 	int nv;
 	
-	Config config;
+	std::shared_ptr < Config > config = std::make_shared < Config > ();
 	
 	int steps;
 		
@@ -52,35 +52,36 @@ int main(int argc, char *argv[])
         else if (line.find("T_w") != -1) sin >> T_w;
         
         else if (line.find("nv") != -1) sin >> nv;
-        else if (line.find("solver_type") != -1) sin >> config.solver_type;
-        else if (line.find("CFL") != -1) sin >> config.CFL;
+        else if (line.find("solver_type") != -1) sin >> config->solver_type;
+        else if (line.find("CFL") != -1) sin >> config->CFL;
             
         else if (line.find("steps") != -1) sin >> steps;
     }
 
 	delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
-	u_l = Mach * pow(gas_params.g * gas_params.Rg * T_l, 0.5);
+	u_l = Mach * pow(gas_params->g * gas_params->Rg * T_l, 0.5);
 
 	double n_s = n_l;
 	double T_s = T_l;
 
-	double p_s = gas_params.m * n_s * gas_params.Rg * T_s;
+	double p_s = gas_params->m * n_s * gas_params->Rg * T_s;
 
-	double v_s = pow(2. * gas_params.Rg * T_s, 0.5);
-	double mu_s = gas_params.mu(T_s);
+	double v_s = pow(2. * gas_params->Rg * T_s, 0.5);
+	double mu_s = gas_params->mu(T_s);
 
 	double l_s = delta * mu_s * v_s / p_s;
 
-	Mesh mesh(mesh_path, l_s);
-	if (cfg_path == "/home/egor/git/boltz-t-cpp/mesh-1d/1d.cfg") {
-		n_r = (gas_params.g + 1.0) * Mach * Mach /
-			((gas_params.g - 1.0) * Mach * Mach + 2.0) * n_l;
-	    u_r = ((gas_params.g - 1.0) * Mach * Mach + 2.0) /
-			((gas_params.g + 1.0) * Mach * Mach) * u_l;
-	    T_r = (2.0 * gas_params.g * Mach * Mach - (gas_params.g - 1.0)) * ((gas_params.g - 1.0) * Mach * Mach + 2.0) /
-			(pow(gas_params.g + 1.0, 2.0) * Mach * Mach) * T_l;
+	std::shared_ptr < Mesh > mesh = std::make_shared < Mesh > (mesh_path, l_s);
+
+	if (mesh_path == "../mesh-1d/") {
+		n_r = (gas_params->g + 1.0) * Mach * Mach /
+			((gas_params->g - 1.0) * Mach * Mach + 2.0) * n_l;
+	    u_r = ((gas_params->g - 1.0) * Mach * Mach + 2.0) /
+			((gas_params->g + 1.0) * Mach * Mach) * u_l;
+	    T_r = (2.0 * gas_params->g * Mach * Mach - (gas_params->g - 1.0)) * ((gas_params->g - 1.0) * Mach * Mach + 2.0) /
+			(pow(gas_params->g + 1.0, 2.0) * Mach * Mach) * T_l;
 	}
-	else if (cfg_path == "/home/egor/git/boltz-t-cpp/mesh-cyl/cyl.cfg") {
+	else if (cfg_path == "../mesh-cyl/") {
 	    n_r = n_l;
 	    u_r = u_l;
 	    T_r = T_l;
@@ -96,10 +97,10 @@ int main(int argc, char *argv[])
 		vx_[i] = - vmax + (hv / 2.0) + i * hv;
 	}
 
-	VelocityGrid<Tensor> v(nv, nv, nv, vx_, vx_, vx_);
+	std::shared_ptr < VelocityGrid<Tensor> > v = std::make_shared < VelocityGrid<Tensor> > (nv, nv, nv, vx_, vx_, vx_);
 	
-	Tensor f_in = f_maxwell_t<Tensor>(v, n_l, u_l, 0.0, 0.0, T_l, gas_params.Rg);
-	Tensor f_out = f_maxwell_t<Tensor>(v, n_r, u_r, 0.0, 0.0, T_r, gas_params.Rg);
+	Tensor f_in = f_maxwell_t<Tensor>(v, n_l, u_l, 0.0, 0.0, T_l, gas_params->Rg);
+	Tensor f_out = f_maxwell_t<Tensor>(v, n_r, u_r, 0.0, 0.0, T_r, gas_params->Rg);
 
 	std::vector < double > params;
 
@@ -112,14 +113,14 @@ int main(int argc, char *argv[])
 	std::cout << "T " << (params[4] - T_l) / T_l << " = 0" << std::endl;
 
 
-	Problem<Tensor> problem;
-	problem.init_tensor_list = {f_in, f_out};
+	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();
+	problem->init_tensor_list = {f_in, f_out};
 
-	Tensor fmax = f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_w, gas_params.Rg);
+	Tensor fmax = f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_w, gas_params->Rg);
 
 	//                 SYMZ      INL   OUTL   WALL  SYMY      SYMX
-	problem.bc_data = {Tensor(), f_in, f_out, fmax, Tensor()};
-	problem.bc_types = {SYMMETRYZ, INLET, OUTLET, WALL, SYMMETRYY};
+	problem->bc_data = {Tensor(), f_in, f_out, fmax, Tensor()};
+	problem->bc_types = {SYMMETRYZ, INLET, OUTLET, WALL, SYMMETRYY};
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 

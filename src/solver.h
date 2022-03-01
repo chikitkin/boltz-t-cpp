@@ -39,8 +39,6 @@ class VelocityGrid {
 public:
 	// Constructor
 	VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *vy__, double *vz__);
-	// Copy constructor
-	VelocityGrid(const VelocityGrid<Tensor>& v);
 	// Destructor
 	~VelocityGrid();
 
@@ -90,7 +88,7 @@ public:
 	Tensor f_init(double x, double y, double z);
 
 	std::vector < Tensor > bc_data;
-	Tensor set_bc(const GasParams& gas_params, const VelocityGrid<Tensor>& v,
+	Tensor get_bc(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
 			int bc_type, const Tensor& bc_data,
 			const Tensor& f,
 			const Tensor& vn, const Tensor& vnp, const Tensor& vnm,
@@ -110,30 +108,30 @@ struct Config {
 	int save_macro_step = 1e+5;
 };
 
-template <class Tensor> std::vector <double> comp_macro_params(const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params);
-template <class Tensor> Tensor comp_j(const std::vector <double>& params, const Tensor& f, const VelocityGrid<Tensor>& v, const GasParams& gas_params);
+template <class Tensor> std::vector <double> comp_macro_params(const Tensor& f, std::shared_ptr < VelocityGrid<Tensor> > v, std::shared_ptr < GasParams > gas_params);
+template <class Tensor> Tensor comp_j(const std::vector <double>& params, const Tensor& f, std::shared_ptr < VelocityGrid<Tensor> > v, std::shared_ptr < GasParams > gas_params);
 
 template <class Tensor>
 class Solution {
 public:
 	// Constructor
 	Solution(
-			const GasParams & gas_params_,
-			const Mesh & mesh_,
-			const VelocityGrid<Tensor> & v_,
-			const Problem<Tensor> & problem_,
-			const Config & config_
+			std::shared_ptr < GasParams > gas_params,
+			std::shared_ptr < Mesh > mesh,
+			std::shared_ptr < VelocityGrid<Tensor> > v,
+			std::shared_ptr < Problem<Tensor> > problem,
+			std::shared_ptr < Config > config
 			);
 	// Destructor
 //	~Solution();
 
-	GasParams gas_params;
-	Mesh mesh;
-	VelocityGrid<Tensor> v;
+	std::shared_ptr < GasParams > gas_params;
+	std::shared_ptr < Mesh > mesh;
+	std::shared_ptr < VelocityGrid<Tensor> > v;
 
-	Problem<Tensor> problem;
+	std::shared_ptr < Problem<Tensor> > problem;
 
-	Config config;
+	std::shared_ptr < Config > config;
 
 	// path to folder with output
 	std::string path;
@@ -182,16 +180,16 @@ public:
 
 	void plot_macro();
 
-	void make_time_steps(const Config& config_, int nt);
+	void make_time_steps(std::shared_ptr<Config> config, int nt);
 };
 
 template <class Tensor>
-double *f_maxwell(const VelocityGrid<Tensor> & v,
+double *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,
 		double n, double ux, double uy, double uz,
 		double T, double Rg);
 
 template <class Tensor>
-Tensor f_maxwell_t(const VelocityGrid<Tensor> & v,
+Tensor f_maxwell_t(std::shared_ptr < VelocityGrid<Tensor> > v,
 		double n, double ux, double uy, double uz,
 		double T, double Rg);
 
