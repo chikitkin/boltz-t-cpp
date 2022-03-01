@@ -1,6 +1,6 @@
 CC=icc
 
-CFLAGS=-g -Wall -O0 -mkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include" -I"/home/egor/eigen-3.4.0"
+CFLAGS=-g -Wall -O0 -qmkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include" 
 
 READ=read_mesh
 
