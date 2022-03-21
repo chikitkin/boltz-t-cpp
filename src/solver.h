@@ -1,7 +1,7 @@
 #ifndef SOLVER_H_
 #define SOLVER_H_
 
-#include "mesh2.h"
+#include "mesh.h"
 #include "header.h"
 
 #include "full.h"

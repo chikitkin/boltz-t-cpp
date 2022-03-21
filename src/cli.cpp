@@ -1,4 +1,4 @@
-#include "mesh2.h"
+#include "mesh.h"
 #include "header.h"
 
 #include "full.h"
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 	//                 SYMZ      INL   OUTL   WALL  SYMY      SYMX
 //	problem->bcData = {Tensor(), f_in, f_out, fmaxwell, Tensor()};
 //	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, WALL, SYMMETRYY};
-	problem->bcData = {Tensor(), f_in, f_out, Tensor()};
+	problem->bcData = {Tensor(), f_in, f_out, Tensor()}; // TODO fix
 	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, SYMMETRYY};
 
 
@@ -139,79 +139,5 @@ int main(int argc, char *argv[])
 	std::cout << "uz = " << S.uz[39] << std::endl;
 	std::cout << "T = " << S.T[39] << std::endl;
 
-/*
-	int jf = 200;
-
-	std::cout << "S.flux[jf]" << std::endl;
-	std::cout << S.flux[jf] << std::endl;
-
-	double *fluxjf = S.flux[jf].full();
-
-	double s = 0.0;
-	for (int i = 0; i < pow(44, 3); ++i) {
-		s += fluxjf[i];
-	}
-	std::cout << s << std::endl;
-
-	std::cout << "S.fm[jf]" << std::endl;
-	std::cout << S.fm[jf] << std::endl;
-	std::cout << "S.fp[jf]" << std::endl;
-	std::cout << S.fp[jf] << std::endl;
-	std::cout << "S.vn[jf]" << std::endl;
-	std::cout << S.vn[jf] << std::endl;
-	std::cout << "S.vn_abs[jf]" << std::endl;
-	std::cout << S.vn_abs[jf] << std::endl;
-
-	double *Sf = S.f[40].full();
-	double *Sfm = S.fm[jf].full();
-	double *Sfp = S.fp[jf].full();
-	double *Svn = S.vn[jf].full();
-	double *Svn_abs = S.vn_abs[jf].full();
-	double *Sflux = S.flux[jf].full();
-
-	std::cout << "Sf[i]" << std::endl;
-	for (int i = 0; i < 10; ++i) {
-		std::cout << Sf[i] << std::endl;
-	}
-	std::cout << "Sfm[i]" << std::endl;
-	for (int i = 0; i < 10; ++i) {
-		std::cout << Sfm[i] << std::endl;
-	}
-	std::cout << "Sfp[i]" << std::endl;
-	for (int i = 0; i < 10; ++i) {
-		std::cout << Sfp[i] << std::endl;
-	}
-	std::cout << "Svn[i]" << std::endl;
-	for (int i = 0; i < 10; ++i) {
-		std::cout << Svn[i] << std::endl;
-	}
-	std::cout << "Svn_abs[i]" << std::endl;
-	for (int i = 0; i < 10; ++i) {
-		std::cout << Svn_abs[i] << std::endl;
-	}
-	std::cout << "Sflux[i]" << std::endl;
-	for (int i = 0; i < 10; ++i) {
-		std::cout << Sflux[i] << std::endl;
-	}
-
-	std::ofstream file;
-	file.open("/home/egor/git/boltz-t-cpp/run.txt");
-	file << "Sflux[i]" << std::endl;
-	for (int i = 0; i < S.v.nv; ++i) {
-		file << Sflux[i] << std::endl;
-	}
-
-	std::cout << "S.vn_round[jf]" << std::endl;
-	std::cout << round_t(S.vn[jf], 1e-3, 1e+6) << std::endl;
-
-	file << "Svn[i]" << std::endl;
-	for (int i = 0; i < S.v.nv; ++i) {
-		file << Svn[i] << std::endl;
-	}
-/*
-	for (int j = 0; j < S.mesh.nf; ++j) {
-		std::cout << S.fm[j];
-	}
-*/
 	return 0;
 }

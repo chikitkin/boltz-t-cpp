@@ -2,3 +2,5 @@
 *.o
 /Debug/
 *.dat
+*.txt
+/Default/
