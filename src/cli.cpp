@@ -1,4 +1,4 @@
-#include "read_mesh.h"
+#include "mesh2.h"
 #include "header.h"
 
 #include "full.h"
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
         else if (line.find("T_w") != -1) sin >> T_w;
         
         else if (line.find("nv") != -1) sin >> nv;
-        else if (line.find("solver_type") != -1) sin >> config->solver_type;
+        else if (line.find("solver_type") != -1) sin >> config->isImplicit;
         else if (line.find("CFL") != -1) sin >> config->CFL;
             
         else if (line.find("steps") != -1) sin >> steps;
@@ -114,13 +114,16 @@ int main(int argc, char *argv[])
 
 
 	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();
-	problem->init_tensor_list = {f_in, f_out};
+	problem->initData = {f_in, f_out};
 
-	Tensor fmax = f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_w, gas_params->Rg);
+	Tensor fmaxwell = f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_w, gas_params->Rg);
 
 	//                 SYMZ      INL   OUTL   WALL  SYMY      SYMX
-	problem->bc_data = {Tensor(), f_in, f_out, fmax, Tensor()};
-	problem->bc_types = {SYMMETRYZ, INLET, OUTLET, WALL, SYMMETRYY};
+//	problem->bcData = {Tensor(), f_in, f_out, fmaxwell, Tensor()};
+//	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, WALL, SYMMETRYY};
+	problem->bcData = {Tensor(), f_in, f_out, Tensor()};
+	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, SYMMETRYY};
+
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 

@@ -1,8 +1,8 @@
 CC=icc
 
-CFLAGS=-g -Wall -O0 -qmkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include" 
+CFLAGS=-g -Wall -O0 -mkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include" 
 
-READ=read_mesh
+READ=mesh2
 
 all: cli.o
 
@@ -29,6 +29,9 @@ tensor-test.o: tensor-test.cpp full.o tucker.o $(READ).o solver.o
 
 mesh-test.o: mesh-test.cpp $(READ).o
 	$(CC) $(CFLAGS) $(READ).o mesh-test.cpp -o mesh-test.o
+	
+mesh2-test.o: mesh2-test.cpp $(READ).o
+	$(CC) $(CFLAGS) $(READ).o mesh2-test.cpp -o mesh2-test.o
 	
 clean:
 	rm -rf *.o

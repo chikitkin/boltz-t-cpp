@@ -5,22 +5,25 @@
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.intel.sycl.compiler.toolChain.base.product.357174074" moduleId="org.eclipse.cdt.core.settings" name="Default">
 				<externalSettings/>
 				<extensions>
-					<extension id="org.eclipse.cdt.core.GNU_ELF" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
 					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.MakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
-					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.ICCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 				<configuration artifactName="${ProjName}" buildProperties="" description="" id="com.intel.sycl.compiler.toolChain.base.product.357174074" name="Default" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=" parent="org.eclipse.cdt.build.core.emptycfg">
 					<folderInfo id="com.intel.sycl.compiler.toolChain.base.product.357174074.57857465" name="/" resourcePath="">
-						<toolChain id="com.intel.sycl.compiler.toolChain.base.product.537916182" name="Intel(R) oneAPI DPC++ Compiler" superClass="com.intel.sycl.compiler.toolChain.base.product">
-							<targetPlatform binaryParser="org.eclipse.cdt.core.GNU_ELF" id="com.intel.sycl.compiler.target.base.1081546573" isAbstract="false" name="com.intel.sycl.compiler.target.base" osList="linux" superClass="com.intel.sycl.compiler.target.base"/>
-							<builder buildPath="${workspace_loc:/boltz-t-cpp}/Default" id="com.intel.sycl.compiler.builder.make.base.1902134051" name="Gnu Make Builder.Default" superClass="com.intel.sycl.compiler.builder.make.base"/>
-							<tool id="com.intel.sycl.compiler.888127572" name="Intel(R) oneAPI DPC++ Compiler" superClass="com.intel.sycl.compiler">
-								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.intel.sycl.compiler.includes.inclpath.828458798" superClass="com.intel.sycl.compiler.includes.inclpath" valueType="includePath">
+						<toolChain id="intel.toolchain.oneapi.base.149860175" name="Intel C++ Compiler Classic" superClass="intel.toolchain.oneapi.base">
+							<option id="intel.compilestep.oneapi.platform.1621180025" name="Platform" superClass="intel.compilestep.oneapi.platform"/>
+							<option id="intel.compilestep.oneapi.sysroot.1764737751" name="Sysroot" superClass="intel.compilestep.oneapi.sysroot"/>
+							<option id="intel.compilestep.oneapi.gnuprefix.935989252" name="GNU Prefix" superClass="intel.compilestep.oneapi.gnuprefix"/>
+							<targetPlatform binaryParser="org.eclipse.cdt.core.ELF" id="intel.platform.oneapi.base.968008096" isAbstract="false" name="intel.platform.base" osList="linux" superClass="intel.platform.oneapi.base"/>
+							<builder buildPath="${workspace_loc:/boltz-t-cpp}/Default" id="intel.builder.oneapi.makebuilder.622638700" name="Gnu Make Builder.Default" superClass="intel.builder.oneapi.makebuilder"/>
+							<tool id="intel.tool.archiver.oneapi.base.1095980000" name="Intel Archiver" superClass="intel.tool.archiver.oneapi.base"/>
+							<tool id="intel.tool.cpp.compiler.oneapi.base.228234268" name="Intel(R) C++ Compiler Classic" superClass="intel.tool.cpp.compiler.oneapi.base">
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="intel.compilestep.preprocessor.includedirectories.1100830234" superClass="intel.compilestep.preprocessor.includedirectories" valueType="includePath">
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}}"/>
 									<listOptionValue builtIn="false" value="/opt/intel/oneapi/vpl/2021.4.0/include"/>
 									<listOptionValue builtIn="false" value="/opt/intel/oneapi/tbb/2021.3.0/env/../include"/>
@@ -41,16 +44,22 @@
 									<listOptionValue builtIn="false" value="/home/egor/MEDCOUPLING-9.7.0-MPI-UB20.04-SRC/BINARIES-UB20.04/hdf5/include"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}}"/>
 								</option>
-								<inputType id="com.intel.sycl.compiler.cpp.input.1636362786" name="CppSources" superClass="com.intel.sycl.compiler.cpp.input"/>
-								<inputType id="com.intel.sycl.compiler.cpp_c.input.1028255714" name="CSources" superClass="com.intel.sycl.compiler.cpp_c.input"/>
+								<inputType id="intel.cpp.compilestep.input.298107502" name="C Sources" superClass="intel.cpp.compilestep.input"/>
+								<inputType id="intel.cpp.compilestep.asm.primary.1913424143" superClass="intel.cpp.compilestep.asm.primary"/>
+								<inputType id="intel.cpp.compilestep.asm.191529498" superClass="intel.cpp.compilestep.asm"/>
 							</tool>
-							<tool id="com.intel.sycl.linker.1202643996" name="Linker" superClass="com.intel.sycl.linker">
-								<inputType id="com.intel.sycl.linker.input.704631319" superClass="com.intel.sycl.linker.input">
+							<tool id="intel.tool.c.compiler.oneapi.base.295494833" name="Intel(R) C Compiler Classic" superClass="intel.tool.c.compiler.oneapi.base">
+								<inputType id="intel.c.compilestep.input.954329881" name="C Sources" superClass="intel.c.compilestep.input"/>
+								<inputType id="intel.c.compilestep.asm.primary.1668752562" superClass="intel.c.compilestep.asm.primary"/>
+								<inputType id="intel.c.compilestep.asm.734480461" superClass="intel.c.compilestep.asm"/>
+							</tool>
+							<tool id="intel.tool.cpp.linker.oneapi.base.1762588816" name="Intel C++ Linker" superClass="intel.tool.cpp.linker.oneapi.base">
+								<inputType id="intel.linkstep.input.807589204" superClass="intel.linkstep.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
 								</inputType>
 							</tool>
-							<tool id="com.intel.sycl.archiver.250724610" name="Archiver" superClass="com.intel.sycl.archiver"/>
+							<tool id="intel.tool.c.linker.oneapi.base.407145110" name="Intel C Linker" superClass="intel.tool.c.linker.oneapi.base"/>
 						</toolChain>
 					</folderInfo>
 				</configuration>

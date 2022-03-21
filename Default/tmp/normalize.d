@@ -1,1 +1,3 @@
-tmp/normalize.o: ../tmp/normalize.cpp
+tmp/normalize.d: ../tmp/normalize.cpp
+
+/usr/include/stdc-predef.h:

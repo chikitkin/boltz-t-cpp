@@ -27,6 +27,15 @@ endif
 ifneq ($(strip $(CXX_DEPS)),)
 -include $(CXX_DEPS)
 endif
+ifneq ($(strip $(ASM_DEPS)),)
+-include $(ASM_DEPS)
+endif
+ifneq ($(strip $(S_DEPS)),)
+-include $(S_DEPS)
+endif
+ifneq ($(strip $(S_UPPER_DEPS)),)
+-include $(S_UPPER_DEPS)
+endif
 ifneq ($(strip $(CPP_DEPS)),)
 -include $(CPP_DEPS)
 endif
@@ -59,14 +68,14 @@ main-build: boltz-t-cpp
 # Tool invocations
 boltz-t-cpp: $(OBJS) $(USER_OBJS) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
 	@echo 'Building target: $@'
-	@echo 'Invoking: Linker'
-	dpcpp -o "boltz-t-cpp" $(OBJS) $(USER_OBJS) $(LIBS)
+	@echo 'Invoking: Intel C++ Linker'
+	icpc  -o "boltz-t-cpp" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS)$(CXX_DEPS)$(OBJS)$(CPP_DEPS)$(C_DEPS) boltz-t-cpp
+	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS)$(CXX_DEPS)$(OBJS)$(ASM_DEPS)$(S_DEPS)$(S_UPPER_DEPS)$(CPP_DEPS)$(C_DEPS) boltz-t-cpp
 	-@echo ' '
 
 .PHONY: all clean dependents

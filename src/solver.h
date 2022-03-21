@@ -1,7 +1,7 @@
 #ifndef SOLVER_H_
 #define SOLVER_H_
 
-#include "read_mesh.h"
+#include "mesh2.h"
 #include "header.h"
 
 #include "full.h"
@@ -83,29 +83,32 @@ public:
 template <class Tensor>
 class Problem {
 public:
-	std::vector < Tensor > init_tensor_list;
-	std::vector < int > bc_types;
-	Tensor f_init(double x, double y, double z);
+	std::vector < Tensor > initData;
+	Tensor getInit(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
+			double x, double y, double z,
+			const std::vector<Tensor>& initData);
 
-	std::vector < Tensor > bc_data;
-	Tensor get_bc(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
-			int bc_type, const Tensor& bc_data,
+	std::vector < bcType > bcTypes;
+	std::vector < Tensor > bcData;
+	Tensor getBC(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
+			double x, double y, double z,
+			bcType bc_type, const Tensor& bc_data,
 			const Tensor& f,
 			const Tensor& vn, const Tensor& vnp, const Tensor& vnm,
 			double tol);
 };
 
 struct Config {
-	std::string solver_type = "explicit";
+	bool isImplicit = false;
 
 	double CFL = 0.5;
 	double tol = 1e-7;
 
-	std::string init_type = "default";
-	std::string init_filename = "";
+	std::string initType = "default";
+	std::string initFilename = "";
 
-	int save_tec_step = 1e+5;
-	int save_macro_step = 1e+5;
+	int saveTecStep = 1e+5;
+	int saveMacroStep = 1e+5;
 };
 
 template <class Tensor> std::vector <double> comp_macro_params(const Tensor& f, std::shared_ptr < VelocityGrid<Tensor> > v, std::shared_ptr < GasParams > gas_params);
@@ -149,9 +152,7 @@ public:
 	std::vector < Tensor > diag_r1;
 
 	std::vector < Tensor > f;
-
-	std::vector < Tensor > fp;
-	std::vector < Tensor > fm;
+	std::vector<std::vector<Tensor>> fLeftRight;
 	std::vector < Tensor > flux;
 	std::vector < Tensor > rhs;
 	std::vector < Tensor > df;

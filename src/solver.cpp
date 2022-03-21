@@ -1,4 +1,4 @@
-#include "read_mesh.h"
+#include "mesh2.h"
 #include "header.h"
 #include "solver.h"
 
@@ -63,18 +63,21 @@ double GasParams::mu(double T) const {
 }
 
 template <class Tensor>
-Tensor Problem<Tensor>::f_init(double x, double y, double z) {
+Tensor Problem<Tensor>::getInit(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
+		double x, double y, double z,
+		const std::vector<Tensor>& initData) {
 	if (x < 0.0) {
-		return init_tensor_list[0];
+		return initData[0];
 	}
 	else {
-		return init_tensor_list[1];
+		return initData[1];
 	}
 }
 
 template <class Tensor>
-Tensor Problem<Tensor>::get_bc(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
-		int bc_type, const Tensor& bc_data,
+Tensor Problem<Tensor>::getBC(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
+		double x, double y, double z,
+		bcType bc_type, const Tensor& bc_data,
 		const Tensor& f,
 		const Tensor& vn, const Tensor& vnp, const Tensor& vnm,
 		double tol)
@@ -286,21 +289,22 @@ Solution<Tensor>::Solution(
 	path = "./";
 	// TODO make directory
 
-	vn.resize(mesh->nf, Tensor());
+	vn.resize(mesh->nFaces, Tensor());
 	double* vn_tmp = new double[v->nv];
-	vnm.resize(mesh->nf, Tensor());
+	vnm.resize(mesh->nFaces, Tensor());
 	double* vnm_tmp = new double[v->nv];
-	vnp.resize(mesh->nf, Tensor());
+	vnp.resize(mesh->nFaces, Tensor());
 	double* vnp_tmp = new double[v->nv];
-	vn_abs.resize(mesh->nf, Tensor());
+	vn_abs.resize(mesh->nFaces, Tensor());
 	double* vn_abs_tmp = new double[v->nv];
 
-	for (int jf = 0; jf < mesh->nf; ++jf) {
+	for (int jf = 0; jf < mesh->nFaces; ++jf) {
+		std::cout << "Face no. " << jf << std::endl;
 		for (int i = 0; i < v->nv; ++i) {
 			vn_tmp[i] = 
-					mesh->face_normals[jf][0] * v->vx[i] +
-					mesh->face_normals[jf][1] * v->vy[i] +
-					mesh->face_normals[jf][2] * v->vz[i];
+					mesh->faceNormals[jf][0] * v->vx[i] +
+					mesh->faceNormals[jf][1] * v->vy[i] +
+					mesh->faceNormals[jf][2] * v->vz[i];
 			if (vn_tmp[i] <= 0.0) {
 				vnm_tmp[i] = vn_tmp[i];
 				vnp_tmp[i] = 0.0;
@@ -317,12 +321,11 @@ Solution<Tensor>::Solution(
 		vn_abs[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_abs_tmp);
 		vn_abs[jf].round(1e-14, 6);
 	}
-
-	h = *std::min_element(mesh->cell_diam.begin(), mesh->cell_diam.end());
+	h = *std::min_element(mesh->cellDiameters.begin(), mesh->cellDiameters.end());
 	tau = h * config->CFL / (*std::max_element(v->vx_, v->vx_ + v->nvx) * (pow(3.0, 0.5)));
 
-	diag.resize(mesh->nc, Tensor());
-	diag_r1.resize(mesh->nc, Tensor());
+	diag.resize(mesh->nCells, Tensor());
+	diag_r1.resize(mesh->nCells, Tensor());
 	
 	double *diag_tmp = new double [v->nv];
 	double diag_sc;
@@ -330,19 +333,20 @@ Solution<Tensor>::Solution(
 	double *ratio = new double [v->nv];
 
 	double *zero = new double [v->nv]();
-	for (int ic = 0; ic < mesh->nc; ++ic) {
+
+	for (int ic = 0; ic < mesh->nCells; ++ic) {
 
 		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', v->nv, 1, zero, 1, diag_tmp, 1);
 		diag_sc = 0.0;
 
-		for (int j = 0; j < 6; ++j) {
-			int jf = mesh->cell_face_list[ic][j];
+		for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+			int jf = mesh->cellFaces[ic][j];
 
 			for (int i = 0; i < v->nv; ++i) {
-				vn_tmp[i] = mesh->cell_face_normal_direction[ic][j] * (
-				mesh->face_normals[jf][0] * v->vx[i] +
-				mesh->face_normals[jf][1] * v->vy[i] +
-				mesh->face_normals[jf][2] * v->vz[i]);
+				vn_tmp[i] = mesh->getOutSign(ic, j) * (
+				mesh->faceNormals[jf][0] * v->vx[i] +
+				mesh->faceNormals[jf][1] * v->vy[i] +
+				mesh->faceNormals[jf][2] * v->vz[i]);
 				if (vn_tmp[i] <= 0.0) {
 					vnm_tmp[i] = vn_tmp[i];
 					vnp_tmp[i] = 0.0;
@@ -353,9 +357,9 @@ Solution<Tensor>::Solution(
 				}
 				vn_abs_tmp[i] = vnp_tmp[i] - vnm_tmp[i];
 
-				diag_tmp[i] += (mesh->face_areas[jf] / mesh->cell_volumes[ic]) * vnp_tmp[i];
+				diag_tmp[i] += (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnp_tmp[i];
 			}
-			diag_sc += 0.5 * (mesh->face_areas[jf] / mesh->cell_volumes[ic]);
+			diag_sc += 0.5 * (mesh->faceAreas[jf] / mesh->cellVolumes[ic]);
 		}
 		
 		diag_r1[ic] = diag_sc * v->vn_abs_r1;
@@ -370,37 +374,38 @@ Solution<Tensor>::Solution(
 		delete [] diag_t_full;
 	}
 
-	f.resize(mesh->nc, Tensor());
+	f.resize(mesh->nCells, Tensor());
 
-	if (config->init_type == "default") {
+	if (config->initType == "default") {
 		double x;
 		double y;
 		double z;
-		for (int i = 0; i < mesh->nc; ++i) {
-			x = mesh->cell_center_coo[i][0];
-			y = mesh->cell_center_coo[i][1];
-			z = mesh->cell_center_coo[i][2];
-			f[i] = problem->f_init(x, y, z);
+		for (int ic = 0; ic < mesh->nCells; ++ic) {
+			x = mesh->cellCenters[ic][0];
+			y = mesh->cellCenters[ic][1];
+			z = mesh->cellCenters[ic][2];
+			f[ic] = problem->getInit(gas_params, v,
+					x, y, z,
+					problem->initData);
 		}
 	}
 	// TODO: other inits
 
-	fp.resize(mesh->nf, Tensor());
-	fm.resize(mesh->nf, Tensor());
-	flux.resize(mesh->nf, Tensor());
-	rhs.resize(mesh->nc, Tensor());
-	df.resize(mesh->nc, Tensor());
+	fLeftRight.resize(mesh->nFaces, std::vector<Tensor>{Tensor(), Tensor()});
+	flux.resize(mesh->nFaces, Tensor());
+	rhs.resize(mesh->nCells, Tensor());
+	df.resize(mesh->nCells, Tensor());
 
-	n.resize(mesh->nc, 0.0);
-	rho.resize(mesh->nc, 0.0);
-	ux.resize(mesh->nc, 0.0);
-	uy.resize(mesh->nc, 0.0);
-	uz.resize(mesh->nc, 0.0);
-	p.resize(mesh->nc, 0.0);
-	T.resize(mesh->nc, 0.0);
-	nu.resize(mesh->nc, 0.0);
-	rank.resize(mesh->nc, 0.0);
-	data.resize(mesh->nc, std::vector < double >());
+	n.resize(mesh->nCells, 0.0);
+	rho.resize(mesh->nCells, 0.0);
+	ux.resize(mesh->nCells, 0.0);
+	uy.resize(mesh->nCells, 0.0);
+	uz.resize(mesh->nCells, 0.0);
+	p.resize(mesh->nCells, 0.0);
+	T.resize(mesh->nCells, 0.0);
+	nu.resize(mesh->nCells, 0.0);
+	rank.resize(mesh->nCells, 0.0);
+	data.resize(mesh->nCells, std::vector < double >());
 
 	it = 0;
 	//  TODO: create_res
@@ -433,49 +438,50 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		it += 1;
 		// reconstruction for inner faces
 		// 1st order
-		for (int ic = 0; ic < mesh->nc; ++ic) {
-			for (int j = 0; j < 6; ++j) {
-				int jf = mesh->cell_face_list[ic][j];
-				if (mesh->cell_face_normal_direction[ic][j] == 1) {
-					fm[jf] = f[ic];
-				}
-				else {
-					fp[jf] = f[ic];
-				}
+		for (int ic = 0; ic < mesh->nCells; ++ic) {
+			for (int j = 0; j < mesh->getNumFacesOfCell(ic); j++) {
+				int jf = mesh->getFacesOfCell(ic, j);
+				// 0 if outer, 1 else
+				fLeftRight[jf][1 - mesh->getOutIndex(ic, j)] = f[ic];
 			}
 		}
 		// boundary condition
 		// loop over all boundary faces
-		for (int j = 0; j < mesh->nbf; ++j) {
-			int jf = mesh->bound_face_info[j][0]; // global face index
-			int bc_num = mesh->bound_face_info[j][1];
-			int bc_type = problem->bc_types[bc_num];
-
-			if (mesh->bound_face_info[j][2] == 1) {
-				// bc = bc_list[j_bc]
-				// bc.set_bc()
-				fp[jf] = problem->get_bc(gas_params, v, bc_type, problem->bc_data[bc_num],
-						fm[jf], vn[jf], vnp[jf], vnm[jf], config->tol);
-			}
-			else {
-				fm[jf] = problem->get_bc(gas_params, v, bc_type, problem->bc_data[bc_num],
-						fp[jf], -vn[jf], -vnm[jf], -vnp[jf], config->tol);
+		for (int ibc = 0; ibc < problem->bcTypes.size(); ++ibc) {
+			int tag = mesh->boundaryFaceTagsSet[ibc];
+			std::vector<int> BCFaces = mesh->getFacesForTag(tag);
+			bcType type = problem->bcTypes[ibc];
+			Tensor &data = problem->bcData[ibc];
+			for (const int &jf: BCFaces) {
+				double x = mesh->faceCenters[jf][0];
+				double y = mesh->faceCenters[jf][1];
+				double z = mesh->faceCenters[jf][2];
+				fLeftRight[jf][mesh->getOutIndex(jf)] = problem->getBC(
+						gas_params, v,
+						x, y, z,
+						type, data,
+						fLeftRight[jf][1 - mesh->getOutIndex(jf)],
+						mesh->getOutSign(jf) * vn[jf],
+						(1 - mesh->getOutIndex(jf)) * vnp[jf] - mesh->getOutIndex(jf) * vnm[jf],
+						(1 - mesh->getOutIndex(jf)) * vnm[jf] - mesh->getOutIndex(jf) * vnp[jf], // TODO fix
+						config->tol
+				);
 			}
 		}
 		// Riemann solver - compute fluxes
-		for (int jf = 0; jf < mesh->nf; ++jf) {
-			flux[jf] = 0.5 * mesh->face_areas[jf] *
-					((fp[jf] + fm[jf]) * vn[jf] - (fp[jf] - fm[jf]) * vn_abs[jf]);
+		for (int jf = 0; jf < mesh->nFaces; ++jf) {
+			flux[jf] = 0.5 * mesh->faceAreas[jf] *
+					((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - (fLeftRight[jf][1] - fLeftRight[jf][0]) * vn_abs[jf]);
 			flux[jf].round(config->tol);
 		}
 		// computation of the right hand side
 		std::vector < double > params(8, 0.0); // for J
-		for (int ic = 0; ic < mesh->nc; ++ic) {
+		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			rhs[ic] = v->zero;
 			// sum up fluxes from all faces of this cell
-			for (int j = 0; j < 6; ++j) {
-				int jf = mesh->cell_face_list[ic][j];
-				rhs[ic] = rhs[ic] - (mesh->cell_face_normal_direction[ic][j] / mesh->cell_volumes[ic]) * flux[jf];
+			for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+				int jf = mesh->cellFaces[ic][j];
+				rhs[ic] = rhs[ic] - (mesh->getOutSign(ic, j) / mesh->cellVolumes[ic]) * flux[jf];
 				rhs[ic].round(config->tol);
 			}
 			// compute macroparameters and collision integral
@@ -491,10 +497,10 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			nu[ic] = params[7];
 
 			double compression =
-					(f[ic].r()[0] * f[ic].r()[1] * f[ic].r()[2] +
+					static_cast<double>(f[ic].r()[0] * f[ic].r()[1] * f[ic].r()[2] +
 					f[ic].r()[0] * f[ic].n()[0] +
 					f[ic].r()[1] * f[ic].n()[1] +
-					f[ic].r()[2] * f[ic].n()[2]) / (f[ic].n()[0] * f[ic].n()[1] * f[ic].n()[2]);
+					f[ic].r()[2] * f[ic].n()[2]) / static_cast<double>(f[ic].n()[0] * f[ic].n()[1] * f[ic].n()[2]);
 
 			data[ic] = {
 					n[ic],
@@ -508,42 +514,37 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			rhs[ic] = rhs[ic] + J;
 			rhs[ic].round(config->tol);
 		}
-
+		std::cout << "rhs good" << std::endl;
 		double frob_norm = 0.0;
-		for (int ic = 0; ic < mesh->nc; ++ic) {
+		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			frob_norm += pow(rhs[ic].norm(), 2.0);
 		}
-		frob_norm = pow(frob_norm / mesh->nc, 0.5);
+		frob_norm = pow(frob_norm / mesh->nCells, 0.5);
 		frob_norm_iter.push_back(frob_norm);
 
 		std::cout << "Frob norm = " << frob_norm << std::endl;
 
-		if (config->solver_type == "explicit") {
+		if (!config->isImplicit) {
 			// Update values
-			for (int ic = 0; ic < mesh->nc; ++ic) {
+			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				f[ic] = f[ic] + tau * rhs[ic];
 				f[ic].round(config->tol);
 			}
 		}
-	
-		if (config->solver_type == "implicit") {
-			for (int ic = mesh->nc - 1; ic >= 0; --ic) {
+
+		else {
+			for (int ic = mesh->nCells - 1; ic >= 0; --ic) {
 				df[ic] = rhs[ic];
 			}
 			// Backward sweep
-			for (int ic = mesh->nc - 1; ic >= 0; --ic) {
+			for (int ic = mesh->nCells - 1; ic >= 0; --ic) {
 				// loop over neighbors of cell ic
-				for (int j = 0; j < 6; ++j) {
-					int jf = mesh->cell_face_list[ic][j];
-					int icn = mesh->cell_neighbors_list[ic][j]; // index of neighbor
-					if (mesh->cell_face_normal_direction[ic][j] == 1) {
-						vnm_loc = 0.5 * (vn[jf] - v->vn_abs_r1); // vnm[jf]
-					}
-					else {
-						vnm_loc = - 0.5 * (vn[jf] + v->vn_abs_r1); // -vnp[jf]
-					}
+				for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+					int jf = mesh->cellFaces[ic][j];
+					int icn = mesh->cellNeighbors[ic][j]; // index of neighbor
 					if ((icn >= 0) && (icn > ic)) {
-						df[ic] = df[ic] - (mesh->face_areas[jf] / mesh->cell_volumes[ic]) * vnm_loc * df[icn];
+						vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+						df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnm_loc * df[icn];
 						df[ic].round(config->tol);
 					}
 				}
@@ -554,20 +555,15 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				df[ic].round(config->tol);
 			}
 			// Forward sweep
-			for (int ic = 0; ic < mesh->nc; ++ic) {
+			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				// loop over neighbors of cell ic
 				incr = v->zero;
-				for (int j = 0; j < 6; ++j) {
-					int jf = mesh->cell_face_list[ic][j];
-					int icn = mesh->cell_neighbors_list[ic][j]; // index of neighbor
-					if (mesh->cell_face_normal_direction[ic][j] == 1) {
-						vnm_loc = 0.5 * (vn[jf] - v->vn_abs_r1); // vnm[jf]
-					}
-					else {
-						vnm_loc = - 0.5 * (vn[jf] + v->vn_abs_r1); // -vnp[jf]
-					}
+				for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+					int jf = mesh->cellFaces[ic][j];
+					int icn = mesh->cellNeighbors[ic][j]; // index of neighbor, -1 if no neighbor
 					if ((icn >= 0) && (icn < ic)) {
-						incr = incr - (mesh->face_areas[jf] / mesh->cell_volumes[ic]) * vnm_loc * df[icn];
+						vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+						incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnm_loc * df[icn];
 						incr.round(config->tol);
 					}
 				}
@@ -578,7 +574,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				df[ic].round(config->tol);
 			}
 			// Update values
-			for (int ic = 0; ic < mesh->nc; ++ic) {
+			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				f[ic] = f[ic] + df[ic];
 				f[ic].round(config->tol);
 			}
