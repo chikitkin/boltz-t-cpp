@@ -299,7 +299,6 @@ Solution<Tensor>::Solution(
 	double* vn_abs_tmp = new double[v->nv];
 
 	for (int jf = 0; jf < mesh->nFaces; ++jf) {
-		std::cout << "Face no. " << jf << std::endl;
 		for (int i = 0; i < v->nv; ++i) {
 			vn_tmp[i] = 
 					mesh->faceNormals[jf][0] * v->vx[i] +
