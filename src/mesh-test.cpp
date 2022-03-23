@@ -3,7 +3,7 @@
 
 int main() {
 
-	Mesh mesh("../mesh-1d/");
+	Mesh mesh("../mesh-1d-tetra/");
 
 	std::cout << mesh.nBoundaryFaces << std::endl;
 	std::cout << mesh.nCells << std::endl;

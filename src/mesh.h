@@ -40,6 +40,7 @@ public:
 	std::vector<std::vector<int>> cellVerts;
 	std::vector<cellType> cellTypes;
 	void readHexa(std::ifstream &data);
+	void readTetra(std::ifstream &data);
 	std::vector<std::vector<double>> cellCenters;
 	std::vector<double> cellVolumes;
 	std::vector<std::vector<int>> computeFacesOfCell(int ic);
@@ -56,6 +57,7 @@ public:
 	std::vector<int> boundaryFaceTags;
 	std::vector<int> boundaryFaceTagsSet;
 	void readBoundaryQuads(std::ifstream &data);
+	void readBoundaryTriangles(std::ifstream &data);
 	std::vector<int> boundaryFaceIndex;
 	std::map<int, std::vector<int>> boundaryFacesForEachTag; // TODO or unordered?
 	std::vector<bool> isOuterNormalBoundary;

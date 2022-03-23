@@ -69,6 +69,37 @@ void Mesh::readHexa(std::ifstream &data) {
 	}
 }
 
+void Mesh::readTetra(std::ifstream &data) {
+	std::string line;
+	getline(data, line);
+	int nTetra;
+	std::istringstream(line) >> nTetra;
+	std::cout << "Number of tetra cells = " << nTetra << std::endl;
+	if (cellVerts.empty()) {
+		nCells = nTetra;
+	}
+	else {
+		nCells += nTetra;
+	}
+	cellVerts.reserve(nCells);
+	cellTypes.resize(nCells, TETRA);
+	for (int i = 0; i < nTetra; ++i) {
+		getline(data, line);
+		std::istringstream iss(line);
+		int v0, v1, v2, v3, tag;
+		if (!(iss >> v0 >> v1 >> v2 >> v3 >> tag)) {
+			std::cout << "Wrong tetra line!" << std::endl;
+		}
+		std::vector <int> cell;
+		// reorder so counter-clock TODO
+		cell.push_back(v0 - 1);
+		cell.push_back(v1 - 1);
+		cell.push_back(v3 - 1);
+		cell.push_back(v2 - 1);
+		cellVerts.push_back(cell);
+	}
+}
+
 void Mesh::readBoundaryQuads(std::ifstream &data) {
 	std::string line;
 	getline(data, line);
@@ -96,6 +127,37 @@ void Mesh::readBoundaryQuads(std::ifstream &data) {
 		bcface.push_back(v1 - 1);
 		bcface.push_back(v2 - 1);
 		bcface.push_back(v3 - 1);
+		boundaryFaces.push_back(bcface);
+		boundaryFaceTags.push_back(tag);
+	}
+}
+
+void Mesh::readBoundaryTriangles(std::ifstream &data) {
+	std::string line;
+	getline(data, line);
+	int nBoundaryTriangles;
+	std::istringstream(line) >> nBoundaryTriangles;
+	std::cout << "Number of boundary triangles = " << nBoundaryTriangles << std::endl;
+	if (boundaryFaces.empty()) {
+		nBoundaryFaces = nBoundaryTriangles;
+	}
+	else {
+		nBoundaryFaces += nBoundaryTriangles;
+	}
+	boundaryFaces.reserve(nBoundaryFaces);
+	boundaryFaceTypes.resize(nBoundaryFaces, TRIANGLE);
+	boundaryFaceTags.reserve(nBoundaryFaces);
+	for (int i = 0; i < nBoundaryTriangles; ++i) {
+		getline(data, line);
+		std::istringstream iss(line);
+		int v0, v1, v2, tag;
+		if (!(iss >> v0 >> v1 >> v2 >> tag)) {
+			std::cout << "Wrong triangle line!" << std::endl;
+		}
+		std::vector <int> bcface;
+		bcface.push_back(v0 - 1);
+		bcface.push_back(v1 - 1);
+		bcface.push_back(v2 - 1);
 		boundaryFaces.push_back(bcface);
 		boundaryFaceTags.push_back(tag);
 	}
@@ -132,7 +194,11 @@ std::vector<std::vector<int>> Mesh::computeFacesOfCell(int ic) {
 		faces.push_back(std::vector <int> {verts[4], verts[5], verts[7], verts[6]});
 	}
 	else if (cellTypes[ic] == TETRA) {
-		// TODO
+		faces.reserve(4);
+		faces.push_back(std::vector <int> {verts[0], verts[2], verts[1]});
+		faces.push_back(std::vector <int> {verts[0], verts[1], verts[3]});
+		faces.push_back(std::vector <int> {verts[0], verts[3], verts[2]});
+		faces.push_back(std::vector <int> {verts[2], verts[1], verts[3]});
 	}
 
 	return faces;
@@ -165,6 +231,12 @@ void Mesh::read(const std::string& path, double scale) {
 		}
 		else if (line == "Quadrilaterals") {
 			readBoundaryQuads(data);
+		}
+		else if (line == "Triangles") {
+			readBoundaryTriangles(data);
+		}
+		else if (line == "Tetrahedra") {
+			readTetra(data);
 		}
 	}
 	data.close();
@@ -277,20 +349,20 @@ void Mesh::read(const std::string& path, double scale) {
 	cellVolumes.resize(nCells, 0.0);
 	for (int ic = 0; ic < nCells; ++ic) {
 		std::vector < std::vector < int > > localFaces = computeFacesOfCell(ic);
-		// Loop over faces, for each face construct 4 tetras
-		// and compute their volumes
-		for (int jf = 0; jf < localFaces.size(); ++jf) {
-			std::vector <double> localFaceCenter = {0.0, 0.0, 0.0};
-			int vertsNum = localFaces[jf].size();
-			for (int kv = 0; kv < vertsNum; ++kv) {
-				localFaceCenter[0] += vertsCoo[localFaces[jf][kv]][0];
-				localFaceCenter[1] += vertsCoo[localFaces[jf][kv]][1];
-				localFaceCenter[2] += vertsCoo[localFaces[jf][kv]][2];
-			}
-			localFaceCenter[0] /= static_cast<double>(vertsNum);
-			localFaceCenter[1] /= static_cast<double>(vertsNum);
-			localFaceCenter[2] /= static_cast<double>(vertsNum);
-			if (cellTypes[ic] == HEXA) {
+		if (cellTypes[ic] == HEXA) {
+			// Loop over faces, for each face construct 4 tetras
+			// and compute their volumes
+			for (int jf = 0; jf < localFaces.size(); ++jf) {
+				std::vector <double> localFaceCenter = {0.0, 0.0, 0.0};
+				int vertsNum = localFaces[jf].size();
+				for (int kv = 0; kv < vertsNum; ++kv) {
+					localFaceCenter[0] += vertsCoo[localFaces[jf][kv]][0];
+					localFaceCenter[1] += vertsCoo[localFaces[jf][kv]][1];
+					localFaceCenter[2] += vertsCoo[localFaces[jf][kv]][2];
+				}
+				localFaceCenter[0] /= static_cast<double>(vertsNum);
+				localFaceCenter[1] /= static_cast<double>(vertsNum);
+				localFaceCenter[2] /= static_cast<double>(vertsNum);
 				std::vector <double> x1 = vertsCoo[localFaces[jf][0]];
 				std::vector <double> x2 = vertsCoo[localFaces[jf][1]];
 				std::vector <double> x3 = vertsCoo[localFaces[jf][2]];
@@ -320,9 +392,18 @@ void Mesh::read(const std::string& path, double scale) {
 				tetra3.push_back(localFaceCenter);
 				cellVolumes[ic] += computeTetraVolume(tetra3);
 			}
-			else if (cellTypes[ic] == TETRA) {
-				// TODO
-			}
+		}
+		else if (cellTypes[ic] == TETRA) {
+			std::vector <double> x1 = vertsCoo[cellVerts[ic][0]];
+			std::vector <double> x2 = vertsCoo[cellVerts[ic][1]];
+			std::vector <double> x3 = vertsCoo[cellVerts[ic][2]];
+			std::vector <double> x4 = vertsCoo[cellVerts[ic][3]];
+			std::vector <std::vector<double>> tetra;
+			tetra.push_back(x1);
+			tetra.push_back(x2);
+			tetra.push_back(x3);
+			tetra.push_back(x4);
+			cellVolumes[ic] = computeTetraVolume(tetra); // TODO
 		}
 	}
 	std::cout << "Sum of volumes = " << accumulate(cellVolumes.begin(), cellVolumes.end(), 0.0) << std::endl;
@@ -359,13 +440,33 @@ void Mesh::read(const std::string& path, double scale) {
 			// TODO: Complicated procedure to overcome problems when area is tiny
 		}
 		else if (faceTypes[jf] == TRIANGLE) {
-			// TODO
+			std::vector <double> vert0 = vertsCoo[verts[0]];
+			std::vector <double> vert1 = vertsCoo[verts[1]];
+			std::vector <double> vert2 = vertsCoo[verts[2]];
+
+			std::vector <double> vec0(3);
+			vec0[0] = (vert2[0] - vert0[0]);
+			vec0[1] = (vert2[1] - vert0[1]);
+			vec0[2] = (vert2[2] - vert0[2]);
+
+			std::vector <double> vec1(3);
+			vec1[0] = (vert1[0] - vert0[0]);
+			vec1[1] = (vert1[1] - vert0[1]);
+			vec1[2] = (vert1[2] - vert0[2]);
+
+			faceAreas[jf] = 0.5 * sqrt(pow(vec0[1]*vec1[2] - vec0[2]*vec1[1], 2) +
+					pow(vec0[2]*vec1[0] - vec0[0]*vec1[2], 2) +
+					pow(vec0[0]*vec1[1] - vec0[1]*vec1[0], 2));
+
+			faceNormals[jf][0] = (vec0[1]*vec1[2] - vec0[2]*vec1[1]) / (2.0 * faceAreas[jf]);
+			faceNormals[jf][1] = (vec0[2]*vec1[0] - vec0[0]*vec1[2]) / (2.0 * faceAreas[jf]);
+			faceNormals[jf][2] = (vec0[0]*vec1[1] - vec0[1]*vec1[0]) / (2.0 * faceAreas[jf]);
 		}
 	}
 	/*
 		Compute face centers
 	*/
-	faceNormals.reserve(nFaces);
+	faceCenters.reserve(nFaces);
 	for (int jf = 0; jf < nFaces; ++jf) {
 		std::vector <int> face = faces[jf];
 		std::vector <double> faceCenter = {0.0, 0.0, 0.0};

@@ -513,7 +513,6 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			rhs[ic] = rhs[ic] + J;
 			rhs[ic].round(config->tol);
 		}
-		std::cout << "rhs good" << std::endl;
 		double frob_norm = 0.0;
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			frob_norm += pow(rhs[ic].norm(), 2.0);

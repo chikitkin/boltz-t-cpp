@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-	typedef Tucker Tensor;
+	typedef Full Tensor;
 
 	std::shared_ptr < GasParams > gas_params = std::make_shared < GasParams > ();
     
@@ -138,6 +138,13 @@ int main(int argc, char *argv[])
 	std::cout << "uy = " << S.uy[39] << std::endl;
 	std::cout << "uz = " << S.uz[39] << std::endl;
 	std::cout << "T = " << S.T[39] << std::endl;
+
+	std::ofstream out;
+	out.open("T.txt");
+	for (int ic = 0; ic < S.mesh->nCells; ++ic) {
+		out << S.mesh->cellCenters[ic][0] << " " << S.T[ic] << "\n";
+	}
+	out.close();
 
 	return 0;
 }
