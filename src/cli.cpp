@@ -9,8 +9,6 @@
 
 int main(int argc, char *argv[])
 {
-	typedef Full Tensor;
-
 	std::shared_ptr < GasParams > gas_params = std::make_shared < GasParams > ();
     
     double Mach;
@@ -39,6 +37,7 @@ int main(int argc, char *argv[])
 	std::ifstream cfg(cfg_path);
     std::string line;
     
+    bool isTensorized;
     while (getline(cfg, line)) {
         std::istringstream sin(line.substr(line.find("=") + 1));
         if (line.find("mesh_path") != -1) sin >> mesh_path;
@@ -52,11 +51,15 @@ int main(int argc, char *argv[])
         else if (line.find("T_w") != -1) sin >> T_w;
         
         else if (line.find("nv") != -1) sin >> nv;
-        else if (line.find("solver_type") != -1) sin >> config->isImplicit;
+        else if (line.find("isImplicit") != -1) sin >> config->isImplicit;
         else if (line.find("CFL") != -1) sin >> config->CFL;
             
         else if (line.find("steps") != -1) sin >> steps;
+        else if (line.find("isTensorized") != -1) sin >> isTensorized;
     }
+    //if (isTensorized) { typedef Tucker Tensor; }
+    //else { typedef Full Tensor; }
+    typedef Tucker Tensor;
 
 	delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
 	u_l = Mach * pow(gas_params->g * gas_params->Rg * T_l, 0.5);
@@ -73,7 +76,7 @@ int main(int argc, char *argv[])
 
 	std::shared_ptr < Mesh > mesh = std::make_shared < Mesh > (mesh_path, l_s);
 
-	if (mesh_path == "../mesh-1d/") {
+	if (mesh_path == "../mesh-1d/" || mesh_path == "../mesh-1d-tetra/") {
 		n_r = (gas_params->g + 1.0) * Mach * Mach /
 			((gas_params->g - 1.0) * Mach * Mach + 2.0) * n_l;
 	    u_r = ((gas_params->g - 1.0) * Mach * Mach + 2.0) /
@@ -142,7 +145,7 @@ int main(int argc, char *argv[])
 	std::ofstream out;
 	out.open("T.txt");
 	for (int ic = 0; ic < S.mesh->nCells; ++ic) {
-		out << S.mesh->cellCenters[ic][0] << " " << S.T[ic] << "\n";
+		out << S.mesh->cellCenters[ic][0] << " " << S.n[ic] << " " << S.ux[ic] << " " << S.T[ic] << "\n";
 	}
 	out.close();
 

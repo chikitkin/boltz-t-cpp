@@ -5,10 +5,10 @@ int main() {
 
 	Mesh mesh("../mesh-1d-tetra/");
 
-	std::cout << mesh.nBoundaryFaces << std::endl;
-	std::cout << mesh.nCells << std::endl;
-	std::cout << mesh.nVerts << std::endl;
-	std::cout << mesh.nFaces << std::endl;
+	std::cout << "nBoundaryFaces " << mesh.nBoundaryFaces << std::endl;
+	std::cout << "nCells " << mesh.nCells << std::endl;
+	std::cout << "nVerts " << mesh.nVerts << std::endl;
+	std::cout << "nFaces " << mesh.nFaces << std::endl;
 
 
 	std::cout << "boundaryFaces" << std::endl;

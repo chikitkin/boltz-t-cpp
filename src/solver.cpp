@@ -523,6 +523,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		std::cout << "Frob norm = " << frob_norm << std::endl;
 
 		if (!config->isImplicit) {
+			std::cout << "explicit" << std::endl;
 			// Update values
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				f[ic] = f[ic] + tau * rhs[ic];
@@ -531,6 +532,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		}
 
 		else {
+			std::cout << "implicit" << std::endl;
 			for (int ic = mesh->nCells - 1; ic >= 0; --ic) {
 				df[ic] = rhs[ic];
 			}

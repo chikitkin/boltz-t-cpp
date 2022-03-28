@@ -92,10 +92,10 @@ void Mesh::readTetra(std::ifstream &data) {
 		}
 		std::vector <int> cell;
 		// reorder so counter-clock TODO
-		cell.push_back(v0 - 1);
-		cell.push_back(v1 - 1);
 		cell.push_back(v3 - 1);
+		cell.push_back(v1 - 1);
 		cell.push_back(v2 - 1);
+		cell.push_back(v0 - 1);
 		cellVerts.push_back(cell);
 	}
 }
@@ -195,10 +195,10 @@ std::vector<std::vector<int>> Mesh::computeFacesOfCell(int ic) {
 	}
 	else if (cellTypes[ic] == TETRA) {
 		faces.reserve(4);
-		faces.push_back(std::vector <int> {verts[0], verts[2], verts[1]});
-		faces.push_back(std::vector <int> {verts[0], verts[1], verts[3]});
-		faces.push_back(std::vector <int> {verts[0], verts[3], verts[2]});
 		faces.push_back(std::vector <int> {verts[2], verts[1], verts[3]});
+		faces.push_back(std::vector <int> {verts[0], verts[1], verts[2]});
+		faces.push_back(std::vector <int> {verts[0], verts[2], verts[3]});
+		faces.push_back(std::vector <int> {verts[0], verts[3], verts[1]});
 	}
 
 	return faces;
@@ -633,14 +633,27 @@ void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string 
 	// Write cell-to-vertices connectivity
 	for (int ic = 0; ic < nCells; ++ic) {
 		std::vector <int> verts = cellVerts[ic]; // TODO: format
-		file << verts[4] + 1 << " ";
-		file << verts[5] + 1 << " ";
-		file << verts[1] + 1 << " ";
-		file << verts[0] + 1 << " ";
-		file << verts[6] + 1 << " ";
-		file << verts[7] + 1 << " ";
-		file << verts[3] + 1 << " ";
-		file << verts[2] + 1 << " ";
-		file << "\n";
+		if (cellTypes[ic] == HEXA) {
+			file << verts[4] + 1 << " ";
+			file << verts[5] + 1 << " ";
+			file << verts[1] + 1 << " ";
+			file << verts[0] + 1 << " ";
+			file << verts[6] + 1 << " ";
+			file << verts[7] + 1 << " ";
+			file << verts[3] + 1 << " ";
+			file << verts[2] + 1 << " ";
+			file << "\n";
+		}
+		else if (cellTypes[ic] == TETRA) {
+			file << verts[1] + 1 << " ";
+			file << verts[2] + 1 << " ";
+			file << verts[3] + 1 << " ";
+			file << verts[3] + 1 << " ";
+			file << verts[0] + 1 << " ";
+			file << verts[0] + 1 << " ";
+			file << verts[0] + 1 << " ";
+			file << verts[0] + 1 << " ";
+			file << "\n";
+		}
 	}
 }
