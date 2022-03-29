@@ -88,6 +88,7 @@ public:
 			double x, double y, double z,
 			const std::vector<Tensor>& initData);
 
+	std::vector < int > bcTags;
 	std::vector < bcType > bcTypes;
 	std::vector < Tensor > bcData;
 	Tensor getBC(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,

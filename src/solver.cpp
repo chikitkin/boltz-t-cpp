@@ -403,6 +403,7 @@ Solution<Tensor>::Solution(
 	p.resize(mesh->nCells, 0.0);
 	T.resize(mesh->nCells, 0.0);
 	nu.resize(mesh->nCells, 0.0);
+	comp.resize(mesh->nCells, 0.0);
 	rank.resize(mesh->nCells, 0.0);
 	data.resize(mesh->nCells, std::vector < double >());
 
@@ -447,24 +448,27 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		// boundary condition
 		// loop over all boundary faces
 		for (int ibc = 0; ibc < problem->bcTypes.size(); ++ibc) {
-			int tag = mesh->boundaryFaceTagsSet[ibc];
-			std::vector<int> BCFaces = mesh->getFacesForTag(tag);
+			int tag = problem->bcTags[ibc];
 			bcType type = problem->bcTypes[ibc];
 			Tensor &data = problem->bcData[ibc];
-			for (const int &jf: BCFaces) {
-				double x = mesh->faceCenters[jf][0];
-				double y = mesh->faceCenters[jf][1];
-				double z = mesh->faceCenters[jf][2];
-				fLeftRight[jf][mesh->getOutIndex(jf)] = problem->getBC(
-						gas_params, v,
-						x, y, z,
-						type, data,
-						fLeftRight[jf][1 - mesh->getOutIndex(jf)],
-						mesh->getOutSign(jf) * vn[jf],
-						(1 - mesh->getOutIndex(jf)) * vnp[jf] - mesh->getOutIndex(jf) * vnm[jf],
-						(1 - mesh->getOutIndex(jf)) * vnm[jf] - mesh->getOutIndex(jf) * vnp[jf], // TODO fix
-						config->tol
-				);
+			// TODO fix
+			if (mesh->boundaryFacesForEachTag.count(tag)) {
+				std::vector<int> BCFaces = mesh->boundaryFacesForEachTag[tag];
+				for (const int &jf: BCFaces) {
+					double x = mesh->faceCenters[jf][0];
+					double y = mesh->faceCenters[jf][1];
+					double z = mesh->faceCenters[jf][2];
+					fLeftRight[jf][mesh->getOutIndex(jf)] = problem->getBC(
+							gas_params, v,
+							x, y, z,
+							type, data,
+							fLeftRight[jf][1 - mesh->getOutIndex(jf)],
+							mesh->getOutSign(jf) * vn[jf],
+							(1 - mesh->getOutIndex(jf)) * vnp[jf] - mesh->getOutIndex(jf) * vnm[jf],
+							(1 - mesh->getOutIndex(jf)) * vnm[jf] - mesh->getOutIndex(jf) * vnp[jf], // TODO fix
+							config->tol
+					);
+				}
 			}
 		}
 		// Riemann solver - compute fluxes
@@ -484,8 +488,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				rhs[ic].round(config->tol);
 			}
 			// compute macroparameters and collision integral
-			params = comp_macro_params(f[ic], v, gas_params);
-			J = comp_j(params, f[ic], v, gas_params);
+			params = comp_macro_params(f[ic]);
+			J = comp_j(params, f[ic]);
 			rhs[ic] = rhs[ic] + J;
 			rhs[ic].round(config->tol);
 
@@ -585,14 +589,10 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			{"n", "ux", "uy", "uz", "T", "comp"});
 }
 
-template class Full f_maxwell_t<Full>(std::shared_ptr< VelocityGrid<Full> >, double, double, double, double, double, double);
-template class std::vector<double> comp_macro_params<Full>(Full const&, std::shared_ptr< VelocityGrid<Full> >, std::shared_ptr<GasParams>);
 template class VelocityGrid<Full>;
 template class Problem<Full>;
 template class Solution<Full>;
 
-template class Tucker f_maxwell_t<Tucker>(std::shared_ptr< VelocityGrid<Tucker> >, double, double, double, double, double, double);
-template class std::vector<double> comp_macro_params<Tucker>(Tucker const&, std::shared_ptr< VelocityGrid<Tucker> >, std::shared_ptr<GasParams>);
 template class VelocityGrid<Tucker>;
 template class Problem<Tucker>;
 template class Solution<Tucker>;

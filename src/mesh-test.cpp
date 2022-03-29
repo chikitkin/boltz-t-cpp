@@ -178,5 +178,11 @@ int main() {
 	}
 	std::cout << "\n";
 
+	for (int i = 0; i < 10; ++i) {
+		std::cout << mesh.boundaryFacesForEachTag.count(i) << "\n";
+	}
+
+
+
 	return 0;
 }

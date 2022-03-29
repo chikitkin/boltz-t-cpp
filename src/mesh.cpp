@@ -577,6 +577,7 @@ int Mesh::getNumTags() {
 	return boundaryFaceTagsSet.size();
 }
 
+// TODO fix
 std::vector<int> Mesh::getFacesForTag(int tag) {
 	return boundaryFacesForEachTag[tag];
 }

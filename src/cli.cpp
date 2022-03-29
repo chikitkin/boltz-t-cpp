@@ -128,8 +128,9 @@ int main(int argc, char *argv[])
 //	problem->bcData = {Tensor(), f_in, f_out, Tensor()}; // TODO fix
 //	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, SYMMETRYY};
 
-	problem->bcData = {Tensor(), f_in, fmaxwell, Tensor()}; // TODO fix
-	problem->bcTypes = {SYMMETRYZ, INLET, WALL, SYMMETRYY};
+	problem->bcTags = {0, 1, 2, 3, 4};
+	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, WALL, SYMMETRYY};
+	problem->bcData = {Tensor(), f_in, f_out, fmaxwell, Tensor()}; // TODO fix
 
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
