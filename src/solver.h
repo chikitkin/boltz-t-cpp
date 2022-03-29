@@ -111,9 +111,6 @@ struct Config {
 	int saveMacroStep = 1e+5;
 };
 
-template <class Tensor> std::vector <double> comp_macro_params(const Tensor& f, std::shared_ptr < VelocityGrid<Tensor> > v, std::shared_ptr < GasParams > gas_params);
-template <class Tensor> Tensor comp_j(const std::vector <double>& params, const Tensor& f, std::shared_ptr < VelocityGrid<Tensor> > v, std::shared_ptr < GasParams > gas_params);
-
 template <class Tensor>
 class Solution {
 public:
@@ -165,7 +162,11 @@ public:
 	std::vector < double > T;
 	std::vector < double > nu;
 	std::vector < double > rank;
+	std::vector < double > comp;
 	std::vector < std::vector < double > > data;
+
+	std::vector <double> comp_macro_params(const Tensor& f);
+	Tensor comp_j(const std::vector <double>& params, const Tensor& f);
 
 	int it;
 	std::vector <double> frob_norm_iter;

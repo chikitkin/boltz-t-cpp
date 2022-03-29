@@ -105,15 +105,15 @@ int main(int argc, char *argv[])
 	Tensor f_in = f_maxwell_t<Tensor>(v, n_l, u_l, 0.0, 0.0, T_l, gas_params->Rg);
 	Tensor f_out = f_maxwell_t<Tensor>(v, n_r, u_r, 0.0, 0.0, T_r, gas_params->Rg);
 
-	std::vector < double > params;
-
-	params = comp_macro_params<Tensor>(f_in, v, gas_params);
-
-	std::cout << "n " << (params[0] - n_l) / n_l << " = 0" << std::endl;
-	std::cout << "ux " << (params[1] - u_l) / u_l << " = 0" << std::endl;
-	std::cout << "uy " << (params[2]) << " = 0" << std::endl;
-	std::cout << "uz " << (params[3]) << " = 0" << std::endl;
-	std::cout << "T " << (params[4] - T_l) / T_l << " = 0" << std::endl;
+//	std::vector < double > params;
+//
+//	params = comp_macro_params<Tensor>(f_in, v, gas_params);
+//
+//	std::cout << "n " << (params[0] - n_l) / n_l << " = 0" << std::endl;
+//	std::cout << "ux " << (params[1] - u_l) / u_l << " = 0" << std::endl;
+//	std::cout << "uy " << (params[2]) << " = 0" << std::endl;
+//	std::cout << "uz " << (params[3]) << " = 0" << std::endl;
+//	std::cout << "T " << (params[4] - T_l) / T_l << " = 0" << std::endl;
 
 
 	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();
@@ -124,8 +124,12 @@ int main(int argc, char *argv[])
 	//                 SYMZ      INL   OUTL   WALL  SYMY      SYMX
 //	problem->bcData = {Tensor(), f_in, f_out, fmaxwell, Tensor()};
 //	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, WALL, SYMMETRYY};
-	problem->bcData = {Tensor(), f_in, f_out, Tensor()}; // TODO fix
-	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, SYMMETRYY};
+
+//	problem->bcData = {Tensor(), f_in, f_out, Tensor()}; // TODO fix
+//	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, SYMMETRYY};
+
+	problem->bcData = {Tensor(), f_in, fmaxwell, Tensor()}; // TODO fix
+	problem->bcTypes = {SYMMETRYZ, INLET, WALL, SYMMETRYY};
 
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);

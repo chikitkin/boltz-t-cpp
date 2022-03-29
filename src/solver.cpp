@@ -196,7 +196,7 @@ VelocityGrid<Tensor>::~VelocityGrid()
 }
 
 template <class Tensor>
-std::vector <double> comp_macro_params(const Tensor& f, std::shared_ptr < VelocityGrid<Tensor> > v, std::shared_ptr < GasParams > gas_params)
+std::vector <double> Solution<Tensor>::comp_macro_params(const Tensor& f)
 {
 	double n = v->hv3 * f.sum();
 
@@ -225,7 +225,7 @@ std::vector <double> comp_macro_params(const Tensor& f, std::shared_ptr < Veloci
 }
 
 template <class Tensor>
-Tensor comp_j(const std::vector <double>& params, const Tensor& f, std::shared_ptr < VelocityGrid<Tensor> > v, std::shared_ptr < GasParams > gas_params)
+Tensor Solution<Tensor>::comp_j(const std::vector <double>& params, const Tensor& f)
 {
 	double n = params[0];
 	double ux = params[1];
@@ -438,8 +438,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		// reconstruction for inner faces
 		// 1st order
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
-			for (int j = 0; j < mesh->getNumFacesOfCell(ic); j++) {
-				int jf = mesh->getFacesOfCell(ic, j);
+			for (int j = 0; j < mesh->cellFaces[ic].size(); j++) {
+				int jf = mesh->cellFaces[ic][j];
 				// 0 if outer, 1 else
 				fLeftRight[jf][1 - mesh->getOutIndex(ic, j)] = f[ic];
 			}
@@ -485,6 +485,9 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			}
 			// compute macroparameters and collision integral
 			params = comp_macro_params(f[ic], v, gas_params);
+			J = comp_j(params, f[ic], v, gas_params);
+			rhs[ic] = rhs[ic] + J;
+			rhs[ic].round(config->tol);
 
 			n[ic] = params[0];
 			ux[ic] = params[1];
@@ -494,12 +497,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			rho[ic] = params[5];
 			p[ic] = params[6];
 			nu[ic] = params[7];
-
-			double compression =
-					static_cast<double>(f[ic].r()[0] * f[ic].r()[1] * f[ic].r()[2] +
-					f[ic].r()[0] * f[ic].n()[0] +
-					f[ic].r()[1] * f[ic].n()[1] +
-					f[ic].r()[2] * f[ic].n()[2]) / static_cast<double>(f[ic].n()[0] * f[ic].n()[1] * f[ic].n()[2]);
+			comp[ic] = f[ic].compression();
 
 			data[ic] = {
 					n[ic],
@@ -507,12 +505,10 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					uy[ic],
 					uz[ic],
 					T[ic],
-					compression};
-
-			J = comp_j(params, f[ic], v, gas_params);
-			rhs[ic] = rhs[ic] + J;
-			rhs[ic].round(config->tol);
+					comp[ic]
+			};
 		}
+
 		double frob_norm = 0.0;
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			frob_norm += pow(rhs[ic].norm(), 2.0);
@@ -580,6 +576,10 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			}
 		}
 		// TODO save
+		if (it % 10 == 0) {
+			mesh->write_tecplot(data, "tec.dat",
+					{"n", "ux", "uy", "uz", "T", "comp"});
+		}
 	}
 	mesh->write_tecplot(data, "tec.dat",
 			{"n", "ux", "uy", "uz", "T", "comp"});

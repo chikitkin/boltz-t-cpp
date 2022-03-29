@@ -176,6 +176,14 @@ std::vector<int> Tucker::r() const
 	std::vector<int> ranks = {r1, r2, r3};
 	return ranks;
 }
+
+double Tucker::compression() const
+{
+	double compression =
+			static_cast<double>(r1 * r2 * r3 + r1 * n1 + r2 * n2 + r3 * n3) /
+			static_cast<double>(n1 * n2 * n3);
+	return compression;
+}
 // Print tensor
 std::ostream& operator << (std::ostream &out, const Tucker& t)
 {

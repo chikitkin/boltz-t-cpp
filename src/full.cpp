@@ -104,6 +104,11 @@ std::vector<int> Full::r() const
 	std::vector<int> ranks = {r1, r2, r3};
 	return ranks;
 }
+
+double Full::compression() const
+{
+	return 1.0;
+}
 // Print tensor
 std::ostream& operator << (std::ostream &out, const Full& t)
 {

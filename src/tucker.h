@@ -32,6 +32,7 @@ public:
 	// Print ranks
 	std::vector<int> n() const;
 	std::vector<int> r() const;
+	double compression() const;
 	// Print tensor
 	friend std::ostream& operator << (std::ostream &out, const Tucker& t);
 	// Get element
