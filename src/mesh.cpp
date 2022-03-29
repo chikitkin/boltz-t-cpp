@@ -33,7 +33,12 @@ void Mesh::readVerts(std::ifstream &data, double scale) {
 		vertsCoo.push_back(vert);
 	}
 }
-
+//             0_____1
+//            / |   / |
+//           4__|__5  |
+//           |  2__|__3
+//           | /   | /
+//           6_____7
 void Mesh::readHexa(std::ifstream &data) {
 	std::string line;
 	getline(data, line);
@@ -68,7 +73,14 @@ void Mesh::readHexa(std::ifstream &data) {
 		cellVerts.push_back(cell);
 	}
 }
-
+//                  3
+//                 / \
+//                /   \
+//               /     \
+//              /       \
+//             /    0    \
+//            /           \
+//           1_____________2
 void Mesh::readTetra(std::ifstream &data) {
 	std::string line;
 	getline(data, line);
