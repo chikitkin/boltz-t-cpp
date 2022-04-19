@@ -9,6 +9,16 @@
 
 const double PI = acos(-1.0); // TODO
 
+using namespace std::chrono;
+
+enum AlgoritmParts {
+	RECONSTRUCTION,
+	BOUNDARY_CONDITIONS,
+	FLUXES,
+	RHS,
+	UPDATE
+};
+
 class GasParams {
 public:
 	// Default constructor
@@ -95,7 +105,7 @@ public:
 			double x, double y, double z,
 			bcType bc_type, const Tensor& bc_data,
 			const Tensor& f,
-			const Tensor& vn, const Tensor& vnp, const Tensor& vnm,
+			const Tensor& vn, const Tensor& vn_abs,
 			double tol);
 };
 
@@ -165,6 +175,7 @@ public:
 	std::vector < double > rank;
 	std::vector < double > comp;
 	std::vector < std::vector < double > > data;
+	std::map<AlgoritmParts, std::vector<double>> timings;
 
 	std::vector <double> comp_macro_params(const Tensor& f);
 	Tensor comp_j(const std::vector <double>& params, const Tensor& f);
@@ -184,6 +195,8 @@ public:
 	void plot_macro();
 
 	void make_time_steps(std::shared_ptr<Config> config, int nt);
+
+
 };
 
 template <class Tensor>

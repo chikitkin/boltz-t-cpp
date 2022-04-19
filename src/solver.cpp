@@ -5,6 +5,8 @@
 #include "full.h"
 #include "tucker.h"
 
+using namespace std::chrono;
+
 template <class Tensor>
 double *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,
 		double n, double ux, double uy, double uz,
@@ -79,7 +81,7 @@ Tensor Problem<Tensor>::getBC(std::shared_ptr < GasParams > gas_params, std::sha
 		double x, double y, double z,
 		bcType bc_type, const Tensor& bc_data,
 		const Tensor& f,
-		const Tensor& vn, const Tensor& vnp, const Tensor& vnm,
+		const Tensor& vn, const Tensor& vn_abs,
 		double tol)
 {
 	switch (bc_type) // TODO use enum
@@ -96,8 +98,8 @@ Tensor Problem<Tensor>::getBC(std::shared_ptr < GasParams > gas_params, std::sha
 		return Tensor(bc_data);
 	case WALL:
 	{
-		double Ni = v->hv3 * (round_t(f * vnp, tol, 1e+6)).sum();
-		double Nr = v->hv3 * (round_t(bc_data * vnm, tol, 1e+6)).sum();
+		double Ni = v->hv3 * (round_t(0.5 * f * (vn + vn_abs), tol, 1e+6)).sum();
+		double Nr = v->hv3 * (round_t(0.5 * bc_data * (vn - vn_abs), tol, 1e+6)).sum();
 		return -(Ni / Nr) * bc_data;
 	}
 	default:
@@ -299,6 +301,7 @@ Solution<Tensor>::Solution(
 	double* vn_abs_tmp = new double[v->nv];
 
 	for (int jf = 0; jf < mesh->nFaces; ++jf) {
+		// TODO why is it so slow?
 		for (int i = 0; i < v->nv; ++i) {
 			vn_tmp[i] = 
 					mesh->faceNormals[jf][0] * v->vx[i] +
@@ -432,12 +435,14 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 	Tensor incr;
 
 	it = 0;
-
+	int ompNumThreads = omp_get_num_threads();
+	std::cout << "Num of threads = " << ompNumThreads << std::endl;
 	while(it < nt) {
 		std::cout << "Step " << it << std::endl;
 		it += 1;
 		// reconstruction for inner faces
 		// 1st order
+		auto t0 = steady_clock::now();
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			for (int j = 0; j < mesh->cellFaces[ic].size(); j++) {
 				int jf = mesh->cellFaces[ic][j];
@@ -447,6 +452,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		}
 		// boundary condition
 		// loop over all boundary faces
+		auto t1 = steady_clock::now();
 		for (int ibc = 0; ibc < problem->bcTypes.size(); ++ibc) {
 			int tag = problem->bcTags[ibc];
 			bcType type = problem->bcTypes[ibc];
@@ -464,20 +470,23 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 							type, data,
 							fLeftRight[jf][1 - mesh->getOutIndex(jf)],
 							mesh->getOutSign(jf) * vn[jf],
-							(1 - mesh->getOutIndex(jf)) * vnp[jf] - mesh->getOutIndex(jf) * vnm[jf],
-							(1 - mesh->getOutIndex(jf)) * vnm[jf] - mesh->getOutIndex(jf) * vnp[jf], // TODO fix
+							vn_abs[jf],
 							config->tol
 					);
 				}
 			}
 		}
 		// Riemann solver - compute fluxes
+		auto t2 = steady_clock::now();
+        #pragma omp parallel for
 		for (int jf = 0; jf < mesh->nFaces; ++jf) {
 			flux[jf] = 0.5 * mesh->faceAreas[jf] *
 					((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - (fLeftRight[jf][1] - fLeftRight[jf][0]) * vn_abs[jf]);
 			flux[jf].round(config->tol);
 		}
+
 		// computation of the right hand side
+		auto t3 = steady_clock::now();
 		std::vector < double > params(8, 0.0); // for J
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			rhs[ic] = v->zero;
@@ -522,6 +531,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 
 		std::cout << "Frob norm = " << frob_norm << std::endl;
 
+		auto t4 = steady_clock::now();
 		if (!config->isImplicit) {
 			std::cout << "explicit" << std::endl;
 			// Update values
@@ -530,7 +540,6 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				f[ic].round(config->tol);
 			}
 		}
-
 		else {
 			std::cout << "implicit" << std::endl;
 			for (int ic = mesh->nCells - 1; ic >= 0; --ic) {
@@ -579,7 +588,17 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				f[ic].round(config->tol);
 			}
 		}
+		auto t5 = steady_clock::now();
 		// TODO save
+		timings[RECONSTRUCTION].push_back(duration<double>(t1 - t0).count());
+		timings[BOUNDARY_CONDITIONS].push_back(duration<double>(t2 - t1).count());
+		timings[FLUXES].push_back(duration<double>(t3 - t2).count());
+		timings[RHS].push_back(duration<double>(t4 - t3).count());
+		timings[UPDATE].push_back(duration<double>(t5 - t4).count());
+
+		std::cout << (timings[FLUXES].back()) << " seconds FLUXES" << std::endl;
+
+
 		if (it % 10 == 0) {
 			mesh->write_tecplot(data, "tec.dat",
 					{"n", "ux", "uy", "uz", "T", "comp"});

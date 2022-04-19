@@ -3,7 +3,7 @@
 
 int main() {
 
-	Mesh mesh("../mesh-1d-tetra/");
+	Mesh mesh("../mesh-cyl/");
 
 	std::cout << "nBoundaryFaces " << mesh.nBoundaryFaces << std::endl;
 	std::cout << "nCells " << mesh.nCells << std::endl;
@@ -123,11 +123,16 @@ int main() {
 	}
 	std::cout << "\n";
 
+
+	double smallestArea = 1000000.0;
 	std::cout << "faceAreas" << std::endl;
 	for (const auto &a : mesh.faceAreas) {
 		std::cout << a << " ";
+		if (a < smallestArea) { smallestArea = a; }
 	}
 	std::cout << "\n";
+	std::cout << "smallestArea = " << smallestArea << std::endl;
+
 
 	std::cout << "faceNormals" << std::endl;
 	for (const auto &i : mesh.faceNormals) {

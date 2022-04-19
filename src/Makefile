@@ -1,6 +1,6 @@
 CC=icc
 
-CFLAGS=-g -std=c++14 -Wall -O0 -mkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include" 
+CFLAGS=-std=c++14 -Wall -O3 -fopenmp -mkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include" 
 
 all: cli.o
 

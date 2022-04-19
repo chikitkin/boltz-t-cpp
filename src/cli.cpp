@@ -9,24 +9,28 @@
 
 int main(int argc, char *argv[])
 {
+    typedef Tucker Tensor;
 	std::shared_ptr < GasParams > gas_params = std::make_shared < GasParams > ();
+
+
+	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();
+	std::shared_ptr < Config > config = std::make_shared < Config > ();
     
     double Mach;
 	double Kn;
 	double delta;
 	
-	double n_l;
-	double u_l;
-	double T_l;
-	double T_w;
+	double n_in;
+	double u_in;
+	double T_in;
 	
-	double n_r;
-	double u_r;
-	double T_r;
+	double n_out;
+	double u_out;
+	double T_out;
+
+	double T_wall;
 
 	int nv;
-	
-	std::shared_ptr < Config > config = std::make_shared < Config > ();
 	
 	int steps;
 		
@@ -37,35 +41,32 @@ int main(int argc, char *argv[])
 	std::ifstream cfg(cfg_path);
     std::string line;
     
-    bool isTensorized;
+    std::string init;
     while (getline(cfg, line)) {
-        std::istringstream sin(line.substr(line.find("=") + 1));
-        if (line.find("mesh_path") != -1) sin >> mesh_path;
+        std::istringstream line_stream(line.substr(line.find("=") + 1));
             
-        else if (line.find("Mach") != -1) sin >> Mach;
-        else if (line.find("Kn") != -1) sin >> Kn;
-        else if (line.find("delta") != -1) sin >> delta;
-        else if (line.find("n_l") != -1) sin >> n_l;
-        else if (line.find("u_l") != -1) sin >> u_l;
-        else if (line.find("T_l") != -1) sin >> T_l;
-        else if (line.find("T_w") != -1) sin >> T_w;
+        if (line.find("mesh_path") != -1) { line_stream >> mesh_path; }
+        else if (line.find("Mach") != -1) { line_stream >> Mach; }
+        else if (line.find("Kn") != -1) { line_stream >> Kn; }
+        else if (line.find("delta") != -1) { line_stream >> delta; }
+        else if (line.find("n_in") != -1) { line_stream >> n_in; }
+        else if (line.find("u_in") != -1) { line_stream >> u_in; }
+        else if (line.find("T_in") != -1) { line_stream >> T_in; }
+        else if (line.find("n_out") != -1) { line_stream >> n_out; }
+        else if (line.find("u_out") != -1) { line_stream >> u_out; }
+        else if (line.find("T_out") != -1) { line_stream >> T_out; }
         
-        else if (line.find("nv") != -1) sin >> nv;
-        else if (line.find("isImplicit") != -1) sin >> config->isImplicit;
-        else if (line.find("CFL") != -1) sin >> config->CFL;
-            
-        else if (line.find("steps") != -1) sin >> steps;
-        else if (line.find("isTensorized") != -1) sin >> isTensorized;
-    }
-    //if (isTensorized) { typedef Tucker Tensor; }
-    //else { typedef Full Tensor; }
-    typedef Tucker Tensor;
+        else if (line.find("nv") != -1) { line_stream >> nv; }
+        else if (line.find("CFL") != -1) { line_stream >> config->CFL; }
+        else if (line.find("isImplicit") != -1) { line_stream >> config->isImplicit; }
+        else if (line.find("steps") != -1) { line_stream >> steps; }
+        else if (line.find("boundary:") != -1) { break; }
+	}
 
 	delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
-	u_l = Mach * pow(gas_params->g * gas_params->Rg * T_l, 0.5);
 
-	double n_s = n_l;
-	double T_s = T_l;
+	double n_s = n_in;
+	double T_s = T_in;
 
 	double p_s = gas_params->m * n_s * gas_params->Rg * T_s;
 
@@ -76,34 +77,77 @@ int main(int argc, char *argv[])
 
 	std::shared_ptr < Mesh > mesh = std::make_shared < Mesh > (mesh_path, l_s);
 
-	if (mesh_path == "../mesh-1d/" || mesh_path == "../mesh-1d-tetra/") {
-		n_r = (gas_params->g + 1.0) * Mach * Mach /
-			((gas_params->g - 1.0) * Mach * Mach + 2.0) * n_l;
-	    u_r = ((gas_params->g - 1.0) * Mach * Mach + 2.0) /
-			((gas_params->g + 1.0) * Mach * Mach) * u_l;
-	    T_r = (2.0 * gas_params->g * Mach * Mach - (gas_params->g - 1.0)) * ((gas_params->g - 1.0) * Mach * Mach + 2.0) /
-			(pow(gas_params->g + 1.0, 2.0) * Mach * Mach) * T_l;
-	}
-	else if (cfg_path == "../mesh-cyl/") {
-	    n_r = n_l;
-	    u_r = u_l;
-	    T_r = T_l;
-	}
-
 	double vmax = 22.0 * v_s;
-
 	double hv = 2.0 * vmax / nv;
-
 	double *vx_ = new double[nv];
-
 	for (int i = 0; i < nv; ++i) {
 		vx_[i] = - vmax + (hv / 2.0) + i * hv;
 	}
 
 	std::shared_ptr < VelocityGrid<Tensor> > v = std::make_shared < VelocityGrid<Tensor> > (nv, nv, nv, vx_, vx_, vx_);
 	
-	Tensor f_in = f_maxwell_t<Tensor>(v, n_l, u_l, 0.0, 0.0, T_l, gas_params->Rg);
-	Tensor f_out = f_maxwell_t<Tensor>(v, n_r, u_r, 0.0, 0.0, T_r, gas_params->Rg);
+	Tensor f_in = f_maxwell_t<Tensor>(v, n_in, u_in, 0.0, 0.0, T_in, gas_params->Rg);
+	Tensor f_out = f_maxwell_t<Tensor>(v, n_out, u_out, 0.0, 0.0, T_out, gas_params->Rg);
+
+	problem->initData = {f_in, f_out};
+
+	{
+		int tag;
+		bcType type;
+		double n, ux, uy, uz, T;
+		double T_wall;
+		std::cout << "BC types are:" << std::endl;
+		while (getline(cfg, line)) {
+			std::string bc_type;
+			std::istringstream bc_line_stream(line);
+			std::istringstream bc_stream(line.substr(line.find(" ") + 1));
+			bc_stream >> bc_type;
+			std::cout << bc_type << std::endl;
+			if (bc_type == "WALL") {
+				bc_line_stream >> tag >> bc_type >> T_wall;
+				problem->bcTags.push_back(tag);
+				problem->bcTypes.push_back(WALL);
+				problem->bcData.push_back(f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_wall, gas_params->Rg));
+			}
+			else if (bc_type == "SYMMETRYX") {
+				bc_line_stream >> tag >> bc_type;
+				problem->bcTags.push_back(tag);
+				problem->bcTypes.push_back(SYMMETRYX);
+				problem->bcData.push_back(Tensor());
+			}
+			else if (bc_type == "SYMMETRYY") {
+				bc_line_stream >> tag >> bc_type;
+				problem->bcTags.push_back(tag);
+				problem->bcTypes.push_back(SYMMETRYY);
+				problem->bcData.push_back(Tensor());
+			}
+			else if (bc_type == "SYMMETRYZ") {
+				bc_line_stream >> tag >> bc_type;
+				problem->bcTags.push_back(tag);
+				problem->bcTypes.push_back(SYMMETRYZ);
+				problem->bcData.push_back(Tensor());
+			}
+			else if (bc_type == "INLET") {
+				bc_line_stream >> tag >> bc_type >> n >> ux >> uy >> uz >> T;
+				problem->bcTags.push_back(tag);
+				problem->bcTypes.push_back(INLET);
+				problem->bcData.push_back(f_maxwell_t<Tensor>(v, n, ux, uy, uz, T, gas_params->Rg));
+			}
+			else if (bc_type == "OUTLET") {
+				bc_line_stream >> tag >> bc_type >> n >> ux >> uy >> uz >> T;
+				problem->bcTags.push_back(tag);
+				problem->bcTypes.push_back(OUTLET);
+				problem->bcData.push_back(f_maxwell_t<Tensor>(v, n, ux, uy, uz, T, gas_params->Rg));
+			}
+			else if (bc_type == "") {
+				break;
+			}
+			else {
+				std::cout << "Wrong boundary condition in cfg" << std::endl;
+				exit(-1);
+			}
+		}
+    }
 
 //	std::vector < double > params;
 //
@@ -116,30 +160,13 @@ int main(int argc, char *argv[])
 //	std::cout << "T " << (params[4] - T_l) / T_l << " = 0" << std::endl;
 
 
-	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();
-	problem->initData = {f_in, f_out};
-
-	Tensor fmaxwell = f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_w, gas_params->Rg);
-
-	//                 SYMZ      INL   OUTL   WALL  SYMY      SYMX
-//	problem->bcData = {Tensor(), f_in, f_out, fmaxwell, Tensor()};
-//	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, WALL, SYMMETRYY};
-
-//	problem->bcData = {Tensor(), f_in, f_out, Tensor()}; // TODO fix
-//	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, SYMMETRYY};
-
-	problem->bcTags = {0, 1, 2, 3, 4};
-	problem->bcTypes = {SYMMETRYZ, INLET, OUTLET, WALL, SYMMETRYY};
-	problem->bcData = {Tensor(), f_in, f_out, fmaxwell, Tensor()}; // TODO fix
-
-
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 
-	std::time_t t0 = std::time(nullptr);
+	auto start = std::chrono::steady_clock::now();
 	S.make_time_steps(config, steps);
-	std::time_t t1 = std::time(nullptr);
+	auto end = std::chrono::steady_clock::now();
 
-	std::cout << "Time: " << t1 - t0 << " seconds." << std::endl;
+	std::cout << "Time: " << duration<double>(end - start).count() << " seconds." << std::endl;
 
 	std::cout << "n = " << S.n[39] << std::endl;
 	std::cout << "ux = " << S.ux[39] << std::endl;
@@ -153,6 +180,16 @@ int main(int argc, char *argv[])
 		out << S.mesh->cellCenters[ic][0] << " " << S.n[ic] << " " << S.ux[ic] << " " << S.T[ic] << "\n";
 	}
 	out.close();
+
+	out.open("timings.txt");
+	for (int i = 0; i < S.timings[RECONSTRUCTION].size(); ++i) {
+		out << S.timings[RECONSTRUCTION][i] << " " <<
+		S.timings[BOUNDARY_CONDITIONS][i] << " " << 
+		S.timings[FLUXES][i] << " " << 
+		S.timings[RHS][i] << " " << 
+		S.timings[UPDATE][i] << "\n";
+	}
+	out.close();	
 
 	return 0;
 }
