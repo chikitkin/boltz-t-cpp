@@ -1,0 +1,1 @@
+sbatch -p module12 -n 1 --ntasks-per-node=1 --cpus-per-task=12 cyl

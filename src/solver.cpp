@@ -84,7 +84,7 @@ Tensor Problem<Tensor>::getBC(std::shared_ptr < GasParams > gas_params, std::sha
 		const Tensor& vn, const Tensor& vn_abs,
 		double tol)
 {
-	switch (bc_type) // TODO use enum
+	switch (bc_type)
 	{
 	case SYMMETRYX:
 		return reflect(f, 'X');
@@ -435,10 +435,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 	Tensor incr;
 
 	it = 0;
-	int ompNumThreads = omp_get_num_threads();
-	std::cout << "Num of threads = " << ompNumThreads << std::endl;
 	while(it < nt) {
-		std::cout << "Step " << it << std::endl;
 		it += 1;
 		// reconstruction for inner faces
 		// 1st order
@@ -530,11 +527,11 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		frob_norm_iter.push_back(frob_norm);
 
 		std::cout << "Frob norm = " << frob_norm << std::endl;
-
 		auto t4 = steady_clock::now();
 		if (!config->isImplicit) {
 			std::cout << "explicit" << std::endl;
 			// Update values
+			#pragma omp parallel for
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				f[ic] = f[ic] + tau * rhs[ic];
 				f[ic].round(config->tol);
@@ -595,9 +592,6 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		timings[FLUXES].push_back(duration<double>(t3 - t2).count());
 		timings[RHS].push_back(duration<double>(t4 - t3).count());
 		timings[UPDATE].push_back(duration<double>(t5 - t4).count());
-
-		std::cout << (timings[FLUXES].back()) << " seconds FLUXES" << std::endl;
-
 
 		if (it % 10 == 0) {
 			mesh->write_tecplot(data, "tec.dat",
