@@ -435,6 +435,9 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 	Tensor incr;
 
 	it = 0;
+
+	std::vector<double> timesForFaceFluxes(mesh->nFaces, 1.0);
+
 	while(it < nt) {
 		it += 1;
 		// reconstruction for inner faces
@@ -474,12 +477,42 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			}
 		}
 		// Riemann solver - compute fluxes
+		// 
+		// Compute ranges for each thread
+		double totalFluxesTime = std::accumulate(timesForFaceFluxes.begin(), timesForFaceFluxes.end(), 0.0);
 		auto t2 = steady_clock::now();
-        #pragma omp parallel for
-		for (int jf = 0; jf < mesh->nFaces; ++jf) {
+		int numThreads;
+        #pragma omp parallel
+		{
+			numThreads = omp_get_num_threads();
+		}
+		std::vector<int> threadRanges(numThreads + 1);
+		threadRanges[0] = 0;
+		int thread = 0;
+		double sum = 0.;
+		for (int i = 0; i < mesh->nFaces; ++i){
+			sum += timesForFaceFluxes[i];
+			if (sum > totalFluxesTime / numThreads){
+				threadRanges[thread + 1] = i;
+				thread++;
+				sum = 0.;
+			}
+			
+		}
+		threadRanges[numThreads] = mesh->nFaces;
+
+
+		#pragma omp parallel
+		{
+		int threadID = omp_get_thread_num();
+		for (int jf = threadRanges[threadID]; jf < threadRanges[threadID + 1]; ++jf) {
+			auto begin = steady_clock::now();
 			flux[jf] = 0.5 * mesh->faceAreas[jf] *
 					((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - (fLeftRight[jf][1] - fLeftRight[jf][0]) * vn_abs[jf]);
 			flux[jf].round(config->tol);
+			auto end = steady_clock::now();
+			timesForFaceFluxes[jf] = duration<double>(end - begin).count();
+		}
 		}
 
 		// computation of the right hand side
