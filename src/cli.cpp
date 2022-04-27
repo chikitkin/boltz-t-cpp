@@ -162,11 +162,11 @@ int main(int argc, char *argv[])
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 
-	auto start = std::chrono::steady_clock::now();
+	auto start = omp_get_wtime();
 	S.make_time_steps(config, steps);
-	auto end = std::chrono::steady_clock::now();
+	auto end = omp_get_wtime();
 
-	std::cout << "Time: " << duration<double>(end - start).count() << " seconds." << std::endl;
+	std::cout << "Time: " << end - start << " seconds." << std::endl;
 
 	std::cout << "n = " << S.n[39] << std::endl;
 	std::cout << "ux = " << S.ux[39] << std::endl;

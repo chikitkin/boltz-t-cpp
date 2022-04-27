@@ -7,6 +7,28 @@
 
 using namespace std::chrono;
 
+std::vector<int> getParallelRanges(const std::vector<double>& times, int numThreads) {
+
+	int n = times.size();
+
+	double totalTime = std::accumulate(times.begin(), times.end(), 0.0);
+	std::vector<int> threadRanges(numThreads + 1);
+	threadRanges[0] = 0;
+	int thread = 0;
+	double sum = 0.0;
+	for (int i = 0; i < n; ++i) {
+		sum += times[i];
+		if (sum > totalTime / numThreads) {
+			threadRanges[thread + 1] = i;
+			++thread;
+			sum = 0.0;
+		}
+	}
+	threadRanges[numThreads] = n;
+
+	return threadRanges;
+}
+
 template <class Tensor>
 double *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,
 		double n, double ux, double uy, double uz,
@@ -427,8 +449,6 @@ template <class Tensor>
 void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 {
 	tau = h * config->CFL / (*std::max_element(v->vx_, v->vx_ + v->nvx) * (pow(3.0, 0.5)));
-
-	Tensor J;
 	
 	Tensor vnm_loc;
 	Tensor div_tmp;
@@ -436,13 +456,19 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 
 	it = 0;
 
+
+	int numThreads = omp_get_max_threads();
+	std::cout << "Number of threads is: " << numThreads << std::endl;
 	std::vector<double> timesForFaceFluxes(mesh->nFaces, 1.0);
+	std::vector<double> timesForCellsRHS(mesh->nCells, 1.0);
+	std::vector<double> timesForCellsUpdate(mesh->nCells, 1.0);
 
 	while(it < nt) {
 		it += 1;
 		// reconstruction for inner faces
 		// 1st order
-		auto t0 = steady_clock::now();
+		auto t0 = omp_get_wtime();
+		#pragma omp parallel for
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			for (int j = 0; j < mesh->cellFaces[ic].size(); j++) {
 				int jf = mesh->cellFaces[ic][j];
@@ -450,9 +476,10 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				fLeftRight[jf][1 - mesh->getOutIndex(ic, j)] = f[ic];
 			}
 		}
+		auto t1 = omp_get_wtime();
 		// boundary condition
 		// loop over all boundary faces
-		auto t1 = steady_clock::now();
+		#pragma omp parallel for
 		for (int ibc = 0; ibc < problem->bcTypes.size(); ++ibc) {
 			int tag = problem->bcTags[ibc];
 			bcType type = problem->bcTypes[ibc];
@@ -476,49 +503,38 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				}
 			}
 		}
-		// Riemann solver - compute fluxes
-		// 
+		auto t2 = omp_get_wtime();
 		// Compute ranges for each thread
-		double totalFluxesTime = std::accumulate(timesForFaceFluxes.begin(), timesForFaceFluxes.end(), 0.0);
-		auto t2 = steady_clock::now();
-		int numThreads;
-        #pragma omp parallel
-		{
-			numThreads = omp_get_num_threads();
-		}
-		std::vector<int> threadRanges(numThreads + 1);
-		threadRanges[0] = 0;
-		int thread = 0;
-		double sum = 0.;
-		for (int i = 0; i < mesh->nFaces; ++i){
-			sum += timesForFaceFluxes[i];
-			if (sum > totalFluxesTime / numThreads){
-				threadRanges[thread + 1] = i;
-				thread++;
-				sum = 0.;
-			}
-			
-		}
-		threadRanges[numThreads] = mesh->nFaces;
+		std::vector<int> threadRanges = getParallelRanges(timesForFaceFluxes, numThreads);
+		
+		// std::cout << "timesForFaceFluxes\n";
+		// for (const auto & r : threadRanges) {
+		// 	std::cout << r << " ";
+		// }
+		// std::cout << "\n";
 
-
+		// Riemann solver - compute fluxes
 		#pragma omp parallel
 		{
 		int threadID = omp_get_thread_num();
 		for (int jf = threadRanges[threadID]; jf < threadRanges[threadID + 1]; ++jf) {
-			auto begin = steady_clock::now();
+			double begin = omp_get_wtime();
 			flux[jf] = 0.5 * mesh->faceAreas[jf] *
 					((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - (fLeftRight[jf][1] - fLeftRight[jf][0]) * vn_abs[jf]);
 			flux[jf].round(config->tol);
-			auto end = steady_clock::now();
-			timesForFaceFluxes[jf] = duration<double>(end - begin).count();
+			double end = omp_get_wtime();
+			timesForFaceFluxes[jf] = end - begin;
 		}
 		}
-
+		auto t3 = omp_get_wtime();
+		// Compute ranges for each thread
+		threadRanges = getParallelRanges(timesForCellsRHS, numThreads);
 		// computation of the right hand side
-		auto t3 = steady_clock::now();
-		std::vector < double > params(8, 0.0); // for J
-		for (int ic = 0; ic < mesh->nCells; ++ic) {
+		#pragma omp parallel
+		{
+		int threadID = omp_get_thread_num();
+		for (int ic = threadRanges[threadID]; ic < threadRanges[threadID + 1]; ++ic) {
+			double begin = omp_get_wtime();
 			rhs[ic] = v->zero;
 			// sum up fluxes from all faces of this cell
 			for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
@@ -527,10 +543,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				rhs[ic].round(config->tol);
 			}
 			// compute macroparameters and collision integral
-			params = comp_macro_params(f[ic]);
-			J = comp_j(params, f[ic]);
+			std::vector<double> params = comp_macro_params(f[ic]);
+			Tensor J = comp_j(params, f[ic]);
 			rhs[ic] = rhs[ic] + J;
 			rhs[ic].round(config->tol);
+			double end = omp_get_wtime();
+			timesForCellsRHS[ic] = end - begin;
 
 			n[ic] = params[0];
 			ux[ic] = params[1];
@@ -551,8 +569,10 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					comp[ic]
 			};
 		}
+		}
 
 		double frob_norm = 0.0;
+//		#pragma omp parallel for reduction(+:frob_norm)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			frob_norm += pow(rhs[ic].norm(), 2.0);
 		}
@@ -560,14 +580,21 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		frob_norm_iter.push_back(frob_norm);
 
 		std::cout << "Frob norm = " << frob_norm << std::endl;
-		auto t4 = steady_clock::now();
+		auto t4 = omp_get_wtime();
 		if (!config->isImplicit) {
 			std::cout << "explicit" << std::endl;
+			threadRanges = getParallelRanges(timesForCellsUpdate, numThreads);
 			// Update values
-			#pragma omp parallel for
-			for (int ic = 0; ic < mesh->nCells; ++ic) {
+			#pragma omp parallel
+			{
+			int threadID = omp_get_thread_num();
+			for (int ic = threadRanges[threadID]; ic < threadRanges[threadID + 1]; ++ic) {
+				double begin = omp_get_wtime();
 				f[ic] = f[ic] + tau * rhs[ic];
 				f[ic].round(config->tol);
+				double end = omp_get_wtime();
+				timesForCellsUpdate[ic] = end - begin;
+			}
 			}
 		}
 		else {
@@ -618,13 +645,13 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				f[ic].round(config->tol);
 			}
 		}
-		auto t5 = steady_clock::now();
+		auto t5 = omp_get_wtime();
 		// TODO save
-		timings[RECONSTRUCTION].push_back(duration<double>(t1 - t0).count());
-		timings[BOUNDARY_CONDITIONS].push_back(duration<double>(t2 - t1).count());
-		timings[FLUXES].push_back(duration<double>(t3 - t2).count());
-		timings[RHS].push_back(duration<double>(t4 - t3).count());
-		timings[UPDATE].push_back(duration<double>(t5 - t4).count());
+		timings[RECONSTRUCTION].push_back(t1 - t0);
+		timings[BOUNDARY_CONDITIONS].push_back(t2 - t1);
+		timings[FLUXES].push_back(t3 - t2);
+		timings[RHS].push_back(t4 - t3);
+		timings[UPDATE].push_back(t5 - t4);
 
 		if (it % 10 == 0) {
 			mesh->write_tecplot(data, "tec.dat",
