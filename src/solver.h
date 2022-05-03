@@ -9,8 +9,6 @@
 
 const double PI = acos(-1.0); // TODO
 
-using namespace std::chrono;
-
 enum AlgoritmParts {
 	RECONSTRUCTION,
 	BOUNDARY_CONDITIONS,
@@ -89,24 +87,86 @@ public:
  * Для каждого г.у. должна быть своя функция
  * И в солвере задаём г.у. на всех гранях с одним г.у., потом с другим и т.д.
  */
+template <class Tensor>
+class BoundaryCondition {
+public:
+	std::shared_ptr < GasParams > gas_params;
+	std::shared_ptr < VelocityGrid<Tensor> > v;
+	Tensor bcData;
+
+	virtual Tensor applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol);
+};
+
+template <class Tensor>
+class BCSYMMETRYX : public BoundaryCondition<Tensor> {
+public:
+	virtual Tensor applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol);
+};
+
+template <class Tensor>
+class BCSYMMETRYY : public BoundaryCondition<Tensor> {
+public:
+	virtual Tensor applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol);
+};
+
+template <class Tensor>
+class BCSYMMETRYZ : public BoundaryCondition<Tensor> {
+public:
+	virtual Tensor applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol);
+};
+
+template <class Tensor>
+class BCINLET : public BoundaryCondition<Tensor> {
+public:
+	virtual Tensor applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol);
+};
+
+template <class Tensor>
+class BCOUTLET : public BoundaryCondition<Tensor> {
+public:
+	virtual Tensor applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol);
+};
+
+template <class Tensor>
+class BCWALL : public BoundaryCondition<Tensor> {
+public:
+	virtual Tensor applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol);
+};
 
 template <class Tensor>
 class Problem {
 public:
+	std::shared_ptr < GasParams > gas_params;
+	std::shared_ptr < VelocityGrid<Tensor> > v;
+
 	std::vector < Tensor > initData;
-	Tensor getInit(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
-			double x, double y, double z,
+	Tensor getInit(double x, double y, double z,
 			const std::vector<Tensor>& initData);
 
 	std::vector < int > bcTags;
 	std::vector < bcType > bcTypes;
 	std::vector < Tensor > bcData;
-	Tensor getBC(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
-			double x, double y, double z,
-			bcType bc_type, const Tensor& bc_data,
-			const Tensor& f,
-			const Tensor& vn, const Tensor& vn_abs,
-			double tol);
 };
 
 struct Config {
@@ -176,6 +236,8 @@ public:
 	std::vector < double > comp;
 	std::vector < std::vector < double > > data;
 	std::map<AlgoritmParts, std::vector<double>> timings;
+
+	std::vector < BoundaryCondition<Tensor> > bcList;
 
 	std::vector <double> comp_macro_params(const Tensor& f);
 	Tensor comp_j(const std::vector <double>& params, const Tensor& f);

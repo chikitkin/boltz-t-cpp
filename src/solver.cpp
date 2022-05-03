@@ -5,8 +5,6 @@
 #include "full.h"
 #include "tucker.h"
 
-using namespace std::chrono;
-
 std::vector<int> getParallelRanges(const std::vector<double>& times, int numThreads) {
 
 	int n = times.size();
@@ -87,8 +85,7 @@ double GasParams::mu(double T) const {
 }
 
 template <class Tensor>
-Tensor Problem<Tensor>::getInit(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
-		double x, double y, double z,
+Tensor Problem<Tensor>::getInit(double x, double y, double z,
 		const std::vector<Tensor>& initData) {
 	if (x < 0.0) {
 		return initData[0];
@@ -99,35 +96,59 @@ Tensor Problem<Tensor>::getInit(std::shared_ptr < GasParams > gas_params, std::s
 }
 
 template <class Tensor>
-Tensor Problem<Tensor>::getBC(std::shared_ptr < GasParams > gas_params, std::shared_ptr < VelocityGrid<Tensor> > v,
-		double x, double y, double z,
-		bcType bc_type, const Tensor& bc_data,
-		const Tensor& f,
-		const Tensor& vn, const Tensor& vn_abs,
-		double tol)
+Tensor BCSYMMETRYX<Tensor>::applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol)
 {
-	switch (bc_type)
-	{
-	case SYMMETRYX:
-		return reflect(f, 'X');
-	case SYMMETRYY:
-		return reflect(f, 'Y');
-	case SYMMETRYZ:
-		return reflect(f, 'Z');
-	case INLET:
-		return Tensor(bc_data);
-	case OUTLET:
-		return Tensor(bc_data);
-	case WALL:
-	{
-		double Ni = v->hv3 * (round_t(0.5 * f * (vn + vn_abs), tol, 1e+6)).sum();
-		double Nr = v->hv3 * (round_t(0.5 * bc_data * (vn - vn_abs), tol, 1e+6)).sum();
-		return -(Ni / Nr) * bc_data;
-	}
-	default:
-		std::cout << "Wrong BC type." << std::endl;
-		exit(-1);
-	}
+	return reflect(f, 'X');
+}
+
+template <class Tensor>
+Tensor BCSYMMETRYY<Tensor>::applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol)
+{
+	return reflect(f, 'Y');
+}
+
+template <class Tensor>
+Tensor BCSYMMETRYZ<Tensor>::applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol)
+{
+	return reflect(f, 'Z');
+}
+
+template <class Tensor>
+Tensor BCINLET<Tensor>::applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol)
+{
+	return Tensor(bcData);
+}
+
+template <class Tensor>
+Tensor BCOUTLET<Tensor>::applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol)
+{
+	return Tensor(bcData);
+}
+
+template <class Tensor>
+Tensor BCWALL<Tensor>::applyBC(double x, double y, double z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			double tol)
+{
+	double Ni = v->hv3 * (round_t(0.5 * f * (vn + vn_abs), tol, 1e+6)).sum();
+	double Nr = v->hv3 * (round_t(0.5 * bcData * (vn - vn_abs), tol, 1e+6)).sum();
+	return -(Ni / Nr) * bcData;
 }
 
 template <class Tensor>
@@ -314,16 +335,17 @@ Solution<Tensor>::Solution(
 	// TODO make directory
 
 	vn.resize(mesh->nFaces, Tensor());
-	double* vn_tmp = new double[v->nv];
 	vnm.resize(mesh->nFaces, Tensor());
-	double* vnm_tmp = new double[v->nv];
 	vnp.resize(mesh->nFaces, Tensor());
-	double* vnp_tmp = new double[v->nv];
 	vn_abs.resize(mesh->nFaces, Tensor());
-	double* vn_abs_tmp = new double[v->nv];
 
+	#pragma omp parallel for schedule(dynamic)
 	for (int jf = 0; jf < mesh->nFaces; ++jf) {
 		// TODO why is it so slow?
+		double* vn_tmp = new double[v->nv];
+		double* vnm_tmp = new double[v->nv];
+		double* vnp_tmp = new double[v->nv];
+		double* vn_abs_tmp = new double[v->nv];
 		for (int i = 0; i < v->nv; ++i) {
 			vn_tmp[i] = 
 					mesh->faceNormals[jf][0] * v->vx[i] +
@@ -344,28 +366,31 @@ Solution<Tensor>::Solution(
 		vnp[jf] = Tensor(v->nvx, v->nvy, v->nvz, vnp_tmp, config->tol);
 		vn_abs[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_abs_tmp);
 		vn_abs[jf].round(1e-14, 6);
+
+		delete [] vn_tmp;
+		delete [] vnm_tmp;
+		delete [] vnp_tmp;
+		delete [] vn_abs_tmp;
 	}
 	h = *std::min_element(mesh->cellDiameters.begin(), mesh->cellDiameters.end());
 	tau = h * config->CFL / (*std::max_element(v->vx_, v->vx_ + v->nvx) * (pow(3.0, 0.5)));
 
 	diag.resize(mesh->nCells, Tensor());
 	diag_r1.resize(mesh->nCells, Tensor());
-	
-	double *diag_tmp = new double [v->nv];
-	double diag_sc;
-	double *diag_t_full;
-	double *ratio = new double [v->nv];
 
-	double *zero = new double [v->nv]();
-
+	#pragma omp parallel for schedule(dynamic)
 	for (int ic = 0; ic < mesh->nCells; ++ic) {
 
-		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', v->nv, 1, zero, 1, diag_tmp, 1);
-		diag_sc = 0.0;
+		double *diag_tmp = new double [v->nv]();
+		double diag_sc = 0.0;
 
 		for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
 			int jf = mesh->cellFaces[ic][j];
 
+			double* vn_tmp = new double[v->nv];
+			double* vnm_tmp = new double[v->nv];
+			double* vnp_tmp = new double[v->nv];
+			double* vn_abs_tmp = new double[v->nv];
 			for (int i = 0; i < v->nv; ++i) {
 				vn_tmp[i] = mesh->getOutSign(ic, j) * (
 				mesh->faceNormals[jf][0] * v->vx[i] +
@@ -384,17 +409,23 @@ Solution<Tensor>::Solution(
 				diag_tmp[i] += (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnp_tmp[i];
 			}
 			diag_sc += 0.5 * (mesh->faceAreas[jf] / mesh->cellVolumes[ic]);
+			delete [] vn_tmp;
+			delete [] vnm_tmp;
+			delete [] vnp_tmp;
+			delete [] vn_abs_tmp;
 		}
 		
 		diag_r1[ic] = diag_sc * v->vn_abs_r1;
-		diag_t_full = diag_r1[ic].full();
+		double *diag_t_full = diag_r1[ic].full();
 
+		double *ratio = new double [v->nv];
 		for (int i = 0; i < v->nv; ++i) {
 			ratio[i] = diag_t_full[i] / diag_tmp[i];
 		}
 		
 		diag_r1[ic] = (1.0 / *std::min_element(ratio, ratio + v->nv)) * diag_r1[ic];
 		
+		delete [] diag_tmp;
 		delete [] diag_t_full;
 	}
 
@@ -408,8 +439,7 @@ Solution<Tensor>::Solution(
 			x = mesh->cellCenters[ic][0];
 			y = mesh->cellCenters[ic][1];
 			z = mesh->cellCenters[ic][2];
-			f[ic] = problem->getInit(gas_params, v,
-					x, y, z,
+			f[ic] = problem->getInit(x, y, z,
 					problem->initData);
 		}
 	}
@@ -432,17 +462,57 @@ Solution<Tensor>::Solution(
 	rank.resize(mesh->nCells, 0.0);
 	data.resize(mesh->nCells, std::vector < double >());
 
+	bcList.reserve(mesh->nBoundaryFaces);
+
+	for (int ibc = 0; ibc < problem->bcTags.size(); ++ibc) {
+		int tag = problem->bcTags[ibc];
+		bcType type = problem->bcTypes[ibc];
+		Tensor &data = problem->bcData[ibc];
+		if (mesh->boundaryFacesForEachTag.count(tag)) {
+			std::vector<int> bcFaces = mesh->boundaryFacesForEachTag[tag];
+			for (const int &jf: bcFaces) {
+				if (type == SYMMETRYX) {
+					bcList[jf] = BCSYMMETRYX<Tensor>();
+					bcList[jf].gas_params = gas_params;
+					bcList[jf].v = v;
+					bcList[jf].bcData = data;
+				}
+				else if (type == SYMMETRYY) {
+					bcList[jf] = BCSYMMETRYY<Tensor>();
+					bcList[jf].gas_params = gas_params;
+					bcList[jf].v = v;
+					bcList[jf].bcData = data;
+				}
+				else if (type == SYMMETRYZ) {
+					bcList[jf] = BCSYMMETRYZ<Tensor>();
+					bcList[jf].gas_params = gas_params;
+					bcList[jf].v = v;
+					bcList[jf].bcData = data;
+				}
+				else if (type == INLET) {
+					bcList[jf] = BCINLET<Tensor>();
+					bcList[jf].gas_params = gas_params;
+					bcList[jf].v = v;
+					bcList[jf].bcData = data;
+				}
+				else if (type == OUTLET) {
+					bcList[jf] = BCOUTLET<Tensor>();
+					bcList[jf].gas_params = gas_params;
+					bcList[jf].v = v;
+					bcList[jf].bcData = data;
+				}
+				else if (type == WALL) {
+					bcList[jf] = BCWALL<Tensor>();
+					bcList[jf].gas_params = gas_params;
+					bcList[jf].v = v;
+					bcList[jf].bcData = data;
+				}
+			}
+		}
+	}
+				
 	it = 0;
 	//  TODO: create_res
-
-	delete [] vn_tmp;
-	delete [] vnm_tmp;
-	delete [] vnp_tmp;
-	delete [] vn_abs_tmp;
-
-	delete [] zero;
-	delete [] diag_tmp;
-
 }
 
 template <class Tensor>
@@ -468,7 +538,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		// reconstruction for inner faces
 		// 1st order
 		auto t0 = omp_get_wtime();
-		#pragma omp parallel for
+		#pragma omp parallel for schedule(dynamic)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			for (int j = 0; j < mesh->cellFaces[ic].size(); j++) {
 				int jf = mesh->cellFaces[ic][j];
@@ -479,45 +549,29 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		auto t1 = omp_get_wtime();
 		// boundary condition
 		// loop over all boundary faces
-		#pragma omp parallel for
-		for (int ibc = 0; ibc < problem->bcTypes.size(); ++ibc) {
-			int tag = problem->bcTags[ibc];
-			bcType type = problem->bcTypes[ibc];
-			Tensor &data = problem->bcData[ibc];
-			// TODO fix
-			if (mesh->boundaryFacesForEachTag.count(tag)) {
-				std::vector<int> BCFaces = mesh->boundaryFacesForEachTag[tag];
-				for (const int &jf: BCFaces) {
-					double x = mesh->faceCenters[jf][0];
-					double y = mesh->faceCenters[jf][1];
-					double z = mesh->faceCenters[jf][2];
-					fLeftRight[jf][mesh->getOutIndex(jf)] = problem->getBC(
-							gas_params, v,
-							x, y, z,
-							type, data,
-							fLeftRight[jf][1 - mesh->getOutIndex(jf)],
-							mesh->getOutSign(jf) * vn[jf],
-							vn_abs[jf],
-							config->tol
-					);
-				}
-			}
+		#pragma omp parallel for schedule(dynamic)
+		for (int ibf = 0; ibf < bcList.size(); ++ibf) {
+			int jf = mesh->boundaryFaceIndex[ibf];
+			double x = mesh->faceCenters[jf][0];
+			double y = mesh->faceCenters[jf][1];
+			double z = mesh->faceCenters[jf][2];
+			fLeftRight[jf][mesh->getOutIndex(jf)] = bcList[ibf].applyBC(
+					x, y, z,
+					fLeftRight[jf][1 - mesh->getOutIndex(jf)],
+					mesh->getOutSign(jf) * vn[jf],
+					vn_abs[jf],
+					config->tol
+			);			
 		}
+
 		auto t2 = omp_get_wtime();
+
 		// Compute ranges for each thread
-		std::vector<int> threadRanges = getParallelRanges(timesForFaceFluxes, numThreads);
-		
-		// std::cout << "timesForFaceFluxes\n";
-		// for (const auto & r : threadRanges) {
-		// 	std::cout << r << " ";
-		// }
-		// std::cout << "\n";
+		//std::vector<int> threadRanges = getParallelRanges(timesForFaceFluxes, numThreads);
 
 		// Riemann solver - compute fluxes
-		#pragma omp parallel
-		{
-		int threadID = omp_get_thread_num();
-		for (int jf = threadRanges[threadID]; jf < threadRanges[threadID + 1]; ++jf) {
+		#pragma omp parallel for schedule(dynamic)
+		for (int jf = 0; jf < mesh->nFaces; ++jf) {
 			double begin = omp_get_wtime();
 			flux[jf] = 0.5 * mesh->faceAreas[jf] *
 					((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - (fLeftRight[jf][1] - fLeftRight[jf][0]) * vn_abs[jf]);
@@ -525,15 +579,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			double end = omp_get_wtime();
 			timesForFaceFluxes[jf] = end - begin;
 		}
-		}
 		auto t3 = omp_get_wtime();
 		// Compute ranges for each thread
-		threadRanges = getParallelRanges(timesForCellsRHS, numThreads);
+		//threadRanges = getParallelRanges(timesForCellsRHS, numThreads);
 		// computation of the right hand side
-		#pragma omp parallel
-		{
-		int threadID = omp_get_thread_num();
-		for (int ic = threadRanges[threadID]; ic < threadRanges[threadID + 1]; ++ic) {
+		#pragma omp parallel for schedule(dynamic)
+		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			double begin = omp_get_wtime();
 			rhs[ic] = v->zero;
 			// sum up fluxes from all faces of this cell
@@ -569,10 +620,9 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					comp[ic]
 			};
 		}
-		}
 
 		double frob_norm = 0.0;
-//		#pragma omp parallel for reduction(+:frob_norm)
+		#pragma omp parallel for reduction(+:frob_norm)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			frob_norm += pow(rhs[ic].norm(), 2.0);
 		}
@@ -582,19 +632,14 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		std::cout << "Frob norm = " << frob_norm << std::endl;
 		auto t4 = omp_get_wtime();
 		if (!config->isImplicit) {
-			std::cout << "explicit" << std::endl;
-			threadRanges = getParallelRanges(timesForCellsUpdate, numThreads);
 			// Update values
-			#pragma omp parallel
-			{
-			int threadID = omp_get_thread_num();
-			for (int ic = threadRanges[threadID]; ic < threadRanges[threadID + 1]; ++ic) {
+			#pragma omp parallel for schedule(dynamic)
+			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				double begin = omp_get_wtime();
 				f[ic] = f[ic] + tau * rhs[ic];
 				f[ic].round(config->tol);
 				double end = omp_get_wtime();
 				timesForCellsUpdate[ic] = end - begin;
-			}
 			}
 		}
 		else {
@@ -662,10 +707,16 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			{"n", "ux", "uy", "uz", "T", "comp"});
 }
 
+template class BoundaryCondition<Full>;
 template class VelocityGrid<Full>;
 template class Problem<Full>;
 template class Solution<Full>;
+//template double *f_maxwell(std::shared_ptr < VelocityGrid<Full> >, double, double, double, double, double, double);
+template Full f_maxwell_t(std::shared_ptr < VelocityGrid<Full> >, double, double, double, double, double, double);
 
+template class BoundaryCondition<Tucker>;
 template class VelocityGrid<Tucker>;
 template class Problem<Tucker>;
 template class Solution<Tucker>;
+//template double *f_maxwell(std::shared_ptr < VelocityGrid<Tucker> >, double, double, double, double, double, double);
+template Tucker f_maxwell_t(std::shared_ptr < VelocityGrid<Tucker> >, double, double, double, double, double, double);

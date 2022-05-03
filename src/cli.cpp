@@ -89,6 +89,8 @@ int main(int argc, char *argv[])
 	Tensor f_in = f_maxwell_t<Tensor>(v, n_in, u_in, 0.0, 0.0, T_in, gas_params->Rg);
 	Tensor f_out = f_maxwell_t<Tensor>(v, n_out, u_out, 0.0, 0.0, T_out, gas_params->Rg);
 
+	problem->gas_params = gas_params;
+	problem->v = v;
 	problem->initData = {f_in, f_out};
 
 	{

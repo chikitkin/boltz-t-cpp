@@ -1,5 +1,5 @@
 #!/bin/bash
-for (( nt=1; nt<5; nt++ ))
+for (( nt=1; nt<10; nt++ ))
 do
 export OMP_NUM_THREADS=$nt
 mkdir $nt

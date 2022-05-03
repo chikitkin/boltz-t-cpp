@@ -17,9 +17,6 @@
 #include <numeric>
 #include <memory>
 
-#include <ctime>
-#include <chrono>
-
 #include <omp.h>
 
 #include "mkl.h"
