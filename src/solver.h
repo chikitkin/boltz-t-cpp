@@ -97,61 +97,75 @@ public:
 	virtual Tensor applyBC(double x, double y, double z, 
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
-			double tol);
+			double tol) = 0;
 };
 
 template <class Tensor>
 class BCSYMMETRYX : public BoundaryCondition<Tensor> {
 public:
-	virtual Tensor applyBC(double x, double y, double z, 
+	Tensor applyBC(double x, double y, double z, 
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
-			double tol);
+			double tol) override {
+				return reflect(f, 'X');
+	}
 };
 
 template <class Tensor>
 class BCSYMMETRYY : public BoundaryCondition<Tensor> {
 public:
-	virtual Tensor applyBC(double x, double y, double z, 
+	Tensor applyBC(double x, double y, double z, 
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
-			double tol);
+			double tol) override {
+				return reflect(f, 'Y');
+	}
 };
 
 template <class Tensor>
 class BCSYMMETRYZ : public BoundaryCondition<Tensor> {
 public:
-	virtual Tensor applyBC(double x, double y, double z, 
+	Tensor applyBC(double x, double y, double z, 
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
-			double tol);
+			double tol) override {
+				return reflect(f, 'Z');
+	}
 };
 
 template <class Tensor>
 class BCINLET : public BoundaryCondition<Tensor> {
 public:
-	virtual Tensor applyBC(double x, double y, double z, 
+	Tensor applyBC(double x, double y, double z, 
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
-			double tol);
+			double tol) override {
+				return Tensor(BoundaryCondition<Tensor>::bcData);
+	}
 };
 
 template <class Tensor>
 class BCOUTLET : public BoundaryCondition<Tensor> {
 public:
-	virtual Tensor applyBC(double x, double y, double z, 
+	Tensor applyBC(double x, double y, double z, 
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
-			double tol);
+			double tol) override {
+				return Tensor(BoundaryCondition<Tensor>::bcData);
+	}
 };
 
 template <class Tensor>
 class BCWALL : public BoundaryCondition<Tensor> {
 public:
-	virtual Tensor applyBC(double x, double y, double z, 
+	Tensor applyBC(double x, double y, double z, 
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
-			double tol);
+			double tol) override {
+				double Ni = BoundaryCondition<Tensor>::v->hv3 * (round_t(0.5 * f * (vn + vn_abs), tol, 1e+6)).sum();
+				double Nr = BoundaryCondition<Tensor>::v->hv3 * (round_t(0.5 * BoundaryCondition<Tensor>::bcData * (vn - vn_abs), tol, 1e+6)).sum();
+				return -(Ni / Nr) * BoundaryCondition<Tensor>::bcData;
+	}
 };
 
 template <class Tensor>
@@ -237,7 +251,7 @@ public:
 	std::vector < std::vector < double > > data;
 	std::map<AlgoritmParts, std::vector<double>> timings;
 
-	std::vector < BoundaryCondition<Tensor> > bcList;
+	std::vector < BoundaryCondition<Tensor> *> bcList; // TODO make shared
 
 	std::vector <double> comp_macro_params(const Tensor& f);
 	Tensor comp_j(const std::vector <double>& params, const Tensor& f);

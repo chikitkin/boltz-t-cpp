@@ -96,62 +96,6 @@ Tensor Problem<Tensor>::getInit(double x, double y, double z,
 }
 
 template <class Tensor>
-Tensor BCSYMMETRYX<Tensor>::applyBC(double x, double y, double z, 
-			const Tensor& f, 
-			const Tensor& vn, const Tensor& vn_abs, 
-			double tol)
-{
-	return reflect(f, 'X');
-}
-
-template <class Tensor>
-Tensor BCSYMMETRYY<Tensor>::applyBC(double x, double y, double z, 
-			const Tensor& f, 
-			const Tensor& vn, const Tensor& vn_abs, 
-			double tol)
-{
-	return reflect(f, 'Y');
-}
-
-template <class Tensor>
-Tensor BCSYMMETRYZ<Tensor>::applyBC(double x, double y, double z, 
-			const Tensor& f, 
-			const Tensor& vn, const Tensor& vn_abs, 
-			double tol)
-{
-	return reflect(f, 'Z');
-}
-
-template <class Tensor>
-Tensor BCINLET<Tensor>::applyBC(double x, double y, double z, 
-			const Tensor& f, 
-			const Tensor& vn, const Tensor& vn_abs, 
-			double tol)
-{
-	return Tensor(bcData);
-}
-
-template <class Tensor>
-Tensor BCOUTLET<Tensor>::applyBC(double x, double y, double z, 
-			const Tensor& f, 
-			const Tensor& vn, const Tensor& vn_abs, 
-			double tol)
-{
-	return Tensor(bcData);
-}
-
-template <class Tensor>
-Tensor BCWALL<Tensor>::applyBC(double x, double y, double z, 
-			const Tensor& f, 
-			const Tensor& vn, const Tensor& vn_abs, 
-			double tol)
-{
-	double Ni = v->hv3 * (round_t(0.5 * f * (vn + vn_abs), tol, 1e+6)).sum();
-	double Nr = v->hv3 * (round_t(0.5 * bcData * (vn - vn_abs), tol, 1e+6)).sum();
-	return -(Ni / Nr) * bcData;
-}
-
-template <class Tensor>
 VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *vy__, double *vz__)
 : nvx(nvx_), nvy(nvy_), nvz(nvz_)
 {
@@ -472,40 +416,46 @@ Solution<Tensor>::Solution(
 			std::vector<int> bcFaces = mesh->boundaryFacesForEachTag[tag];
 			for (const int &jf: bcFaces) {
 				if (type == SYMMETRYX) {
-					bcList[jf] = BCSYMMETRYX<Tensor>();
-					bcList[jf].gas_params = gas_params;
-					bcList[jf].v = v;
-					bcList[jf].bcData = data;
+					BCSYMMETRYX<Tensor> * pBoundaryCondition = new BCSYMMETRYX<Tensor>();
+					pBoundaryCondition->gas_params = gas_params;
+					pBoundaryCondition->v = v;
+					pBoundaryCondition->bcData = data;
+					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == SYMMETRYY) {
-					bcList[jf] = BCSYMMETRYY<Tensor>();
-					bcList[jf].gas_params = gas_params;
-					bcList[jf].v = v;
-					bcList[jf].bcData = data;
+					BCSYMMETRYY<Tensor> * pBoundaryCondition = new BCSYMMETRYY<Tensor>;
+					pBoundaryCondition->gas_params = gas_params;
+					pBoundaryCondition->v = v;
+					pBoundaryCondition->bcData = data;
+					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == SYMMETRYZ) {
-					bcList[jf] = BCSYMMETRYZ<Tensor>();
-					bcList[jf].gas_params = gas_params;
-					bcList[jf].v = v;
-					bcList[jf].bcData = data;
+					BCSYMMETRYZ<Tensor> * pBoundaryCondition = new BCSYMMETRYZ<Tensor>;
+					pBoundaryCondition->gas_params = gas_params;
+					pBoundaryCondition->v = v;
+					pBoundaryCondition->bcData = data;
+					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == INLET) {
-					bcList[jf] = BCINLET<Tensor>();
-					bcList[jf].gas_params = gas_params;
-					bcList[jf].v = v;
-					bcList[jf].bcData = data;
+					BCINLET<Tensor> * pBoundaryCondition = new BCINLET<Tensor>;
+					pBoundaryCondition->gas_params = gas_params;
+					pBoundaryCondition->v = v;
+					pBoundaryCondition->bcData = data;
+					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == OUTLET) {
-					bcList[jf] = BCOUTLET<Tensor>();
-					bcList[jf].gas_params = gas_params;
-					bcList[jf].v = v;
-					bcList[jf].bcData = data;
+					BCOUTLET<Tensor> * pBoundaryCondition = new BCOUTLET<Tensor>;
+					pBoundaryCondition->gas_params = gas_params;
+					pBoundaryCondition->v = v;
+					pBoundaryCondition->bcData = data;
+					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == WALL) {
-					bcList[jf] = BCWALL<Tensor>();
-					bcList[jf].gas_params = gas_params;
-					bcList[jf].v = v;
-					bcList[jf].bcData = data;
+					BCWALL<Tensor> * pBoundaryCondition = new BCWALL<Tensor>;
+					pBoundaryCondition->gas_params = gas_params;
+					pBoundaryCondition->v = v;
+					pBoundaryCondition->bcData = data;
+					bcList.push_back(pBoundaryCondition);
 				}
 			}
 		}
@@ -555,7 +505,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			double x = mesh->faceCenters[jf][0];
 			double y = mesh->faceCenters[jf][1];
 			double z = mesh->faceCenters[jf][2];
-			fLeftRight[jf][mesh->getOutIndex(jf)] = bcList[ibf].applyBC(
+			fLeftRight[jf][mesh->getOutIndex(jf)] = bcList[ibf]->applyBC(
 					x, y, z,
 					fLeftRight[jf][1 - mesh->getOutIndex(jf)],
 					mesh->getOutSign(jf) * vn[jf],
@@ -707,16 +657,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			{"n", "ux", "uy", "uz", "T", "comp"});
 }
 
-template class BoundaryCondition<Full>;
 template class VelocityGrid<Full>;
 template class Problem<Full>;
 template class Solution<Full>;
-//template double *f_maxwell(std::shared_ptr < VelocityGrid<Full> >, double, double, double, double, double, double);
 template Full f_maxwell_t(std::shared_ptr < VelocityGrid<Full> >, double, double, double, double, double, double);
 
-template class BoundaryCondition<Tucker>;
 template class VelocityGrid<Tucker>;
 template class Problem<Tucker>;
 template class Solution<Tucker>;
-//template double *f_maxwell(std::shared_ptr < VelocityGrid<Tucker> >, double, double, double, double, double, double);
 template Tucker f_maxwell_t(std::shared_ptr < VelocityGrid<Tucker> >, double, double, double, double, double, double);
