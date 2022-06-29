@@ -3,7 +3,14 @@
 
 int main() {
 
-	Mesh mesh("../mesh-cyl/");
+	Mesh mesh("../examples/1d-tetra/");
+
+	std::vector < std::vector <double> > data;
+	for (int ic = 0; ic < mesh.nCells; ++ic) {
+		data.push_back(std::vector <double> {static_cast<double>(mesh.cellColors[ic])});
+	}
+
+	mesh.write_tecplot(data, "tec.dat", {"color"});
 
 	std::cout << "nBoundaryFaces " << mesh.nBoundaryFaces << std::endl;
 	std::cout << "nCells " << mesh.nCells << std::endl;

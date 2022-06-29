@@ -90,6 +90,7 @@ public:
 template <class Tensor>
 class BoundaryCondition {
 public:
+	int jf; // TODO maybe fix?
 	std::shared_ptr < GasParams > gas_params;
 	std::shared_ptr < VelocityGrid<Tensor> > v;
 	Tensor bcData;

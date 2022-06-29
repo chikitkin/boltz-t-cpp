@@ -581,7 +581,7 @@ void Mesh::read(const std::string& path, double scale) {
 		}
 	}
 	/*
-		Boundary face directions (same as in the cell) TODO fix
+		Boundary face directions (same as in the cell)
 	*/
 	isOuterNormalBoundary.reserve(nFaces);
 	for (int ibf = 0; ibf < nBoundaryFaces; ++ibf) {
@@ -596,6 +596,28 @@ void Mesh::read(const std::string& path, double scale) {
 			std::cout << "Boundary face with no cell" << std::endl;
 			exit(1);
 		}
+	}
+	/*
+		Coloring of the mesh
+	*/
+	cellColors.resize(nCells, -1);
+	for (int ic = 0; ic < nCells; ++ic) {
+		std::vector<bool> colors(100, true); // 100 is a number of available colors
+		colors[0] = false;
+		for (int& inc : cellNeighbors[ic]) {
+			colors[cellColors[inc] + 1] = false;
+		}
+		for (int icolor = 0; icolor < 100; ++icolor) {
+			if (colors[icolor]) {
+				cellColors[ic] = icolor - 1;
+				break;
+			}
+		}
+	}
+	nColors = *std::max_element(cellColors.begin(), cellColors.end());
+	coloredCells.resize(nColors, std::vector<int>());
+	for (int ic = 0; ic < nCells; ++ic) {
+		coloredCells[cellColors[ic]].push_back(ic);
 	}
 	// end of function
 }

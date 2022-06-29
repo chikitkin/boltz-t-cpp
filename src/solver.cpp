@@ -411,47 +411,53 @@ Solution<Tensor>::Solution(
 	for (int ibc = 0; ibc < problem->bcTags.size(); ++ibc) {
 		int tag = problem->bcTags[ibc];
 		bcType type = problem->bcTypes[ibc];
-		Tensor &data = problem->bcData[ibc];
+		Tensor &data = problem->bcData[ibc]; // TODO make shared
 		if (mesh->boundaryFacesForEachTag.count(tag)) {
 			std::vector<int> bcFaces = mesh->boundaryFacesForEachTag[tag];
 			for (const int &jf: bcFaces) {
 				if (type == SYMMETRYX) {
 					BCSYMMETRYX<Tensor> * pBoundaryCondition = new BCSYMMETRYX<Tensor>();
+					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
 					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == SYMMETRYY) {
-					BCSYMMETRYY<Tensor> * pBoundaryCondition = new BCSYMMETRYY<Tensor>;
+					BCSYMMETRYY<Tensor> * pBoundaryCondition = new BCSYMMETRYY<Tensor>();
+					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
 					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == SYMMETRYZ) {
-					BCSYMMETRYZ<Tensor> * pBoundaryCondition = new BCSYMMETRYZ<Tensor>;
+					BCSYMMETRYZ<Tensor> * pBoundaryCondition = new BCSYMMETRYZ<Tensor>();
+					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
 					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == INLET) {
-					BCINLET<Tensor> * pBoundaryCondition = new BCINLET<Tensor>;
+					BCINLET<Tensor> * pBoundaryCondition = new BCINLET<Tensor>();
+					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
 					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == OUTLET) {
-					BCOUTLET<Tensor> * pBoundaryCondition = new BCOUTLET<Tensor>;
+					BCOUTLET<Tensor> * pBoundaryCondition = new BCOUTLET<Tensor>();
+					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
 					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == WALL) {
-					BCWALL<Tensor> * pBoundaryCondition = new BCWALL<Tensor>;
+					BCWALL<Tensor> * pBoundaryCondition = new BCWALL<Tensor>();
+					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
@@ -501,7 +507,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		// loop over all boundary faces
 		#pragma omp parallel for schedule(dynamic)
 		for (int ibf = 0; ibf < bcList.size(); ++ibf) {
-			int jf = mesh->boundaryFaceIndex[ibf];
+			int jf = bcList[ibf]->jf;
 			double x = mesh->faceCenters[jf][0];
 			double y = mesh->faceCenters[jf][1];
 			double z = mesh->faceCenters[jf][2];
@@ -594,6 +600,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		}
 		else {
 			std::cout << "implicit" << std::endl;
+			#pragma omp parallel for schedule(dynamic)
 			for (int ic = mesh->nCells - 1; ic >= 0; --ic) {
 				df[ic] = rhs[ic];
 			}

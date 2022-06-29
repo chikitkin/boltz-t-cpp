@@ -50,6 +50,9 @@ public:
 	int getOutIndex(int ic, int j); // 1 if out, 0 else
 	double getOutSign(int ic, int j); // 1.0 if out, -1.0 else
 	std::vector<double> cellDiameters;
+	std::vector<int> cellColors;
+	std::vector<std::vector<int>> coloredCells;
+	int nColors;
 
 	int nBoundaryFaces;
 	std::vector<std::vector<int>> boundaryFaces;
