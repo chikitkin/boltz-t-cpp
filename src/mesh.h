@@ -52,6 +52,7 @@ public:
 	std::vector<double> cellDiameters;
 	std::vector<int> cellColors;
 	std::vector<std::vector<int>> coloredCells;
+	std::vector<std::vector<int>> rcoloredCells;
 	int nColors;
 
 	int nBoundaryFaces;

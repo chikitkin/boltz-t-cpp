@@ -475,10 +475,6 @@ template <class Tensor>
 void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 {
 	tau = h * config->CFL / (*std::max_element(v->vx_, v->vx_ + v->nvx) * (pow(3.0, 0.5)));
-	
-	Tensor vnm_loc;
-	Tensor div_tmp;
-	Tensor incr;
 
 	it = 0;
 
@@ -601,47 +597,60 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		else {
 			std::cout << "implicit" << std::endl;
 			#pragma omp parallel for schedule(dynamic)
-			for (int ic = mesh->nCells - 1; ic >= 0; --ic) {
+			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				df[ic] = rhs[ic];
 			}
 			// Backward sweep
-			for (int ic = mesh->nCells - 1; ic >= 0; --ic) {
-				// loop over neighbors of cell ic
-				for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
-					int jf = mesh->cellFaces[ic][j];
-					int icn = mesh->cellNeighbors[ic][j]; // index of neighbor
-					if ((icn >= 0) && (icn > ic)) {
-						vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-						df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnm_loc * df[icn];
-						df[ic].round(config->tol);
+			for (int color = 0; color < mesh->nColors; ++color) {
+				#pragma omp parallel for schedule(dynamic)
+				for (int i = 0; i < mesh->rcoloredCells[color].size(); ++i) {
+					int ic = mesh->rcoloredCells[color][i];
+					Tensor vnm_loc;
+					Tensor div_tmp;
+					// loop over neighbors of cell ic
+					for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+						int jf = mesh->cellFaces[ic][j];
+						int icn = mesh->cellNeighbors[ic][j]; // index of neighbor
+						if ((icn >= 0) && (icn > ic)) {
+							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+							df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnm_loc * df[icn];
+							df[ic].round(config->tol);
+						}
 					}
+					// divide by diagonal coefficient
+					div_tmp = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]);
+					div_tmp.round(1e-3, 1);
+					df[ic] = df[ic] / div_tmp;
+					df[ic].round(config->tol);
 				}
-				// divide by diagonal coefficient
-				div_tmp = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]);
-				div_tmp.round(1e-3, 1);
-				df[ic] = df[ic] / div_tmp;
-				df[ic].round(config->tol);
 			}
 			// Forward sweep
-			for (int ic = 0; ic < mesh->nCells; ++ic) {
-				// loop over neighbors of cell ic
-				incr = v->zero;
-				for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
-					int jf = mesh->cellFaces[ic][j];
-					int icn = mesh->cellNeighbors[ic][j]; // index of neighbor, -1 if no neighbor
-					if ((icn >= 0) && (icn < ic)) {
-						vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-						incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnm_loc * df[icn];
-						incr.round(config->tol);
+			for (int color = 0; color < mesh->nColors; ++color) {
+				#pragma omp parallel for schedule(dynamic)
+				for (int i = 0; i < mesh->coloredCells[color].size(); ++i) {
+					int ic = mesh->coloredCells[color][i];
+					Tensor vnm_loc;
+					Tensor incr = v->zero;
+					Tensor div_tmp;
+					// loop over neighbors of cell ic
+					for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+						int jf = mesh->cellFaces[ic][j];
+						int icn = mesh->cellNeighbors[ic][j]; // index of neighbor, -1 if no neighbor
+						if ((icn >= 0) && (icn < ic)) {
+							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+							incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnm_loc * df[icn];
+							incr.round(config->tol);
+						}
 					}
+					// divide by diagonal coefficient
+					div_tmp = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]);
+					div_tmp.round(1e-3, 1);
+					df[ic] = df[ic] + (incr / div_tmp);
+					df[ic].round(config->tol);
 				}
-				// divide by diagonal coefficient
-				div_tmp = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]);
-				div_tmp.round(1e-3, 1);
-				df[ic] = df[ic] + (incr / div_tmp);
-				df[ic].round(config->tol);
 			}
 			// Update values
+			#pragma omp parallel for schedule(dynamic)
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				f[ic] = f[ic] + df[ic];
 				f[ic].round(config->tol);

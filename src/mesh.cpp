@@ -604,20 +604,28 @@ void Mesh::read(const std::string& path, double scale) {
 	for (int ic = 0; ic < nCells; ++ic) {
 		std::vector<bool> colors(100, true); // 100 is a number of available colors
 		colors[0] = false;
-		for (int& inc : cellNeighbors[ic]) {
+		for (const int& inc : cellNeighbors[ic]) {
+			if (inc != -1) {
 			colors[cellColors[inc] + 1] = false;
+			}
 		}
-		for (int icolor = 0; icolor < 100; ++icolor) {
+		for (int icolor = 1; icolor < 100; ++icolor) {
 			if (colors[icolor]) {
 				cellColors[ic] = icolor - 1;
 				break;
 			}
 		}
 	}
-	nColors = *std::max_element(cellColors.begin(), cellColors.end());
+	nColors = *std::max_element(cellColors.begin(), cellColors.end()) + 1;
 	coloredCells.resize(nColors, std::vector<int>());
+	rcoloredCells.resize(nColors, std::vector<int>());
+	std::cout << "nColors = " << nColors << std::endl;
 	for (int ic = 0; ic < nCells; ++ic) {
 		coloredCells[cellColors[ic]].push_back(ic);
+		rcoloredCells[cellColors[ic]].push_back(ic);
+	}
+	for (int color = 0; color < nColors; ++color) {
+		std::reverse(rcoloredCells[color].begin(), rcoloredCells[color].end());
 	}
 	// end of function
 }
