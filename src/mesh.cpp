@@ -663,6 +663,71 @@ double Mesh::getOutSign(int jf) {
 	return 2.0 * static_cast<double>(isOuterNormalBoundary[jf]) - 1.0;
 }
 
+void Mesh::divideMesh(int nParts) {
+
+	nPartitions = nParts;
+
+	std::vector<int> partitionSizes(nPartitions, nCells / nPartitions);
+	partitionSizes[nPartitions - 1] = nCells - (nPartitions - 1) * (nCells / nPartitions);
+
+	cellPartitions.clear();
+	cellPartitions.resize(nCells, -1);
+	for (int ip = 0; ip < nPartitions; ++ip) {
+		int ic;
+		int partitionSize = 0;
+		for (int i = 0; i < nCells; ++i) {
+			if (cellPartitions[i] == -1) {
+				ic = i;
+				cellPartitions[ic] = ip;
+				++partitionSize;
+				break;
+			}
+		}
+		while (partitionSize < partitionSizes[ip]) {
+			int ic_next = -1;
+			for (const int& inc : cellNeighbors[ic]) {
+				if (inc != -1) {
+					if (cellPartitions.at(inc) == -1) {
+						cellPartitions[inc] = ip; ++partitionSize;
+						ic_next = inc;
+						if (partitionSize == partitionSizes[ip]) {
+							break;
+						}
+					}
+				}
+			}
+			ic = ic_next;
+			if ((ic == -1) && (partitionSize < partitionSizes[ip])) {
+				for (int i = 0; i < nCells; ++i) {
+					if (cellPartitions[i] == -1) {
+						ic = i;
+						cellPartitions[ic] = ip;
+						++partitionSize;
+						break;
+					}
+				}
+			}
+		}
+	}
+
+//	C.resize(nPartitions, std::vector<std::vector<int>> (nColors));
+
+	for (int partition = 0; partition < nPartitions; ++partition) {
+		std::vector <std::vector <int>> v;
+		for (int color = 0; color < nColors; ++color) {
+			v.push_back(std::vector<int>());
+		}
+		C.push_back(v);
+	}
+
+	for (int ic = 0; ic < nCells; ++ic) {
+		int partition = cellPartitions[ic];
+		int color = cellColors[ic];
+		C[partition][color].push_back(ic);
+	}
+
+}
+
 void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string filename,
 		std::vector <std::string> var_names, double time) {
 

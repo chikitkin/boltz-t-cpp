@@ -176,6 +176,8 @@ int main(int argc, char *argv[])
 	std::cout << "uz = " << S.uz[39] << std::endl;
 	std::cout << "T = " << S.T[39] << std::endl;
 
+	S.comp_M();
+
 	std::ofstream out;
 	out.open("T.txt");
 	for (int ic = 0; ic < S.mesh->nCells; ++ic) {

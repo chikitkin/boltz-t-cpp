@@ -50,10 +50,6 @@ public:
 	int getOutIndex(int ic, int j); // 1 if out, 0 else
 	double getOutSign(int ic, int j); // 1.0 if out, -1.0 else
 	std::vector<double> cellDiameters;
-	std::vector<int> cellColors;
-	std::vector<std::vector<int>> coloredCells;
-	std::vector<std::vector<int>> rcoloredCells;
-	int nColors;
 
 	int nBoundaryFaces;
 	std::vector<std::vector<int>> boundaryFaces;
@@ -78,14 +74,26 @@ public:
 
 	double computeTetraVolume(std::vector<std::vector<double>> tetra);
 
-
-	void write_tecplot(std::vector < std::vector <double> > data, std::string filename,
-			std::vector <std::string> var_names, double time = 0.0);
-
 	int getNumFacesOfCell(int ic);
 	int getFacesOfCell(int ic, int jf);
 	int getNumTags();
 	std::vector<int> getFacesForTag(int tag);
+
+
+	std::vector<int> cellColors;
+	std::vector<std::vector<int>> coloredCells;
+	std::vector<std::vector<int>> rcoloredCells;
+	int nColors;
+
+	void divideMesh(int nParts_);
+	std::vector<int> cellPartitions;
+	int nPartitions;
+
+	std::vector < std::vector < std::vector < int >>> C;
+
+
+	void write_tecplot(std::vector < std::vector <double> > data, std::string filename,
+			std::vector <std::string> var_names, double time = 0.0);
 };
 
 #endif /* MESH_H_ */

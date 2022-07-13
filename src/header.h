@@ -22,4 +22,6 @@
 #include "mkl.h"
 #include "mkl_lapacke.h"
 
+#include <mgl2/mgl.h>
+
 #endif /* HEADER_H_ */

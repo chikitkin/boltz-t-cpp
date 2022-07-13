@@ -95,6 +95,8 @@ public:
 	std::shared_ptr < VelocityGrid<Tensor> > v;
 	Tensor bcData;
 
+	bcType type;
+
 	virtual Tensor applyBC(double x, double y, double z, 
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
@@ -256,12 +258,14 @@ public:
 
 	std::vector <double> comp_macro_params(const Tensor& f);
 	Tensor comp_j(const std::vector <double>& params, const Tensor& f);
+	void comp_M();
 
 	int it;
 	std::vector <double> frob_norm_iter;
 
+	void plot_residual();
 	void create_res();
-	void update_res();
+	void update_res(double frob_norm);
 
 	void save_tec();
 	void save_macro();

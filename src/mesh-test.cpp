@@ -1,40 +1,34 @@
 #include "mesh.h"
 #include "header.h"
 
-int main() {
+int main(int argc, char *argv[]) {
 
-	Mesh mesh("../examples/1d/");
-
-	std::vector < std::vector <double> > data;
-	for (int ic = 0; ic < mesh.nCells; ++ic) {
-		data.push_back(std::vector <double> {static_cast<double>(mesh.cellColors[ic])});
-	}
-
-	mesh.write_tecplot(data, "tec.dat", {"color"});
+	Mesh mesh("../examples/cyl/");
 
 	std::cout << "nBoundaryFaces " << mesh.nBoundaryFaces << std::endl;
 	std::cout << "nCells " << mesh.nCells << std::endl;
 	std::cout << "nVerts " << mesh.nVerts << std::endl;
 	std::cout << "nFaces " << mesh.nFaces << std::endl;
 
-	std::cout << "coloredCells" << std::endl;
-	for (const auto &color : mesh.coloredCells) {
-		for (const auto &ic : color) {
-			std::cout << ic << " ";
-		}
-		std::cout << "\n";
-	}
-	std::cout << "\n";	
+	int nParts = atoi(argv[1]);
+	mesh.divideMesh(nParts);
 
-	std::cout << "rcoloredCells" << std::endl;
-	for (const auto &color : mesh.rcoloredCells) {
-		for (const auto &ic : color) {
-			std::cout << ic << " ";
-		}
-		std::cout << "\n";
+	std::vector < std::vector <double> > data;
+	for (int ic = 0; ic < mesh.nCells; ++ic) {
+		data.push_back(std::vector <double> {static_cast<double>(mesh.cellPartitions[ic])});
 	}
-	std::cout << "\n";	
 
+	mesh.write_tecplot(data, "tec.dat", {"partition"});
+
+	for (int color = 0; color < mesh.nColors; ++color) {
+		for (int partition = 0; partition < mesh.nPartitions; ++partition) {
+			std::cout << "C " << partition << " " << color << " - ";
+			for (int i = mesh.C[partition][color].size() - 1; i >= 0; --i) {
+				std::cout << mesh.C[partition][color][i] << " ";
+			}
+			std::cout << "\n";
+		}
+	}
 
 	// std::cout << "boundaryFaces" << std::endl;
 	// for (const auto &bcface : mesh.boundaryFaces) {

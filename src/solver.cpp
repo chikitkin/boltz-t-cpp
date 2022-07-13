@@ -261,6 +261,52 @@ Tensor Solution<Tensor>::comp_j(const std::vector <double>& params, const Tensor
 }
 
 template <class Tensor>
+void Solution<Tensor>::comp_M()
+{
+	std::ofstream file;
+	file.open("M.txt", std::ofstream::trunc);
+
+	for (int ibf = 0; ibf < bcList.size(); ++ibf) {
+		if (bcList[ibf]->type == WALL) {
+			int jf = bcList[ibf]->jf;
+			double x = mesh->faceCenters[jf][0];
+			double y = mesh->faceCenters[jf][1];
+			double z = mesh->faceCenters[jf][2];
+			Tensor fWall = fLeftRight[jf][mesh->getOutIndex(jf)];
+			double Mx = 0.5 * v->hv3 * (v->vx_t * v->v2 * fWall).sum();
+			double My = 0.5 * v->hv3 * (v->vy_t * v->v2 * fWall).sum();
+			double Mz = 0.5 * v->hv3 * (v->vz_t * v->v2 * fWall).sum();
+			file << x << " " << Mx << " " << My << " " << Mz << "\n";
+		}
+	}
+	file.close();
+}
+
+template <class Tensor>
+void Solution<Tensor>::plot_residual() {
+	// mglGraph gr;// create canvas
+	// mglData d; d.Set(frob_norm_iter);  // convert to internal format
+	// gr.Plot(d);   // plot it
+	// gr.Axis();    // draw axis if you need
+	// gr.WritePNG("res.png"); // save it
+}
+
+template <class Tensor>
+void Solution<Tensor>::create_res() {
+	std::ofstream file;
+	file.open("res.txt", std::ofstream::trunc);
+	file.close();
+}
+
+template <class Tensor>
+void Solution<Tensor>::update_res(double frob_norm) {
+	std::ofstream file;
+	file.open("res.txt", std::ofstream::app);
+	file << frob_norm << "\n";
+	file.close();
+}
+
+template <class Tensor>
 Solution<Tensor>::Solution(
 		std::shared_ptr < GasParams > gas_params,
 		std::shared_ptr < Mesh > mesh,
@@ -421,6 +467,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == SYMMETRYY) {
@@ -429,6 +476,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == SYMMETRYZ) {
@@ -437,6 +485,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == INLET) {
@@ -445,6 +494,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == OUTLET) {
@@ -453,6 +503,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
 				else if (type == WALL) {
@@ -461,6 +512,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
 					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
 			}
@@ -468,7 +520,9 @@ Solution<Tensor>::Solution(
 	}
 				
 	it = 0;
-	//  TODO: create_res
+	create_res();
+
+	mesh->divideMesh(omp_get_max_threads());
 }
 
 template <class Tensor>
@@ -580,8 +634,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		}
 		frob_norm = pow(frob_norm / mesh->nCells, 0.5);
 		frob_norm_iter.push_back(frob_norm);
+		update_res(frob_norm);
 
-		std::cout << "Frob norm = " << frob_norm << std::endl;
 		auto t4 = omp_get_wtime();
 		if (!config->isImplicit) {
 			// Update values
@@ -601,10 +655,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				df[ic] = rhs[ic];
 			}
 			// Backward sweep
-			for (int color = 0; color < mesh->nColors; ++color) {
-				#pragma omp parallel for schedule(dynamic)
-				for (int i = 0; i < mesh->rcoloredCells[color].size(); ++i) {
-					int ic = mesh->rcoloredCells[color][i];
+			#pragma omp parallel
+			{
+			int partition = omp_get_thread_num();
+			for (int color = mesh->nColors - 1; color >= 0; --color) {
+				for (int i = mesh->C[partition][color].size() - 1; i >= 0; --i) {
+					int ic = mesh->C[partition][color][i];
 					Tensor vnm_loc;
 					Tensor div_tmp;
 					// loop over neighbors of cell ic
@@ -623,12 +679,17 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					df[ic] = df[ic] / div_tmp;
 					df[ic].round(config->tol);
 				}
+				#pragma omp barrier
 			}
+			}
+
 			// Forward sweep
+			#pragma omp parallel
+			{
+			int partition = omp_get_thread_num();
 			for (int color = 0; color < mesh->nColors; ++color) {
-				#pragma omp parallel for schedule(dynamic)
-				for (int i = 0; i < mesh->coloredCells[color].size(); ++i) {
-					int ic = mesh->coloredCells[color][i];
+				for (int i = 0; i < mesh->C[partition][color].size(); ++i) {
+					int ic = mesh->C[partition][color][i];
 					Tensor vnm_loc;
 					Tensor incr = v->zero;
 					Tensor div_tmp;
@@ -648,6 +709,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					df[ic] = df[ic] + (incr / div_tmp);
 					df[ic].round(config->tol);
 				}
+				#pragma omp barrier
+			}
 			}
 			// Update values
 			#pragma omp parallel for schedule(dynamic)
