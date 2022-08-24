@@ -661,13 +661,15 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			for (int color = mesh->nColors - 1; color >= 0; --color) {
 				for (int i = mesh->C[partition][color].size() - 1; i >= 0; --i) {
 					int ic = mesh->C[partition][color][i];
+					int ic_perm = mesh->iPerm[ic];
 					Tensor vnm_loc;
 					Tensor div_tmp;
 					// loop over neighbors of cell ic
 					for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
 						int jf = mesh->cellFaces[ic][j];
 						int icn = mesh->cellNeighbors[ic][j]; // index of neighbor
-						if ((icn >= 0) && (icn > ic)) {
+						int icn_perm = mesh->iPerm[icn];
+						if ((icn >= 0) && (icn_perm > ic_perm)) {
 							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 							df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnm_loc * df[icn];
 							df[ic].round(config->tol);
@@ -681,15 +683,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				}
 				#pragma omp barrier
 			}
-			}
 
 			// Forward sweep
-			#pragma omp parallel
-			{
-			int partition = omp_get_thread_num();
 			for (int color = 0; color < mesh->nColors; ++color) {
 				for (int i = 0; i < mesh->C[partition][color].size(); ++i) {
 					int ic = mesh->C[partition][color][i];
+					int ic_perm = mesh->iPerm[ic];
 					Tensor vnm_loc;
 					Tensor incr = v->zero;
 					Tensor div_tmp;
@@ -697,7 +696,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
 						int jf = mesh->cellFaces[ic][j];
 						int icn = mesh->cellNeighbors[ic][j]; // index of neighbor, -1 if no neighbor
-						if ((icn >= 0) && (icn < ic)) {
+						int icn_perm = mesh->iPerm[icn];
+						if ((icn >= 0) && (icn_perm < ic_perm)) {
 							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 							incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnm_loc * df[icn];
 							incr.round(config->tol);

@@ -726,6 +726,17 @@ void Mesh::divideMesh(int nParts) {
 		C[partition][color].push_back(ic);
 	}
 
+	int new_ic = 0;
+	iPerm.resize(nCells);
+	for (int color = 0; color < nColors; ++color) {
+		for (int partition = 0; partition < nPartitions; ++partition) {
+			for (int k = 0; k < C[partition][color].size(); ++k) {
+				int ic = C[partition][color][k];
+				iPerm[ic] = new_ic;
+				++new_ic;
+			}
+		}
+	}
 }
 
 void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string filename,

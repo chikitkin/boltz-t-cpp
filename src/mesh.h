@@ -90,6 +90,7 @@ public:
 	int nPartitions;
 
 	std::vector < std::vector < std::vector < int >>> C;
+	std::vector < int > iPerm;
 
 
 	void write_tecplot(std::vector < std::vector <double> > data, std::string filename,
