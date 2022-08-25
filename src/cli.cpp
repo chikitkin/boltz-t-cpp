@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 	std::cout << "uz = " << S.uz[39] << std::endl;
 	std::cout << "T = " << S.T[39] << std::endl;
 
-	S.comp_M();
+	S.write_wall_params();
 
 	std::ofstream out;
 	out.open("T.txt");
