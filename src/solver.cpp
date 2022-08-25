@@ -267,6 +267,7 @@ void Solution<Tensor>::write_wall_params()
 	file.open("wall.txt", std::ofstream::trunc);
 
 	file << "x" << " " << "y" << " " << "z" << " ";
+	file << "n" << " " << "T" << " " << "rho" << " " << "p" << " ";
 	file << "Px" << " " << "Py" << " " << "Pz" << " ";
 	file << "Mx" << " " << "My" << " " << "Mz" << " ";
 	file << "\n";
@@ -279,6 +280,14 @@ void Solution<Tensor>::write_wall_params()
 			double z = mesh->faceCenters[jf][2];
 			file << x << " " << y << " " << z << " ";
 			Tensor fWall = fLeftRight[jf][mesh->getOutIndex(jf)];
+
+			std::vector<double> params = comp_macro_params(fWall);
+			double n = params[0];
+			double T = params[4];
+			double rho = params[5];
+			double p = params[6];
+			file << n << " " << T << " " << rho << " " << p << " ";
+
 			double Px = gas_params->m * v->hv3 * (vn[jf] * v->vx_t * fWall).sum();
 			double Py = gas_params->m * v->hv3 * (vn[jf] * v->vy_t * fWall).sum();
 			double Pz = gas_params->m * v->hv3 * (vn[jf] * v->vz_t * fWall).sum();
