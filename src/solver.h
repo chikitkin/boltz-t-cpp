@@ -250,7 +250,7 @@ public:
 	std::vector < double > T;
 	std::vector < double > nu;
 	std::vector < double > rank;
-	std::vector < double > comp;
+	std::vector < double > compression;
 	std::vector < std::vector < double > > data;
 	std::map<AlgoritmParts, std::vector<double>> timings;
 
@@ -258,7 +258,7 @@ public:
 
 	std::vector <double> comp_macro_params(const Tensor& f);
 	Tensor comp_j(const std::vector <double>& params, const Tensor& f);
-	void comp_M();
+	void write_wall_params();
 
 	int it;
 	std::vector <double> frob_norm_iter;

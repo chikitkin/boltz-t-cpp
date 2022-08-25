@@ -261,10 +261,15 @@ Tensor Solution<Tensor>::comp_j(const std::vector <double>& params, const Tensor
 }
 
 template <class Tensor>
-void Solution<Tensor>::comp_M()
+void Solution<Tensor>::write_wall_params()
 {
 	std::ofstream file;
-	file.open("M.txt", std::ofstream::trunc);
+	file.open("wall.txt", std::ofstream::trunc);
+
+	file << "x" << " " << "y" << " " << "z" << " ";
+	file << "Px" << " " << "Py" << " " << "Pz" << " ";
+	file << "Mx" << " " << "My" << " " << "Mz" << " ";
+	file << "\n";
 
 	for (int ibf = 0; ibf < bcList.size(); ++ibf) {
 		if (bcList[ibf]->type == WALL) {
@@ -272,11 +277,17 @@ void Solution<Tensor>::comp_M()
 			double x = mesh->faceCenters[jf][0];
 			double y = mesh->faceCenters[jf][1];
 			double z = mesh->faceCenters[jf][2];
+			file << x << " " << y << " " << z << " ";
 			Tensor fWall = fLeftRight[jf][mesh->getOutIndex(jf)];
+			double Px = gas_params->m * v->hv3 * (vn[jf] * v->vx_t * fWall).sum();
+			double Py = gas_params->m * v->hv3 * (vn[jf] * v->vy_t * fWall).sum();
+			double Pz = gas_params->m * v->hv3 * (vn[jf] * v->vz_t * fWall).sum();
+			file << Px << " " << Py << " " << Pz << " ";
 			double Mx = 0.5 * v->hv3 * (v->vx_t * v->v2 * fWall).sum();
 			double My = 0.5 * v->hv3 * (v->vy_t * v->v2 * fWall).sum();
 			double Mz = 0.5 * v->hv3 * (v->vz_t * v->v2 * fWall).sum();
-			file << x << " " << Mx << " " << My << " " << Mz << "\n";
+			file << Mx << " " << My << " " << Mz << " ";
+			file << "\n";
 		}
 	}
 	file.close();
@@ -448,7 +459,7 @@ Solution<Tensor>::Solution(
 	p.resize(mesh->nCells, 0.0);
 	T.resize(mesh->nCells, 0.0);
 	nu.resize(mesh->nCells, 0.0);
-	comp.resize(mesh->nCells, 0.0);
+	compression.resize(mesh->nCells, 0.0);
 	rank.resize(mesh->nCells, 0.0);
 	data.resize(mesh->nCells, std::vector < double >());
 
@@ -615,7 +626,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			rho[ic] = params[5];
 			p[ic] = params[6];
 			nu[ic] = params[7];
-			comp[ic] = f[ic].compression();
+			compression[ic] = f[ic].compression();
 
 			data[ic] = {
 					n[ic],
@@ -623,7 +634,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					uy[ic],
 					uz[ic],
 					T[ic],
-					comp[ic]
+					compression[ic]
 			};
 		}
 
@@ -729,11 +740,11 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 
 		if (it % 10 == 0) {
 			mesh->write_tecplot(data, "tec.dat",
-					{"n", "ux", "uy", "uz", "T", "comp"});
+					{"n", "ux", "uy", "uz", "T", "compression"});
 		}
 	}
 	mesh->write_tecplot(data, "tec.dat",
-			{"n", "ux", "uy", "uz", "T", "comp"});
+			{"n", "ux", "uy", "uz", "T", "compression"});
 }
 
 template class VelocityGrid<Full>;
