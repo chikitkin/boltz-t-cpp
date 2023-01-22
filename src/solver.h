@@ -237,7 +237,8 @@ public:
 	std::vector < Tensor > diag_r1;
 
 	std::vector < Tensor > f;
-	std::vector<std::vector<Tensor>> fLeftRight;
+	std::vector < std::vector<Tensor> > fLeftRight;
+	std::vector < Tensor > slope;
 	std::vector < Tensor > flux;
 	std::vector < Tensor > rhs;
 	std::vector < Tensor > df;
@@ -276,7 +277,7 @@ public:
 	void plot_macro();
 
 	void make_time_steps(std::shared_ptr<Config> config, int nt);
-
+    void reconstruction_2nd_order();
 
 };
 

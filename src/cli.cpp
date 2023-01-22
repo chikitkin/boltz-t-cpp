@@ -19,6 +19,7 @@ int main(int argc, char *argv[])
     double Mach;
 	double Kn;
 	double delta;
+	double l_s;
 	
 	double n_in;
 	double u_in;
@@ -49,6 +50,7 @@ int main(int argc, char *argv[])
         else if (line.find("Mach") != -1) { line_stream >> Mach; }
         else if (line.find("Kn") != -1) { line_stream >> Kn; }
         else if (line.find("delta") != -1) { line_stream >> delta; }
+        else if (line.find("l_s") != -1) { line_stream >> l_s; }
         else if (line.find("n_in") != -1) { line_stream >> n_in; }
         else if (line.find("u_in") != -1) { line_stream >> u_in; }
         else if (line.find("T_in") != -1) { line_stream >> T_in; }
@@ -59,11 +61,12 @@ int main(int argc, char *argv[])
         else if (line.find("nv") != -1) { line_stream >> nv; }
         else if (line.find("CFL") != -1) { line_stream >> config->CFL; }
         else if (line.find("isImplicit") != -1) { line_stream >> config->isImplicit; }
+        else if (line.find("tol") != -1) { line_stream >> config->tol; }
         else if (line.find("steps") != -1) { line_stream >> steps; }
         else if (line.find("boundary:") != -1) { break; }
 	}
 
-	delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
+//	delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
 
 	double n_s = n_in;
 	double T_s = T_in;
@@ -73,7 +76,7 @@ int main(int argc, char *argv[])
 	double v_s = pow(2. * gas_params->Rg * T_s, 0.5);
 	double mu_s = gas_params->mu(T_s);
 
-	double l_s = delta * mu_s * v_s / p_s;
+//	l_s = delta * mu_s * v_s / p_s;
 
 	std::shared_ptr < Mesh > mesh = std::make_shared < Mesh > (mesh_path, l_s);
 
@@ -175,8 +178,6 @@ int main(int argc, char *argv[])
 	std::cout << "uy = " << S.uy[39] << std::endl;
 	std::cout << "uz = " << S.uz[39] << std::endl;
 	std::cout << "T = " << S.T[39] << std::endl;
-
-	S.write_wall_params();
 
 	std::ofstream out;
 	out.open("T.txt");

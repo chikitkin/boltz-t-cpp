@@ -129,7 +129,7 @@ void Full::orthogonalize()
 {
 }
 // Recompress tensor
-void Full::round(double eps, int rmax)
+void Full::round(double tol, int rmax)
 {
 	r1 = 1;
 	r2 = 1;
@@ -332,7 +332,32 @@ Full reflect(const Full& t, char axis)
 	}
 }
 
-Full round_t(const Full& t, double tol = 1e-14, int rmax = 1000000)
+Full minmod(const Full& t1, const Full& t2)
+{
+    // check that shapes are equal
+	if (t1.n() != t2.n()) {
+		std::cout << "Different shapes in minmod!" << std::endl;
+		exit(-1);
+	}
+    Full res(t1);
+    for (int i = 0; i < t1.n1 * t1.n2 * t1.n3; ++i) {
+        if (t1.g[i] * t2.g[i] <= 0.0) {
+            res.g[i] = 0.0;
+        }
+        else {
+            if (std::abs(t1.g[i]) < std::abs(t2.g[i])) {
+                res.g[i] = t1.g[i];
+            }
+            else {
+                res.g[i] = t2.g[i];
+            }
+        }
+    }
+    
+    return res;
+}
+
+Full round_t(const Full& t, double tol, int rmax)
 {
 	Full res(t);
 

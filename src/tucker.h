@@ -41,7 +41,7 @@ public:
 	// Orthogonalize factors with QR
 	void orthogonalize();
 	// Recompress tensor
-	void round(double eps = 1e-14, int rmax = 1000000);
+	void round(double tol = 1e-14, int rmax = 1000000);
 	double *full() const;
 	// Compute sum of all elements
 	double sum() const;
@@ -58,7 +58,7 @@ public:
 	friend Tucker operator /(const Tucker& t1, const Tucker& t2);
 	friend Tucker reflect(const Tucker& t, char axis);
 
-	friend Tucker round_t(const Tucker& t, double tol, int rmax);
+	friend Tucker round_t(const Tucker& t, double tol = 1e-14, int rmax = 1000000);
 
 private:
 	int I(int i1, int i2, int i3);

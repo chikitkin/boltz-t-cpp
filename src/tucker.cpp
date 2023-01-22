@@ -277,7 +277,7 @@ void Tucker::orthogonalize()
 	r3 = std::min(n3, r3);
 }
 // Recompress tensor
-void Tucker::round(double eps, int rmax)
+void Tucker::round(double tol, int rmax)
 {
 	const double alpha = 1.0;
 	const double beta = 0.0;
@@ -286,7 +286,7 @@ void Tucker::round(double eps, int rmax)
 	orthogonalize();
 	// TODO: replace with tuple
 	double **A;
-	A = compress(r1, r2, r3, g, eps, r1_tmp, r2_tmp, r3_tmp, rmax);
+	A = compress(r1, r2, r3, g, tol, r1_tmp, r2_tmp, r3_tmp, rmax);
 
 	delete [] g;
 	g = A[0];
@@ -561,7 +561,7 @@ Tucker reflect(const Tucker& t, char axis)
 	}
 }
 
-Tucker round_t(const Tucker& t, double tol = 1e-14, int rmax = 1000000)
+Tucker round_t(const Tucker& t, double tol, int rmax)
 {
 	Tucker res(t);
 

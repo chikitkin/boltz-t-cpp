@@ -1,0 +1,1 @@
+sbatch -p 52cores -n 1 --ntasks-per-node=1 --cpus-per-task=52 cyl

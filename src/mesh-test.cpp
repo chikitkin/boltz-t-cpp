@@ -3,7 +3,7 @@
 
 int main(int argc, char *argv[]) {
 
-	Mesh mesh("../examples/cyl/");
+	Mesh mesh("../examples/Sphere/");
 
 	std::cout << "nBoundaryFaces " << mesh.nBoundaryFaces << std::endl;
 	std::cout << "nCells " << mesh.nCells << std::endl;

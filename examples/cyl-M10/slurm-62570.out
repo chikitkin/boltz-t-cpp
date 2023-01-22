@@ -1,0 +1,71 @@
+Number of vertices = 4402
+Number of hexa cells = 2100
+Number of boundary quadrilaterals = 4400
+Number of faces = 8500
+Sum of volumes = 6.64316
+nColors = 2
+BC types are:
+SYMMETRYZ
+INLET
+WALL
+SYMMETRYY
+Number of threads is: 104
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+implicit
+srun: Job step aborted: Waiting up to 2 seconds for job step to finish.
+srun: got SIGCONT
+slurmstepd: *** STEP 62570.0 CANCELLED AT 2022-12-08T17:27:53 *** on n243
+slurmstepd: *** JOB 62570 CANCELLED AT 2022-12-08T17:27:53 *** on n243
+srun: forcing job termination
+srun: error: Timed out waiting for job step to complete

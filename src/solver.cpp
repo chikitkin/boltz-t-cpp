@@ -5,6 +5,11 @@
 #include "full.h"
 #include "tucker.h"
 
+double distance_3d(std::vector<double> x, std::vector<double> y) {
+    double squared = pow(x[0] - y[0], 2.0) + pow(x[1] - y[1], 2.0) + pow(x[2] - y[2], 2.0);
+    return pow(squared, 0.5);
+}
+
 std::vector<int> getParallelRanges(const std::vector<double>& times, int numThreads) {
 
 	int n = times.size();
@@ -267,6 +272,7 @@ void Solution<Tensor>::write_wall_params()
 	file.open("wall.txt", std::ofstream::trunc);
 
 	file << "x" << " " << "y" << " " << "z" << " ";
+	file << "n" << " " << "T" << " " << "rho" << " " << "p" << " ";
 	file << "Px" << " " << "Py" << " " << "Pz" << " ";
 	file << "Mx" << " " << "My" << " " << "Mz" << " ";
 	file << "\n";
@@ -278,7 +284,15 @@ void Solution<Tensor>::write_wall_params()
 			double y = mesh->faceCenters[jf][1];
 			double z = mesh->faceCenters[jf][2];
 			file << x << " " << y << " " << z << " ";
-			Tensor fWall = fLeftRight[jf][mesh->getOutIndex(jf)];
+			Tensor fWall = fLeftRight[jf][1 - mesh->getOutIndex(jf)];
+
+			std::vector<double> params = comp_macro_params(fWall);
+			double n = params[0];
+			double T = params[4];
+			double rho = params[5];
+			double p = params[6];
+			file << n << " " << T << " " << rho << " " << p << " ";
+
 			double Px = gas_params->m * v->hv3 * (vn[jf] * v->vx_t * fWall).sum();
 			double Py = gas_params->m * v->hv3 * (vn[jf] * v->vy_t * fWall).sum();
 			double Pz = gas_params->m * v->hv3 * (vn[jf] * v->vz_t * fWall).sum();
@@ -286,7 +300,7 @@ void Solution<Tensor>::write_wall_params()
 			double Mx = 0.5 * v->hv3 * (v->vx_t * v->v2 * fWall).sum();
 			double My = 0.5 * v->hv3 * (v->vy_t * v->v2 * fWall).sum();
 			double Mz = 0.5 * v->hv3 * (v->vz_t * v->v2 * fWall).sum();
-			file << Mx << " " << My << " " << Mz << " ";
+			file << Mx << " " << My << " " << Mz;
 			file << "\n";
 		}
 	}
@@ -447,6 +461,7 @@ Solution<Tensor>::Solution(
 	// TODO: other inits
 
 	fLeftRight.resize(mesh->nFaces, std::vector<Tensor>{Tensor(), Tensor()});
+	slope.resize(mesh->nFaces, Tensor());
 	flux.resize(mesh->nFaces, Tensor());
 	rhs.resize(mesh->nCells, Tensor());
 	df.resize(mesh->nCells, Tensor());
@@ -535,7 +550,46 @@ Solution<Tensor>::Solution(
 
 	mesh->divideMesh(omp_get_max_threads());
 }
+/*
+template <class Tensor>
+void Solution<Tensor>::reconstruction_2nd_order() {
+    // compute slopes
+    #pragma omp parallel for schedule(dynamic)
+    for (int jf = 0; jf < mesh->nFaces; ++jf) {
+        std::vector < int > leftRightCell = mesh->leftRightCells[jf];
+        
+        if ((leftRightCell[0] == -1) || (leftRightCell[1] == -1)) {
+            slope[jf] = v->zero;
+            continue;
+        }
 
+        std::vector < double > leftCellCenter = mesh->cellCenters[leftRightCell[0]];
+        std::vector < double > rightCellCenter = mesh->cellCenters[leftRightCell[1]];
+        double delta = distance_3d(leftCellCenter, rightCellCenter);
+        slope[jf] = (1.0 / delta) * (f[leftRightCell[1]] - f[leftRightCell[0]]);
+        slope[jf].round(config->tol);
+    }
+    #pragma omp parallel for schedule(dynamic)
+    for (int ic = 0; ic < mesh->nCells; ++ic) {
+        std::vector < int > hexaFaces = mesh->cellFaces[ic];
+        
+        Tensor slope0 = -minmod(mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], -mesh->getOutSign(ic, 2) * slope[hexaFaces[2]]);
+        Tensor slope1 = -minmod(mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], -mesh->getOutSign(ic, 3) * slope[hexaFaces[3]]);
+        Tensor slope2 = -minmod(mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], -mesh->getOutSign(ic, 5) * slope[hexaFaces[5]]);
+        
+        std::vector<double> cellCenter = mesh->cellCenters[ic];
+        
+        fLeftRight[hexaFaces[0]][1 - mesh->getOutIndex(ic, 0)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[0]]) * slope0, config->tol);
+        fLeftRight[hexaFaces[2]][1 - mesh->getOutIndex(ic, 2)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[2]]) * slope0, config->tol);
+        
+        fLeftRight[hexaFaces[1]][1 - mesh->getOutIndex(ic, 1)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[1]]) * slope1, config->tol);
+        fLeftRight[hexaFaces[3]][1 - mesh->getOutIndex(ic, 3)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[3]]) * slope1, config->tol);
+        
+        fLeftRight[hexaFaces[4]][1 - mesh->getOutIndex(ic, 4)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[4]]) * slope2, config->tol);
+        fLeftRight[hexaFaces[5]][1 - mesh->getOutIndex(ic, 5)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[5]]) * slope2, config->tol);
+	}
+}
+*/
 template <class Tensor>
 void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 {
@@ -555,6 +609,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		// reconstruction for inner faces
 		// 1st order
 		auto t0 = omp_get_wtime();
+//		reconstruction_2nd_order();
+
 		#pragma omp parallel for schedule(dynamic)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			for (int j = 0; j < mesh->cellFaces[ic].size(); j++) {
@@ -563,6 +619,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				fLeftRight[jf][1 - mesh->getOutIndex(ic, j)] = f[ic];
 			}
 		}
+
 		auto t1 = omp_get_wtime();
 		// boundary condition
 		// loop over all boundary faces
@@ -741,10 +798,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		if (it % 10 == 0) {
 			mesh->write_tecplot(data, "tec.dat",
 					{"n", "ux", "uy", "uz", "T", "compression"});
+			write_wall_params();
 		}
 	}
 	mesh->write_tecplot(data, "tec.dat",
 			{"n", "ux", "uy", "uz", "T", "compression"});
+	write_wall_params();
 }
 
 template class VelocityGrid<Full>;
