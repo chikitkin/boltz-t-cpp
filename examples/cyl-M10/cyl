@@ -1,4 +1,6 @@
 #!/bin/sh
 #SBATCH
-# export OMP_NUM_THREADS=1
-srun ../../src/cli.o cyl.cfg
+now=$(date '+%d_%m_%Y_%H:%M:%S')
+mkdir $now
+cd $now
+srun ../../../src/cli.o ../cyl.cfg

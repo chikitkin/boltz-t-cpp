@@ -52,7 +52,10 @@ public:
 	friend Full minmod(const Full& t1, const Full& t2);
 
 	friend Full round_t(const Full& t, double tol = 1e-14, int rmax = 1000000);
-
+/*
+	std::string to_string();
+	friend Full from_string(std::string &tensor_string);
+*/
 private:
 	int I(int i1, int i2, int i3);
 	std::vector <int> multiI(int I);

@@ -1,1 +1,1 @@
-sbatch -p module12 -n 1 --ntasks-per-node=1 --cpus-per-task=24 1d
+sbatch -p RT -n 1 --ntasks-per-node=1 --cpus-per-task=8 1d

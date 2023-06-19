@@ -1,3 +1,6 @@
 #!/bin/sh
 #SBATCH
-srun ../../src/cli.o 1d.cfg
+now=$(date '+%d_%m_%Y_%H:%M:%S')
+mkdir $now
+cd $now
+srun ../../../src/cli.o ../1d.cfg

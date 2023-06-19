@@ -580,7 +580,18 @@ std::vector<int> Tucker::multiI(int I)
 	// TODO: implement
 	return {0, 0, 0};
 }
+/*
+std::string to_string()
+{
+    std::string res;
+    res.append("");
+}
 
+Tucker from_string(std::string &tensor_string)
+{
+
+}
+*/
 double *svd_trunc(int m, int n, double *a, double eps, int &r)
 {
 	int info;
@@ -761,3 +772,5 @@ double **qr(int n1, int n2, const double *a)
 
 	return result;
 }
+
+

@@ -376,3 +376,15 @@ std::vector<int> Full::multiI(int I)
 	// TODO: implement
 	return {0, 0, 0};
 }
+/*
+std::string to_string()
+{
+
+}
+
+Full from_string(std::string &tensor_string)
+{
+
+}
+*/
+

@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-    typedef Tucker Tensor;
+    typedef Full Tensor;
 	std::shared_ptr < GasParams > gas_params = std::make_shared < GasParams > ();
 
 

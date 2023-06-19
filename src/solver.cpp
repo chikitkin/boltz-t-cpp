@@ -483,7 +483,7 @@ Solution<Tensor>::Solution(
 	for (int ibc = 0; ibc < problem->bcTags.size(); ++ibc) {
 		int tag = problem->bcTags[ibc];
 		bcType type = problem->bcTypes[ibc];
-		Tensor &data = problem->bcData[ibc]; // TODO make shared
+		Tensor &data_ = problem->bcData[ibc]; // TODO make shared
 		if (mesh->boundaryFacesForEachTag.count(tag)) {
 			std::vector<int> bcFaces = mesh->boundaryFacesForEachTag[tag];
 			for (const int &jf: bcFaces) {
@@ -492,7 +492,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
-					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->bcData = data_;
 					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
@@ -501,7 +501,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
-					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->bcData = data_;
 					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
@@ -510,7 +510,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
-					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->bcData = data_;
 					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
@@ -519,7 +519,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
-					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->bcData = data_;
 					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
@@ -528,7 +528,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
-					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->bcData = data_;
 					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
@@ -537,7 +537,7 @@ Solution<Tensor>::Solution(
 					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
 					pBoundaryCondition->v = v;
-					pBoundaryCondition->bcData = data;
+					pBoundaryCondition->bcData = data_;
 					pBoundaryCondition->type = type;
 					bcList.push_back(pBoundaryCondition);
 				}
@@ -550,7 +550,7 @@ Solution<Tensor>::Solution(
 
 	mesh->divideMesh(omp_get_max_threads());
 }
-/*
+
 template <class Tensor>
 void Solution<Tensor>::reconstruction_2nd_order() {
     // compute slopes
@@ -573,23 +573,23 @@ void Solution<Tensor>::reconstruction_2nd_order() {
     for (int ic = 0; ic < mesh->nCells; ++ic) {
         std::vector < int > hexaFaces = mesh->cellFaces[ic];
         
-        Tensor slope0 = -minmod(mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], -mesh->getOutSign(ic, 2) * slope[hexaFaces[2]]);
-        Tensor slope1 = -minmod(mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], -mesh->getOutSign(ic, 3) * slope[hexaFaces[3]]);
-        Tensor slope2 = -minmod(mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], -mesh->getOutSign(ic, 5) * slope[hexaFaces[5]]);
+        Tensor slope0 = minmod(-mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], mesh->getOutSign(ic, 2) * slope[hexaFaces[2]]);
+        Tensor slope1 = minmod(-mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], mesh->getOutSign(ic, 3) * slope[hexaFaces[3]]);
+        Tensor slope2 = minmod(-mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], mesh->getOutSign(ic, 5) * slope[hexaFaces[5]]);
         
         std::vector<double> cellCenter = mesh->cellCenters[ic];
         
-        fLeftRight[hexaFaces[0]][1 - mesh->getOutIndex(ic, 0)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[0]]) * slope0, config->tol);
-        fLeftRight[hexaFaces[2]][1 - mesh->getOutIndex(ic, 2)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[2]]) * slope0, config->tol);
+        fLeftRight[hexaFaces[0]][1 - mesh->getOutIndex(ic, 0)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[0]]) * slope0, config->tol);
+        fLeftRight[hexaFaces[2]][1 - mesh->getOutIndex(ic, 2)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[2]]) * slope0, config->tol);
         
-        fLeftRight[hexaFaces[1]][1 - mesh->getOutIndex(ic, 1)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[1]]) * slope1, config->tol);
-        fLeftRight[hexaFaces[3]][1 - mesh->getOutIndex(ic, 3)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[3]]) * slope1, config->tol);
+        fLeftRight[hexaFaces[1]][1 - mesh->getOutIndex(ic, 1)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[1]]) * slope1, config->tol);
+        fLeftRight[hexaFaces[3]][1 - mesh->getOutIndex(ic, 3)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[3]]) * slope1, config->tol);
         
-        fLeftRight[hexaFaces[4]][1 - mesh->getOutIndex(ic, 4)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[4]]) * slope2, config->tol);
-        fLeftRight[hexaFaces[5]][1 - mesh->getOutIndex(ic, 5)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[5]]) * slope2, config->tol);
+        fLeftRight[hexaFaces[4]][1 - mesh->getOutIndex(ic, 4)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[4]]) * slope2, config->tol);
+        fLeftRight[hexaFaces[5]][1 - mesh->getOutIndex(ic, 5)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[5]]) * slope2, config->tol);
 	}
 }
-*/
+
 template <class Tensor>
 void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 {
@@ -609,8 +609,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		// reconstruction for inner faces
 		// 1st order
 		auto t0 = omp_get_wtime();
-//		reconstruction_2nd_order();
-
+		reconstruction_2nd_order();
+/*
 		#pragma omp parallel for schedule(dynamic)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			for (int j = 0; j < mesh->cellFaces[ic].size(); j++) {
@@ -619,7 +619,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				fLeftRight[jf][1 - mesh->getOutIndex(ic, j)] = f[ic];
 			}
 		}
-
+*/
 		auto t1 = omp_get_wtime();
 		// boundary condition
 		// loop over all boundary faces
@@ -691,6 +691,9 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					uy[ic],
 					uz[ic],
 					T[ic],
+					rho[ic],
+					p[ic],
+					nu[ic],
 					compression[ic]
 			};
 		}
@@ -723,12 +726,10 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				df[ic] = rhs[ic];
 			}
 			// Backward sweep
-			#pragma omp parallel
-			{
-			int partition = omp_get_thread_num();
 			for (int color = mesh->nColors - 1; color >= 0; --color) {
-				for (int i = mesh->C[partition][color].size() - 1; i >= 0; --i) {
-					int ic = mesh->C[partition][color][i];
+			    #pragma omp parallel for schedule(dynamic)
+				for (int i = mesh->coloredCells[color].size() - 1; i >= 0; --i) {
+					int ic = mesh->coloredCells[color][i];
 					int ic_perm = mesh->iPerm[ic];
 					Tensor vnm_loc;
 					Tensor div_tmp;
@@ -749,13 +750,13 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					df[ic] = df[ic] / div_tmp;
 					df[ic].round(config->tol);
 				}
-				#pragma omp barrier
 			}
 
 			// Forward sweep
 			for (int color = 0; color < mesh->nColors; ++color) {
-				for (int i = 0; i < mesh->C[partition][color].size(); ++i) {
-					int ic = mesh->C[partition][color][i];
+			    #pragma omp parallel for schedule(dynamic)
+				for (int i = 0; i < mesh->coloredCells[color].size(); ++i) {
+					int ic = mesh->coloredCells[color][i];
 					int ic_perm = mesh->iPerm[ic];
 					Tensor vnm_loc;
 					Tensor incr = v->zero;
@@ -777,8 +778,6 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					df[ic] = df[ic] + (incr / div_tmp);
 					df[ic].round(config->tol);
 				}
-				#pragma omp barrier
-			}
 			}
 			// Update values
 			#pragma omp parallel for schedule(dynamic)
@@ -797,12 +796,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 
 		if (it % 10 == 0) {
 			mesh->write_tecplot(data, "tec.dat",
-					{"n", "ux", "uy", "uz", "T", "compression"});
+					{"n", "ux", "uy", "uz", "T", "rho", "p", "nu", "compression"});
 			write_wall_params();
 		}
 	}
 	mesh->write_tecplot(data, "tec.dat",
-			{"n", "ux", "uy", "uz", "T", "compression"});
+			{"n", "ux", "uy", "uz", "T", "rho", "p", "nu", "compression"});
 	write_wall_params();
 }
 
@@ -811,7 +810,7 @@ template class Problem<Full>;
 template class Solution<Full>;
 template Full f_maxwell_t(std::shared_ptr < VelocityGrid<Full> >, double, double, double, double, double, double);
 
-template class VelocityGrid<Tucker>;
-template class Problem<Tucker>;
-template class Solution<Tucker>;
-template Tucker f_maxwell_t(std::shared_ptr < VelocityGrid<Tucker> >, double, double, double, double, double, double);
+//template class VelocityGrid<Tucker>;
+//template class Problem<Tucker>;
+//template class Solution<Tucker>;
+//template Tucker f_maxwell_t(std::shared_ptr < VelocityGrid<Tucker> >, double, double, double, double, double, double);
