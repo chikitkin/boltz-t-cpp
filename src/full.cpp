@@ -10,7 +10,7 @@ Full::Full()
 	r1 = 1;
 	r2 = 1;
 	r3 = 1;
-	g = new double[1]();
+	g = new REAL[1]();
 }
 // Zero tensor with given ranks
 Full::Full(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_)
@@ -21,27 +21,27 @@ Full::Full(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_)
 	r1 = r1_;
 	r2 = r2_;
 	r3 = r3_;
-	g = new double[n1 * n2 * n3](); // () IMPORTANT
+	g = new REAL[n1 * n2 * n3](); // () IMPORTANT
 }
 // Compress a tensor with given accuracy
-Full::Full(int n1_, int n2_, int n3_, double *a, double eps)
+Full::Full(int n1_, int n2_, int n3_, REAL *a, REAL eps)
 : n1(n1_), n2(n2_), n3(n3_)
 {
 //	std::cout << "Compress constructor called" << std::endl;
 	r1 = 1;
 	r2 = 1;
 	r3 = 1;
-	g = new double[n1 * n2 * n3];
+	g = new REAL[n1 * n2 * n3];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, g, 1);
 }
 // Create a rank-1 tensor from given factors
-Full::Full(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_)
+Full::Full(int n1_, int n2_, int n3_, REAL *u1_, REAL *u2_, REAL *u3_)
 : n1(n1_), n2(n2_), n3(n3_)
 {
 	r1 = 1;
 	r2 = 1;
 	r3 = 1;
-	g = new double[n1 * n2 * n3];
+	g = new REAL[n1 * n2 * n3];
 
 	for (int i1 = 0; i1 < n1; ++i1) {
 		for (int i2 = 0; i2 < n2; ++i2) {
@@ -60,7 +60,7 @@ Full::Full(const Full& t)
 	r2 = t.r2;
 	r3 = t.r3;
 
-	g = new double[n1 * n2 * n3];
+	g = new REAL[n1 * n2 * n3];
 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, t.g, 1, g, 1);
 }
@@ -71,7 +71,7 @@ Full& Full::operator =(const Full& t)
 	if (this == &t)
 		return *this;
 
-	double* g_tmp = new double[t.n1 * t.n2 * t.n3];
+	REAL* g_tmp = new REAL[t.n1 * t.n2 * t.n3];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', t.n1 * t.n2 * t.n3, 1, t.g, 1, g_tmp, 1);
 	delete [] g;
 	g = g_tmp;
@@ -105,7 +105,7 @@ std::vector<int> Full::r() const
 	return ranks;
 }
 
-double Full::compression() const
+REAL Full::compression() const
 {
 	return 1.0;
 }
@@ -120,7 +120,7 @@ std::ostream& operator << (std::ostream &out, const Full& t)
 	return out;
 }
 // Get element
-double Full::At(int i1, int i2, int i3) const
+REAL Full::At(int i1, int i2, int i3) const
 {
 	return g[i1 * n2 * n3 + i2 * n3 + i3];
 }
@@ -129,25 +129,25 @@ void Full::orthogonalize()
 {
 }
 // Recompress tensor
-void Full::round(double tol, int rmax)
+void Full::round(REAL tol, int rmax)
 {
 	r1 = 1;
 	r2 = 1;
 	r3 = 1;
 }
 
-double *Full::full() const
+REAL *Full::full() const
 {
-	double *res = new double[n1*n2*n3];
+	REAL *res = new REAL[n1*n2*n3];
 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1 * n2 * n3, 1, g, 1, res, 1);
 
 	return res;
 }
 // Compute sum of all elements
-double Full::sum() const
+REAL Full::sum() const
 {
-	double res = 0.0;
+	REAL res = 0.0;
 	for (int i1 = 0; i1 < n1; ++i1) {
 		for (int i2 = 0; i2 < n2; ++i2) {
 			for (int i3 = 0; i3 < n3; ++i3) {
@@ -158,10 +158,10 @@ double Full::sum() const
 	return res;
 }
 
-double Full::norm()
+REAL Full::norm()
 {
 
-	double norm = LAPACKE_dlange (LAPACK_ROW_MAJOR, 'F',
+	REAL norm = LAPACKE_dlange (LAPACK_ROW_MAJOR, 'F',
 			n1 * n2 * n3, 1, g, 1);
 
 	return norm;
@@ -246,7 +246,7 @@ Full operator *(const Full& t1, const Full& t2)
 	return result;
 }
 
-Full operator *(const double alpha, const Full& t)
+Full operator *(const REAL alpha, const Full& t)
 {
 	Full res(t.n1, t.n2, t.n3, t.r1, t.r2, t.r3);
 
@@ -265,7 +265,7 @@ Full operator *(const double alpha, const Full& t)
 	return res;
 }
 
-Full operator *(const Full& t, const double alpha)
+Full operator *(const Full& t, const REAL alpha)
 {
 	return alpha * t;
 }
@@ -357,7 +357,7 @@ Full minmod(const Full& t1, const Full& t2)
     return res;
 }
 
-Full round_t(const Full& t, double tol, int rmax)
+Full round_t(const Full& t, REAL tol = 1e-14, int rmax = 1000000)
 {
 	Full res(t);
 

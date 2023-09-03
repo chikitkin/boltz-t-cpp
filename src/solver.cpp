@@ -5,8 +5,8 @@
 #include "full.h"
 #include "tucker.h"
 
-double distance_3d(std::vector<double> x, std::vector<double> y) {
-    double squared = pow(x[0] - y[0], 2.0) + pow(x[1] - y[1], 2.0) + pow(x[2] - y[2], 2.0);
+REAL distance_3d(std::vector<REAL> x, std::vector<REAL> y) {
+    REAL squared = pow(x[0] - y[0], 2.0) + pow(x[1] - y[1], 2.0) + pow(x[2] - y[2], 2.0);
     return pow(squared, 0.5);
 }
 
@@ -14,7 +14,7 @@ std::vector<int> getParallelRanges(const std::vector<double>& times, int numThre
 
 	int n = times.size();
 
-	double totalTime = std::accumulate(times.begin(), times.end(), 0.0);
+	auto totalTime = std::accumulate(times.begin(), times.end(), 0.0);
 	std::vector<int> threadRanges(numThreads + 1);
 	threadRanges[0] = 0;
 	int thread = 0;
@@ -33,14 +33,14 @@ std::vector<int> getParallelRanges(const std::vector<double>& times, int numThre
 }
 
 template <class Tensor>
-double *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,
-		double n, double ux, double uy, double uz,
-		double T, double Rg)
+REAL *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,
+		REAL n, REAL ux, REAL uy, REAL uz,
+		REAL T, REAL Rg)
 {
-	double *fmax = new double[v->nv];
+	REAL *fmax = new REAL[v->nv];
 
-	double C = n * pow(1.0 / (2.0 * PI * Rg * T), 1.5); // TODO pi
-	double s = 2.0 * Rg * T;
+	REAL C = n * pow(1.0 / (2.0 * PI * Rg * T), 1.5); // TODO pi
+	REAL s = 2.0 * Rg * T;
 
 	for (int i = 0; i < v->nv; ++i) {
 		fmax[i] = C * exp(-((pow(v->vx[i] - ux, 2) + pow(v->vy[i] - uy, 2) + pow(v->vz[i] - uz, 2)) / s));
@@ -51,23 +51,23 @@ double *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,
 
 template <class Tensor>
 Tensor f_maxwell_t(std::shared_ptr < VelocityGrid<Tensor> > v,
-		double n, double ux, double uy, double uz,
-		double T, double Rg)
+		REAL n, REAL ux, REAL uy, REAL uz,
+		REAL T, REAL Rg)
 {
-	double C = n * pow(1.0 / (2.0 * PI * Rg * T), 1.5);
-	double s = 2.0 * Rg * T;
+	REAL C = n * pow(1.0 / (2.0 * PI * Rg * T), 1.5);
+	REAL s = 2.0 * Rg * T;
 
-	double *u1 = new double[v->nvx];
+	REAL *u1 = new REAL[v->nvx];
 	for (int i = 0; i < v->nvx; ++i) {
 		u1[i] = exp(-(pow(v->vx_[i] - ux, 2.0) / s));
 	}
 
-	double *u2 = new double[v->nvy];
+	REAL *u2 = new REAL[v->nvy];
 	for (int i = 0; i < v->nvy; ++i) {
 		u2[i] = exp(-(pow(v->vy_[i] - uy, 2.0) / s));
 	}
 
-	double *u3 = new double[v->nvz];
+	REAL *u3 = new REAL[v->nvz];
 	for (int i = 0; i < v->nvz; ++i) {
 		u3[i] = exp(-(pow(v->vz_[i] - uz, 2.0) / s));
 	}
@@ -81,16 +81,16 @@ Tensor f_maxwell_t(std::shared_ptr < VelocityGrid<Tensor> > v,
 	return C * fmax;
 }
 
-double GasParams::mu_suth(double T) const {
+REAL GasParams::mu_suth(REAL T) const {
 	return mu_0 * ((T_0 + C) / (T + C)) * (pow(T / T_0, 3.0 / 2.0));
 }
 
-double GasParams::mu(double T) const {
+REAL GasParams::mu(REAL T) const {
 	return mu_suth(200.0) * (pow(T / 200.0, 0.734));
 }
 
 template <class Tensor>
-Tensor Problem<Tensor>::getInit(double x, double y, double z,
+Tensor Problem<Tensor>::getInit(REAL x, REAL y, REAL z,
 		const std::vector<Tensor>& initData) {
 	if (x < 0.0) {
 		return initData[0];
@@ -101,16 +101,16 @@ Tensor Problem<Tensor>::getInit(double x, double y, double z,
 }
 
 template <class Tensor>
-VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, double *vy__, double *vz__)
+VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, REAL *vx__, REAL *vy__, REAL *vz__)
 : nvx(nvx_), nvy(nvy_), nvz(nvz_)
 {
 	nv = nvx * nvy * nvz;
 
-	vx_ = new double[nvx];
+	vx_ = new REAL[nvx];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvx, 1, vx__, 1, vx_, 1);
-	vy_ = new double[nvy];
+	vy_ = new REAL[nvy];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvy, 1, vy__, 1, vy_, 1);
-	vz_ = new double[nvz];
+	vz_ = new REAL[nvz];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvz, 1, vz__, 1, vz_, 1);
 
 	hvx = vx_[1] - vx_[0];
@@ -118,9 +118,9 @@ VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, d
 	hvz = vz_[1] - vz_[0];
 	hv3 = hvx * hvy * hvz; // TODO better designations
 
-	vx = new double[nv];
-	vy = new double[nv];
-	vz = new double[nv];
+	vx = new REAL[nv];
+	vy = new REAL[nv];
+	vz = new REAL[nv];
 
 	for (int i = 0; i < nvx; ++i) {
 		for (int j = 0; j < nvy; ++j) {
@@ -132,20 +132,20 @@ VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, d
 		}
 	}
 
-	zerox = new double[nvx]();
-	onesx = new double[nvx];
+	zerox = new REAL[nvx]();
+	onesx = new REAL[nvx];
 	for (int i = 0; i < nvx; ++i) {
 		onesx[i] = 1.0;
 	}
 
-	zeroy = new double[nvy]();
-	onesy = new double[nvy];
+	zeroy = new REAL[nvy]();
+	onesy = new REAL[nvy];
 	for (int i = 0; i < nvy; ++i) {
 		onesy[i] = 1.0;
 	}
 
-	zeroz = new double[nvz]();
-	onesz = new double[nvz];
+	zeroz = new REAL[nvz]();
+	onesz = new REAL[nvz];
 	for (int i = 0; i < nvz; ++i) {
 		onesz[i] = 1.0;
 	}
@@ -160,7 +160,7 @@ VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, double *vx__, d
 	zero = Tensor(nvx, nvy, nvz, zerox, zeroy, zeroz);
 	ones = Tensor(nvx, nvy, nvz, onesx, onesy, onesz);
 	
-	double* vn_abs_r1_tmp = new double[nv];
+	REAL* vn_abs_r1_tmp = new REAL[nv];
 	for (int i = 0; i < nv; ++i) {
 		vn_abs_r1_tmp[i] = pow(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i], 0.5);
 	}
@@ -190,47 +190,47 @@ VelocityGrid<Tensor>::~VelocityGrid()
 }
 
 template <class Tensor>
-std::vector <double> Solution<Tensor>::comp_macro_params(const Tensor& f)
+std::vector <REAL> Solution<Tensor>::comp_macro_params(const Tensor& f)
 {
-	double n = v->hv3 * f.sum();
+	REAL n = v->hv3 * f.sum();
 
 	if (n <= 0.0) {
 		n = 1e+10;
 	}
 
-	double ux = (1.0 / n) * v->hv3 * (v->vx_t * f).sum();
-	double uy = (1.0 / n) * v->hv3 * (v->vy_t * f).sum();
-	double uz = (1.0 / n) * v->hv3 * (v->vz_t * f).sum();
+	REAL ux = (1.0 / n) * v->hv3 * (v->vx_t * f).sum();
+	REAL uy = (1.0 / n) * v->hv3 * (v->vy_t * f).sum();
+	REAL uz = (1.0 / n) * v->hv3 * (v->vz_t * f).sum();
 
-	double u2 = pow(ux, 2.0) + pow(uy, 2.0) + pow(uz, 2.0);
+	REAL u2 = pow(ux, 2.0) + pow(uy, 2.0) + pow(uz, 2.0);
 
-	double T = (1.0 / (3.0 * n * gas_params->Rg)) * (v->hv3 * (v->v2 * f).sum() - n * u2);
+	REAL T = (1.0 / (3.0 * n * gas_params->Rg)) * (v->hv3 * (v->v2 * f).sum() - n * u2);
 
 	if (T <= 0.0) {
 		T = 1.0;
 	}
 
-	double rho = gas_params->m * n;
-	double p = rho * gas_params->Rg * T;
-	double mu = gas_params->mu(T);
-	double nu = p / mu;
+	REAL rho = gas_params->m * n;
+	REAL p = rho * gas_params->Rg * T;
+	REAL mu = gas_params->mu(T);
+	REAL nu = p / mu;
 
 	return {n, ux, uy, uz, T, rho, p, nu};
 }
 
 template <class Tensor>
-Tensor Solution<Tensor>::comp_j(const std::vector <double>& params, const Tensor& f)
+Tensor Solution<Tensor>::comp_j(const std::vector <REAL>& params, const Tensor& f)
 {
-	double n = params[0];
-	double ux = params[1];
-	double uy = params[2];
-	double uz = params[3];
-	double T = params[4];
-	double rho = params[5];
-	double p = params[6];
-	double nu = params[7];
+	REAL n = params[0];
+	REAL ux = params[1];
+	REAL uy = params[2];
+	REAL uz = params[3];
+	REAL T = params[4];
+	REAL rho = params[5];
+	REAL p = params[6];
+	REAL nu = params[7];
 
-	double *tmp = new double[std::max({v->nvx, v->nvy, v->nvz})];
+	REAL *tmp = new REAL[std::max({v->nvx, v->nvy, v->nvz})];
 
 	for (int i = 0; i < v->nvx; ++i) {
 		tmp[i] = (1.0 / pow(2.0 * gas_params->Rg * T, 0.5)) * (v->vx_[i] - ux);
@@ -250,9 +250,9 @@ Tensor Solution<Tensor>::comp_j(const std::vector <double>& params, const Tensor
 	Tensor c2 = ((cx * cx) + (cy * cy) + (cz * cz));
 	c2.round(1e-7);
 
-	double Sx = (1.0 / n) * v->hv3 * (cx * c2 * f).sum();
-	double Sy = (1.0 / n) * v->hv3 * (cy * c2 * f).sum();
-	double Sz = (1.0 / n) * v->hv3 * (cz * c2 * f).sum();
+	REAL Sx = (1.0 / n) * v->hv3 * (cx * c2 * f).sum();
+	REAL Sy = (1.0 / n) * v->hv3 * (cy * c2 * f).sum();
+	REAL Sz = (1.0 / n) * v->hv3 * (cz * c2 * f).sum();
 
 	Tensor fmax = f_maxwell_t(v, n, ux, uy, uz, T, gas_params->Rg);
 
@@ -280,26 +280,26 @@ void Solution<Tensor>::write_wall_params()
 	for (int ibf = 0; ibf < bcList.size(); ++ibf) {
 		if (bcList[ibf]->type == WALL) {
 			int jf = bcList[ibf]->jf;
-			double x = mesh->faceCenters[jf][0];
-			double y = mesh->faceCenters[jf][1];
-			double z = mesh->faceCenters[jf][2];
+			REAL x = mesh->faceCenters[jf][0];
+			REAL y = mesh->faceCenters[jf][1];
+			REAL z = mesh->faceCenters[jf][2];
 			file << x << " " << y << " " << z << " ";
 			Tensor fWall = fLeftRight[jf][1 - mesh->getOutIndex(jf)];
 
-			std::vector<double> params = comp_macro_params(fWall);
-			double n = params[0];
-			double T = params[4];
-			double rho = params[5];
-			double p = params[6];
+			std::vector<REAL> params = comp_macro_params(fWall);
+			REAL n = params[0];
+			REAL T = params[4];
+			REAL rho = params[5];
+			REAL p = params[6];
 			file << n << " " << T << " " << rho << " " << p << " ";
 
-			double Px = gas_params->m * v->hv3 * (vn[jf] * v->vx_t * fWall).sum();
-			double Py = gas_params->m * v->hv3 * (vn[jf] * v->vy_t * fWall).sum();
-			double Pz = gas_params->m * v->hv3 * (vn[jf] * v->vz_t * fWall).sum();
+			REAL Px = gas_params->m * v->hv3 * (vn[jf] * v->vx_t * fWall).sum();
+			REAL Py = gas_params->m * v->hv3 * (vn[jf] * v->vy_t * fWall).sum();
+			REAL Pz = gas_params->m * v->hv3 * (vn[jf] * v->vz_t * fWall).sum();
 			file << Px << " " << Py << " " << Pz << " ";
-			double Mx = 0.5 * v->hv3 * (v->vx_t * v->v2 * fWall).sum();
-			double My = 0.5 * v->hv3 * (v->vy_t * v->v2 * fWall).sum();
-			double Mz = 0.5 * v->hv3 * (v->vz_t * v->v2 * fWall).sum();
+			REAL Mx = 0.5 * v->hv3 * (v->vx_t * v->v2 * fWall).sum();
+			REAL My = 0.5 * v->hv3 * (v->vy_t * v->v2 * fWall).sum();
+			REAL Mz = 0.5 * v->hv3 * (v->vz_t * v->v2 * fWall).sum();
 			file << Mx << " " << My << " " << Mz;
 			file << "\n";
 		}
@@ -324,7 +324,7 @@ void Solution<Tensor>::create_res() {
 }
 
 template <class Tensor>
-void Solution<Tensor>::update_res(double frob_norm) {
+void Solution<Tensor>::update_res(REAL frob_norm) {
 	std::ofstream file;
 	file.open("res.txt", std::ofstream::app);
 	file << frob_norm << "\n";
@@ -357,10 +357,10 @@ Solution<Tensor>::Solution(
 	#pragma omp parallel for schedule(dynamic)
 	for (int jf = 0; jf < mesh->nFaces; ++jf) {
 		// TODO why is it so slow?
-		double* vn_tmp = new double[v->nv];
-		double* vnm_tmp = new double[v->nv];
-		double* vnp_tmp = new double[v->nv];
-		double* vn_abs_tmp = new double[v->nv];
+		REAL* vn_tmp = new REAL[v->nv];
+		REAL* vnm_tmp = new REAL[v->nv];
+		REAL* vnp_tmp = new REAL[v->nv];
+		REAL* vn_abs_tmp = new REAL[v->nv];
 		for (int i = 0; i < v->nv; ++i) {
 			vn_tmp[i] = 
 					mesh->faceNormals[jf][0] * v->vx[i] +
@@ -396,16 +396,16 @@ Solution<Tensor>::Solution(
 	#pragma omp parallel for schedule(dynamic)
 	for (int ic = 0; ic < mesh->nCells; ++ic) {
 
-		double *diag_tmp = new double [v->nv]();
-		double diag_sc = 0.0;
+		REAL *diag_tmp = new REAL [v->nv]();
+		REAL diag_sc = 0.0;
 
 		for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
 			int jf = mesh->cellFaces[ic][j];
 
-			double* vn_tmp = new double[v->nv];
-			double* vnm_tmp = new double[v->nv];
-			double* vnp_tmp = new double[v->nv];
-			double* vn_abs_tmp = new double[v->nv];
+			REAL* vn_tmp = new REAL[v->nv];
+			REAL* vnm_tmp = new REAL[v->nv];
+			REAL* vnp_tmp = new REAL[v->nv];
+			REAL* vn_abs_tmp = new REAL[v->nv];
 			for (int i = 0; i < v->nv; ++i) {
 				vn_tmp[i] = mesh->getOutSign(ic, j) * (
 				mesh->faceNormals[jf][0] * v->vx[i] +
@@ -431,9 +431,9 @@ Solution<Tensor>::Solution(
 		}
 		
 		diag_r1[ic] = diag_sc * v->vn_abs_r1;
-		double *diag_t_full = diag_r1[ic].full();
+		REAL *diag_t_full = diag_r1[ic].full();
 
-		double *ratio = new double [v->nv];
+		REAL *ratio = new REAL [v->nv];
 		for (int i = 0; i < v->nv; ++i) {
 			ratio[i] = diag_t_full[i] / diag_tmp[i];
 		}
@@ -447,9 +447,9 @@ Solution<Tensor>::Solution(
 	f.resize(mesh->nCells, Tensor());
 
 	if (config->initType == "default") {
-		double x;
-		double y;
-		double z;
+		REAL x;
+		REAL y;
+		REAL z;
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			x = mesh->cellCenters[ic][0];
 			y = mesh->cellCenters[ic][1];
@@ -476,7 +476,7 @@ Solution<Tensor>::Solution(
 	nu.resize(mesh->nCells, 0.0);
 	compression.resize(mesh->nCells, 0.0);
 	rank.resize(mesh->nCells, 0.0);
-	data.resize(mesh->nCells, std::vector < double >());
+	data.resize(mesh->nCells, std::vector < REAL >());
 
 	bcList.reserve(mesh->nBoundaryFaces);
 
@@ -551,44 +551,44 @@ Solution<Tensor>::Solution(
 	mesh->divideMesh(omp_get_max_threads());
 }
 
-template <class Tensor>
-void Solution<Tensor>::reconstruction_2nd_order() {
-    // compute slopes
-    #pragma omp parallel for schedule(dynamic)
-    for (int jf = 0; jf < mesh->nFaces; ++jf) {
-        std::vector < int > leftRightCell = mesh->leftRightCells[jf];
+// template <class Tensor>
+// void Solution<Tensor>::reconstruction_2nd_order() {
+//     // compute slopes
+//     #pragma omp parallel for schedule(dynamic)
+//     for (int jf = 0; jf < mesh->nFaces; ++jf) {
+//         std::vector < int > leftRightCell = mesh->leftRightCells[jf];
         
-        if ((leftRightCell[0] == -1) || (leftRightCell[1] == -1)) {
-            slope[jf] = v->zero;
-            continue;
-        }
+//         if ((leftRightCell[0] == -1) || (leftRightCell[1] == -1)) {
+//             slope[jf] = v->zero;
+//             continue;
+//         }
 
-        std::vector < double > leftCellCenter = mesh->cellCenters[leftRightCell[0]];
-        std::vector < double > rightCellCenter = mesh->cellCenters[leftRightCell[1]];
-        double delta = distance_3d(leftCellCenter, rightCellCenter);
-        slope[jf] = (1.0 / delta) * (f[leftRightCell[1]] - f[leftRightCell[0]]);
-        slope[jf].round(config->tol);
-    }
-    #pragma omp parallel for schedule(dynamic)
-    for (int ic = 0; ic < mesh->nCells; ++ic) {
-        std::vector < int > hexaFaces = mesh->cellFaces[ic];
+//         std::vector < REAL > leftCellCenter = mesh->cellCenters[leftRightCell[0]];
+//         std::vector < REAL > rightCellCenter = mesh->cellCenters[leftRightCell[1]];
+//         REAL delta = distance_3d(leftCellCenter, rightCellCenter);
+//         slope[jf] = (1.0 / delta) * (f[leftRightCell[1]] - f[leftRightCell[0]]);
+//         slope[jf].round(config->tol);
+//     }
+//     #pragma omp parallel for schedule(dynamic)
+//     for (int ic = 0; ic < mesh->nCells; ++ic) {
+//         std::vector < int > hexaFaces = mesh->cellFaces[ic];
         
-        Tensor slope0 = minmod(-mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], mesh->getOutSign(ic, 2) * slope[hexaFaces[2]]);
-        Tensor slope1 = minmod(-mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], mesh->getOutSign(ic, 3) * slope[hexaFaces[3]]);
-        Tensor slope2 = minmod(-mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], mesh->getOutSign(ic, 5) * slope[hexaFaces[5]]);
+//         Tensor slope0 = minmod(-mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], mesh->getOutSign(ic, 2) * slope[hexaFaces[2]]);
+//         Tensor slope1 = minmod(-mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], mesh->getOutSign(ic, 3) * slope[hexaFaces[3]]);
+//         Tensor slope2 = minmod(-mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], mesh->getOutSign(ic, 5) * slope[hexaFaces[5]]);
         
-        std::vector<double> cellCenter = mesh->cellCenters[ic];
+//         std::vector<REAL> cellCenter = mesh->cellCenters[ic];
         
-        fLeftRight[hexaFaces[0]][1 - mesh->getOutIndex(ic, 0)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[0]]) * slope0, config->tol);
-        fLeftRight[hexaFaces[2]][1 - mesh->getOutIndex(ic, 2)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[2]]) * slope0, config->tol);
+//         fLeftRight[hexaFaces[0]][1 - mesh->getOutIndex(ic, 0)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[0]]) * slope0, config->tol);
+//         fLeftRight[hexaFaces[2]][1 - mesh->getOutIndex(ic, 2)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[2]]) * slope0, config->tol);
         
-        fLeftRight[hexaFaces[1]][1 - mesh->getOutIndex(ic, 1)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[1]]) * slope1, config->tol);
-        fLeftRight[hexaFaces[3]][1 - mesh->getOutIndex(ic, 3)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[3]]) * slope1, config->tol);
+//         fLeftRight[hexaFaces[1]][1 - mesh->getOutIndex(ic, 1)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[1]]) * slope1, config->tol);
+//         fLeftRight[hexaFaces[3]][1 - mesh->getOutIndex(ic, 3)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[3]]) * slope1, config->tol);
         
-        fLeftRight[hexaFaces[4]][1 - mesh->getOutIndex(ic, 4)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[4]]) * slope2, config->tol);
-        fLeftRight[hexaFaces[5]][1 - mesh->getOutIndex(ic, 5)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[5]]) * slope2, config->tol);
-	}
-}
+//         fLeftRight[hexaFaces[4]][1 - mesh->getOutIndex(ic, 4)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[4]]) * slope2, config->tol);
+//         fLeftRight[hexaFaces[5]][1 - mesh->getOutIndex(ic, 5)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[5]]) * slope2, config->tol);
+// 	}
+// }
 
 template <class Tensor>
 void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
@@ -607,10 +607,9 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 	while(it < nt) {
 		it += 1;
 		// reconstruction for inner faces
-		// 1st order
 		auto t0 = omp_get_wtime();
-		reconstruction_2nd_order();
-/*
+
+		// 1st order
 		#pragma omp parallel for schedule(dynamic)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			for (int j = 0; j < mesh->cellFaces[ic].size(); j++) {
@@ -619,16 +618,18 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				fLeftRight[jf][1 - mesh->getOutIndex(ic, j)] = f[ic];
 			}
 		}
-*/
+
+		// 2nd order
+		// reconstruction_2nd_order();
 		auto t1 = omp_get_wtime();
 		// boundary condition
 		// loop over all boundary faces
 		#pragma omp parallel for schedule(dynamic)
 		for (int ibf = 0; ibf < bcList.size(); ++ibf) {
 			int jf = bcList[ibf]->jf;
-			double x = mesh->faceCenters[jf][0];
-			double y = mesh->faceCenters[jf][1];
-			double z = mesh->faceCenters[jf][2];
+			REAL x = mesh->faceCenters[jf][0];
+			REAL y = mesh->faceCenters[jf][1];
+			REAL z = mesh->faceCenters[jf][2];
 			fLeftRight[jf][mesh->getOutIndex(jf)] = bcList[ibf]->applyBC(
 					x, y, z,
 					fLeftRight[jf][1 - mesh->getOutIndex(jf)],
@@ -646,11 +647,11 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		// Riemann solver - compute fluxes
 		#pragma omp parallel for schedule(dynamic)
 		for (int jf = 0; jf < mesh->nFaces; ++jf) {
-			double begin = omp_get_wtime();
+			auto begin = omp_get_wtime();
 			flux[jf] = 0.5 * mesh->faceAreas[jf] *
 					((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - (fLeftRight[jf][1] - fLeftRight[jf][0]) * vn_abs[jf]);
 			flux[jf].round(config->tol);
-			double end = omp_get_wtime();
+			auto end = omp_get_wtime();
 			timesForFaceFluxes[jf] = end - begin;
 		}
 		auto t3 = omp_get_wtime();
@@ -659,7 +660,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		// computation of the right hand side
 		#pragma omp parallel for schedule(dynamic)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
-			double begin = omp_get_wtime();
+			auto begin = omp_get_wtime();
 			rhs[ic] = v->zero;
 			// sum up fluxes from all faces of this cell
 			for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
@@ -668,21 +669,21 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				rhs[ic].round(config->tol);
 			}
 			// compute macroparameters and collision integral
-			std::vector<double> params = comp_macro_params(f[ic]);
+			std::vector<REAL> params = comp_macro_params(f[ic]);
 			Tensor J = comp_j(params, f[ic]);
 			rhs[ic] = rhs[ic] + J;
 			rhs[ic].round(config->tol);
-			double end = omp_get_wtime();
+			auto end = omp_get_wtime();
 			timesForCellsRHS[ic] = end - begin;
 
-			n[ic] = params[0];
-			ux[ic] = params[1];
-			uy[ic] = params[2];
-			uz[ic] = params[3];
-			T[ic] = params[4];
+			n[ic]   = params[0];
+			ux[ic]  = params[1];
+			uy[ic]  = params[2];
+			uz[ic]  = params[3];
+			T[ic]   = params[4];
 			rho[ic] = params[5];
-			p[ic] = params[6];
-			nu[ic] = params[7];
+			p[ic]   = params[6];
+			nu[ic]  = params[7];
 			compression[ic] = f[ic].compression();
 
 			data[ic] = {
@@ -698,7 +699,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			};
 		}
 
-		double frob_norm = 0.0;
+		REAL frob_norm = 0.0;
 		#pragma omp parallel for reduction(+:frob_norm)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			frob_norm += pow(rhs[ic].norm(), 2.0);
@@ -712,15 +713,15 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			// Update values
 			#pragma omp parallel for schedule(dynamic)
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
-				double begin = omp_get_wtime();
+				auto begin = omp_get_wtime();
 				f[ic] = f[ic] + tau * rhs[ic];
 				f[ic].round(config->tol);
-				double end = omp_get_wtime();
+				auto end = omp_get_wtime();
 				timesForCellsUpdate[ic] = end - begin;
 			}
 		}
 		else {
-			std::cout << "implicit" << std::endl;
+			std::cout << "implicit step " << it << std::endl;
 			#pragma omp parallel for schedule(dynamic)
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				df[ic] = rhs[ic];
@@ -808,9 +809,9 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 template class VelocityGrid<Full>;
 template class Problem<Full>;
 template class Solution<Full>;
-template Full f_maxwell_t(std::shared_ptr < VelocityGrid<Full> >, double, double, double, double, double, double);
+template Full f_maxwell_t(std::shared_ptr < VelocityGrid<Full> >, REAL, REAL, REAL, REAL, REAL, REAL);
 
-//template class VelocityGrid<Tucker>;
-//template class Problem<Tucker>;
-//template class Solution<Tucker>;
-//template Tucker f_maxwell_t(std::shared_ptr < VelocityGrid<Tucker> >, double, double, double, double, double, double);
+template class VelocityGrid<Tucker>;
+template class Problem<Tucker>;
+template class Solution<Tucker>;
+template Tucker f_maxwell_t(std::shared_ptr < VelocityGrid<Tucker> >, REAL, REAL, REAL, REAL, REAL, REAL);

@@ -12,7 +12,7 @@ struct FaceHasher {
     }
 };
 
-void Mesh::readVerts(std::ifstream &data, double scale) {
+void Mesh::readVerts(std::ifstream &data, REAL scale) {
 	std::string line;
 	getline(data, line);
 	std::istringstream(line) >> nVerts;
@@ -21,12 +21,12 @@ void Mesh::readVerts(std::ifstream &data, double scale) {
 	for (int iv = 0; iv < nVerts; ++iv) {
 		getline(data, line);
 		std::istringstream iss(line);
-		double x0, x1, x2;
+		REAL x0, x1, x2;
 		int tag;
 		if (!(iss >> x0 >> x1 >> x2 >> tag)) {
 			std::cout << "Wrong vertice line!" << std::endl;
 		}
-		std::vector <double> vert;
+		std::vector <REAL> vert;
 		vert.push_back(scale * x0);
 		vert.push_back(scale * x1);
 		vert.push_back(scale * x2);
@@ -175,17 +175,17 @@ void Mesh::readBoundaryTriangles(std::ifstream &data) {
 	}
 }
 
-double Mesh::computeTetraVolume(std::vector < std::vector < double > > tetra) {
+REAL Mesh::computeTetraVolume(std::vector < std::vector < REAL > > tetra) {
 	// tetra - (4, 3)
-	double a00 = tetra[1][0] - tetra[0][0];
-	double a01 = tetra[1][1] - tetra[0][1];
-	double a02 = tetra[1][2] - tetra[0][2];
-	double a10 = tetra[2][0] - tetra[0][0];
-	double a11 = tetra[2][1] - tetra[0][1];
-	double a12 = tetra[2][2] - tetra[0][2];
-	double a20 = tetra[3][0] - tetra[0][0];
-	double a21 = tetra[3][1] - tetra[0][1];
-	double a22 = tetra[3][2] - tetra[0][2];
+	REAL a00 = tetra[1][0] - tetra[0][0];
+	REAL a01 = tetra[1][1] - tetra[0][1];
+	REAL a02 = tetra[1][2] - tetra[0][2];
+	REAL a10 = tetra[2][0] - tetra[0][0];
+	REAL a11 = tetra[2][1] - tetra[0][1];
+	REAL a12 = tetra[2][2] - tetra[0][2];
+	REAL a20 = tetra[3][0] - tetra[0][0];
+	REAL a21 = tetra[3][1] - tetra[0][1];
+	REAL a22 = tetra[3][2] - tetra[0][2];
 
 	return ((a00 * a11 * a22 + a01 * a12 * a20 + a02 * a21 * a10) -
 			(a02 * a11 * a20 + a00 * a12 * a21 + a01 * a10 * a22)) / 6.0;
@@ -216,11 +216,11 @@ std::vector<std::vector<int>> Mesh::computeFacesOfCell(int ic) {
 	return faces;
 }
 
-Mesh::Mesh(const std::string& path, double scale) {
+Mesh::Mesh(const std::string& path, REAL scale) {
 	read(path, scale);
 }
 
-void Mesh::read(const std::string& path, double scale) {
+void Mesh::read(const std::string& path, REAL scale) {
 
 	std::ifstream data;
 	data.open(path + "mesh.mesh");
@@ -258,12 +258,12 @@ void Mesh::read(const std::string& path, double scale) {
 	/*
 		Calculate cell centers - arithmetic mean of vertises' coordinates
 	*/
-	cellCenters.resize(nCells, std::vector <double>(3));
+	cellCenters.resize(nCells, std::vector <REAL>(3));
 	for (int i = 0; i < nCells; ++i) {
 		int nVertsInCell = cellVerts[i].size();
-		double x0 = 0;
-		double x1 = 0;
-		double x2 = 0;
+		REAL x0 = 0;
+		REAL x1 = 0;
+		REAL x2 = 0;
 		for (int j = 0; j < nVertsInCell; ++j) {
 			x0 += vertsCoo[cellVerts[i][j]][0];
 			x1 += vertsCoo[cellVerts[i][j]][1];
@@ -365,39 +365,39 @@ void Mesh::read(const std::string& path, double scale) {
 			// Loop over faces, for each face construct 4 tetras
 			// and compute their volumes
 			for (int jf = 0; jf < localFaces.size(); ++jf) {
-				std::vector <double> localFaceCenter = {0.0, 0.0, 0.0};
+				std::vector <REAL> localFaceCenter = {0.0, 0.0, 0.0};
 				int vertsNum = localFaces[jf].size();
 				for (int kv = 0; kv < vertsNum; ++kv) {
 					localFaceCenter[0] += vertsCoo[localFaces[jf][kv]][0];
 					localFaceCenter[1] += vertsCoo[localFaces[jf][kv]][1];
 					localFaceCenter[2] += vertsCoo[localFaces[jf][kv]][2];
 				}
-				localFaceCenter[0] /= static_cast<double>(vertsNum);
-				localFaceCenter[1] /= static_cast<double>(vertsNum);
-				localFaceCenter[2] /= static_cast<double>(vertsNum);
-				std::vector <double> x1 = vertsCoo[localFaces[jf][0]];
-				std::vector <double> x2 = vertsCoo[localFaces[jf][1]];
-				std::vector <double> x3 = vertsCoo[localFaces[jf][2]];
-				std::vector <double> x4 = vertsCoo[localFaces[jf][3]];
-				std::vector <std::vector<double>> tetra0;
+				localFaceCenter[0] /= static_cast<REAL>(vertsNum);
+				localFaceCenter[1] /= static_cast<REAL>(vertsNum);
+				localFaceCenter[2] /= static_cast<REAL>(vertsNum);
+				std::vector <REAL> x1 = vertsCoo[localFaces[jf][0]];
+				std::vector <REAL> x2 = vertsCoo[localFaces[jf][1]];
+				std::vector <REAL> x3 = vertsCoo[localFaces[jf][2]];
+				std::vector <REAL> x4 = vertsCoo[localFaces[jf][3]];
+				std::vector <std::vector<REAL>> tetra0;
 				tetra0.push_back(cellCenters[ic]);
 				tetra0.push_back(x1);
 				tetra0.push_back(x2);
 				tetra0.push_back(localFaceCenter);
 				cellVolumes[ic] += computeTetraVolume(tetra0);
-				std::vector <std::vector<double>> tetra1;
+				std::vector <std::vector<REAL>> tetra1;
 				tetra1.push_back(cellCenters[ic]);
 				tetra1.push_back(x2);
 				tetra1.push_back(x3);
 				tetra1.push_back(localFaceCenter);
 				cellVolumes[ic] += computeTetraVolume(tetra1);
-				std::vector <std::vector<double>> tetra2;
+				std::vector <std::vector<REAL>> tetra2;
 				tetra2.push_back(cellCenters[ic]);
 				tetra2.push_back(x3);
 				tetra2.push_back(x4);
 				tetra2.push_back(localFaceCenter);
 				cellVolumes[ic] += computeTetraVolume(tetra2);
-				std::vector <std::vector<double>> tetra3;
+				std::vector <std::vector<REAL>> tetra3;
 				tetra3.push_back(cellCenters[ic]);
 				tetra3.push_back(x4);
 				tetra3.push_back(x1);
@@ -406,11 +406,11 @@ void Mesh::read(const std::string& path, double scale) {
 			}
 		}
 		else if (cellTypes[ic] == TETRA) {
-			std::vector <double> x1 = vertsCoo[cellVerts[ic][0]];
-			std::vector <double> x2 = vertsCoo[cellVerts[ic][1]];
-			std::vector <double> x3 = vertsCoo[cellVerts[ic][2]];
-			std::vector <double> x4 = vertsCoo[cellVerts[ic][3]];
-			std::vector <std::vector<double>> tetra;
+			std::vector <REAL> x1 = vertsCoo[cellVerts[ic][0]];
+			std::vector <REAL> x2 = vertsCoo[cellVerts[ic][1]];
+			std::vector <REAL> x3 = vertsCoo[cellVerts[ic][2]];
+			std::vector <REAL> x4 = vertsCoo[cellVerts[ic][3]];
+			std::vector <std::vector<REAL>> tetra;
 			tetra.push_back(x1);
 			tetra.push_back(x2);
 			tetra.push_back(x3);
@@ -423,21 +423,21 @@ void Mesh::read(const std::string& path, double scale) {
 		Compute face areas and normals
 	*/
 	faceAreas.resize(nFaces);
-	faceNormals.resize(nFaces, std::vector <double>(3));
+	faceNormals.resize(nFaces, std::vector <REAL>(3));
 	for (int jf = 0; jf < nFaces; ++jf) {
 		std::vector <int> verts = faces[jf];
 		if (faceTypes[jf] == QUAD) {
-			std::vector <double> vert0 = vertsCoo[verts[0]];
-			std::vector <double> vert1 = vertsCoo[verts[1]];
-			std::vector <double> vert2 = vertsCoo[verts[2]];
-			std::vector <double> vert3 = vertsCoo[verts[3]];
+			std::vector <REAL> vert0 = vertsCoo[verts[0]];
+			std::vector <REAL> vert1 = vertsCoo[verts[1]];
+			std::vector <REAL> vert2 = vertsCoo[verts[2]];
+			std::vector <REAL> vert3 = vertsCoo[verts[3]];
 
-			std::vector <double> vec0(3);
+			std::vector <REAL> vec0(3);
 			vec0[0] = 0.5 * (vert2[0] + vert1[0]) - 0.5 * (vert0[0] + vert3[0]);
 			vec0[1] = 0.5 * (vert2[1] + vert1[1]) - 0.5 * (vert0[1] + vert3[1]);
 			vec0[2] = 0.5 * (vert2[2] + vert1[2]) - 0.5 * (vert0[2] + vert3[2]);
 
-			std::vector <double> vec1(3);
+			std::vector <REAL> vec1(3);
 			vec1[0] = 0.5 * (vert3[0] + vert2[0]) - 0.5 * (vert1[0] + vert0[0]);
 			vec1[1] = 0.5 * (vert3[1] + vert2[1]) - 0.5 * (vert1[1] + vert0[1]);
 			vec1[2] = 0.5 * (vert3[2] + vert2[2]) - 0.5 * (vert1[2] + vert0[2]);
@@ -450,19 +450,19 @@ void Mesh::read(const std::string& path, double scale) {
 			faceNormals[jf][1] = (vec0[2]*vec1[0] - vec0[0]*vec1[2]) / faceAreas[jf];
 			faceNormals[jf][2] = (vec0[0]*vec1[1] - vec0[1]*vec1[0]) / faceAreas[jf];
 			// Complicated procedure to overcome problems when area is tiny
-			double len0 = sqrt(pow(vec0[0], 2) + pow(vec0[1], 2) + pow(vec0[2], 2));
-			double len1 = sqrt(pow(vec1[0], 2) + pow(vec1[1], 2) + pow(vec1[2], 2));
-			std::vector<double> bec0(vec0);
-			std::vector<double> bec1(vec1);
+			REAL len0 = sqrt(pow(vec0[0], 2) + pow(vec0[1], 2) + pow(vec0[2], 2));
+			REAL len1 = sqrt(pow(vec1[0], 2) + pow(vec1[1], 2) + pow(vec1[2], 2));
+			std::vector<REAL> bec0(vec0);
+			std::vector<REAL> bec1(vec1);
 			for (int ie = 0; ie < 3; ++ie) {
 				bec0[ie] /= std::max(1e-13, len0);
 				bec1[ie] /= std::max(1e-13, len1);
 			}
-			std::vector<double> normal(3);
+			std::vector<REAL> normal(3);
 			normal[0] = (bec0[1]*bec1[2] - bec0[2]*bec1[1]);
 			normal[1] = (bec0[2]*bec1[0] - bec0[0]*bec1[2]);
 			normal[2] = (bec0[0]*bec1[1] - bec0[1]*bec1[0]);
-			double length = sqrt(pow(normal[0], 2) + pow(normal[1], 2) + pow(normal[2], 2));
+			REAL length = sqrt(pow(normal[0], 2) + pow(normal[1], 2) + pow(normal[2], 2));
 			if (length < 1e-10) {
 				std::cout << "flag = False" << std::endl;
 			}
@@ -474,16 +474,16 @@ void Mesh::read(const std::string& path, double scale) {
 			// end of procedure
 		}
 		else if (faceTypes[jf] == TRIANGLE) {
-			std::vector <double> vert0 = vertsCoo[verts[0]];
-			std::vector <double> vert1 = vertsCoo[verts[1]];
-			std::vector <double> vert2 = vertsCoo[verts[2]];
+			std::vector <REAL> vert0 = vertsCoo[verts[0]];
+			std::vector <REAL> vert1 = vertsCoo[verts[1]];
+			std::vector <REAL> vert2 = vertsCoo[verts[2]];
 
-			std::vector <double> vec0(3);
+			std::vector <REAL> vec0(3);
 			vec0[0] = (vert2[0] - vert0[0]);
 			vec0[1] = (vert2[1] - vert0[1]);
 			vec0[2] = (vert2[2] - vert0[2]);
 
-			std::vector <double> vec1(3);
+			std::vector <REAL> vec1(3);
 			vec1[0] = (vert1[0] - vert0[0]);
 			vec1[1] = (vert1[1] - vert0[1]);
 			vec1[2] = (vert1[2] - vert0[2]);
@@ -504,16 +504,16 @@ void Mesh::read(const std::string& path, double scale) {
 	faceCenters.reserve(nFaces);
 	for (int jf = 0; jf < nFaces; ++jf) {
 		std::vector <int> face = faces[jf];
-		std::vector <double> faceCenter = {0.0, 0.0, 0.0};
+		std::vector <REAL> faceCenter = {0.0, 0.0, 0.0};
 		int vertsNum = face.size();
 		for (int i = 0; i < vertsNum; ++i) {
 			faceCenter[0] += vertsCoo[face[i]][0];
 			faceCenter[1] += vertsCoo[face[i]][1];
 			faceCenter[2] += vertsCoo[face[i]][2];
 		}
-		faceCenter[0] /= static_cast<double>(vertsNum);
-		faceCenter[1] /= static_cast<double>(vertsNum);
-		faceCenter[2] /= static_cast<double>(vertsNum);
+		faceCenter[0] /= static_cast<REAL>(vertsNum);
+		faceCenter[1] /= static_cast<REAL>(vertsNum);
+		faceCenter[2] /= static_cast<REAL>(vertsNum);
 		faceCenters.push_back(faceCenter);
 	}
 	/*
@@ -522,17 +522,17 @@ void Mesh::read(const std::string& path, double scale) {
 	isOuterNormal.resize(nCells);
 	cellDiameters.resize(nCells);
 	for (int ic = 0; ic < nCells; ++ic) {
-		std::vector <double> faceDiameters(cellFaces[ic].size(), 0.0);
+		std::vector <REAL> faceDiameters(cellFaces[ic].size(), 0.0);
 		for (int jf = 0; jf < cellFaces[ic].size(); ++jf) {
 			int face = cellFaces[ic][jf];
-			std::vector <double> faceNormal = faceNormals[face];
+			std::vector <REAL> faceNormal = faceNormals[face];
 			// Compute vector from cell center to center of face
-			std::vector <double> vec = {faceCenters[face][0] - cellCenters[ic][0],
+			std::vector <REAL> vec = {faceCenters[face][0] - cellCenters[ic][0],
 					faceCenters[face][1] - cellCenters[ic][1], faceCenters[face][2] - cellCenters[ic][2]};
 
 			faceDiameters[jf] = 2.0 * sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2]);
 
-			double dotProduct = vec[0] * faceNormal[0] + vec[1] * faceNormal[1] + vec[2] * faceNormal[2];
+			REAL dotProduct = vec[0] * faceNormal[0] + vec[1] * faceNormal[1] + vec[2] * faceNormal[2];
 			if (dotProduct >= 0.0) {
 				isOuterNormal[ic].push_back(true);
 			}
@@ -651,16 +651,16 @@ int Mesh::getOutIndex(int ic, int j) {
 	return static_cast<int>(isOuterNormal[ic][j]);
 }
 // 1.0 if out, -1.0 else
-double Mesh::getOutSign(int ic, int j) {
-	return 2.0 * static_cast<double>(isOuterNormal[ic][j]) - 1.0;
+REAL Mesh::getOutSign(int ic, int j) {
+	return 2.0 * static_cast<REAL>(isOuterNormal[ic][j]) - 1.0;
 }
 // 1 if out, 0 else
 int Mesh::getOutIndex(int jf) {
 	return static_cast<int>(isOuterNormalBoundary[jf]);
 }
 // 1.0 if out, -1.0 else
-double Mesh::getOutSign(int jf) {
-	return 2.0 * static_cast<double>(isOuterNormalBoundary[jf]) - 1.0;
+REAL Mesh::getOutSign(int jf) {
+	return 2.0 * static_cast<REAL>(isOuterNormalBoundary[jf]) - 1.0;
 }
 
 void Mesh::divideMesh(int nParts) {
@@ -739,8 +739,8 @@ void Mesh::divideMesh(int nParts) {
 	}
 }
 
-void Mesh::write_tecplot(std::vector < std::vector <double> > data, std::string filename,
-		std::vector <std::string> var_names, double time) {
+void Mesh::write_tecplot(std::vector < std::vector <REAL> > data, std::string filename,
+		std::vector <std::string> var_names, REAL time) {
 
 	int nvar = data[0].size();
 	std::ofstream file;

@@ -13,9 +13,9 @@ int main(int argc, char *argv[]) {
 	int nParts = atoi(argv[1]);
 	mesh.divideMesh(nParts);
 
-	std::vector < std::vector <double> > data;
+	std::vector < std::vector <REAL> > data;
 	for (int ic = 0; ic < mesh.nCells; ++ic) {
-		data.push_back(std::vector <double> {static_cast<double>(mesh.cellPartitions[ic])});
+		data.push_back(std::vector <REAL> {static_cast<REAL>(mesh.cellPartitions[ic])});
 	}
 
 	mesh.write_tecplot(data, "tec.dat", {"partition"});
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 	// std::cout << "\n";
 
 
-	// double smallestArea = 1000000.0;
+	// REAL smallestArea = 1000000.0;
 	// std::cout << "faceAreas" << std::endl;
 	// for (const auto &a : mesh.faceAreas) {
 	// 	std::cout << a << " ";

@@ -22,4 +22,10 @@
 #include "mkl.h"
 #include "mkl_lapacke.h"
 
+typedef double REAL;
+
+// void MKL_imatcopy(char ordering, char trans, size_t rows, size_t cols, REAL *alpha, REAL *a, size_t src_lda, size_t dst_lda) {
+//     return MKL_Dimatcopy(ordering, trans, rows, size_t cols, *alpha, *a, src_lda, dst_lda)
+// }
+
 #endif /* HEADER_H_ */

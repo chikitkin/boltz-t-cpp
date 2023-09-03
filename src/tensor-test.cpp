@@ -3,7 +3,7 @@
 #include "tucker.h"
 #include "solver.h"
 
-void print_matrix( char* desc, int m, int n, double* a, int lda )
+void print_matrix( char* desc, int m, int n, REAL* a, int lda )
 {
 	int i, j;
 	printf( "\n %s\n", desc );
@@ -13,11 +13,11 @@ void print_matrix( char* desc, int m, int n, double* a, int lda )
 	}
 }
 
-double f(double x, double y, double z) {
+REAL f(REAL x, REAL y, REAL z) {
 	return 2.0 + x + 4*y;
 }
 
-double g(double x, double y, double z) {
+REAL g(REAL x, REAL y, REAL z) {
 	return 3.0 + exp(x);
 }
 
@@ -33,18 +33,18 @@ int main(){
 	int nvz = 44;
 	int nv = nvx * nvy * nvz;
 	
-	double Ru = 8.3144598; // Universal gas constant
-	double Mol = 40e-3; // = Mol
-	double Rg = Ru / Mol;
+	REAL Ru = 8.3144598; // Universal gas constant
+	REAL Mol = 40e-3; // = Mol
+	REAL Rg = Ru / Mol;
 	
-	double T_s = 200.0;
+	REAL T_s = 200.0;
 	
-	double v_s = pow(2. * Rg * T_s, 0.5);
-	double vmax = 22.0 * v_s;
+	REAL v_s = pow(2. * Rg * T_s, 0.5);
+	REAL vmax = 22.0 * v_s;
 
-	double hv = 2.0 * vmax / nvx;
+	REAL hv = 2.0 * vmax / nvx;
 
-	double *vx__ = new double[nvx];
+	REAL *vx__ = new REAL[nvx];
 
 	for (int i = 0; i < nvx; ++i) {
 		vx__[i] = - vmax + (hv / 2.0) + i * hv;
@@ -52,15 +52,15 @@ int main(){
 	std::cout << vmax << std::endl;
 	std::cout << hv << std::endl;
 	
-	double *vx = new double[nv];
-	double *vy = new double[nv];
-	double *vz = new double[nv];
+	REAL *vx = new REAL[nv];
+	REAL *vy = new REAL[nv];
+	REAL *vz = new REAL[nv];
 
-	double *vx_ = new double[nvx];
+	REAL *vx_ = new REAL[nvx];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvx, 1, vx__, 1, vx_, 1);
-	double *vy_ = new double[nvy];
+	REAL *vy_ = new REAL[nvy];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvy, 1, vx__, 1, vy_, 1);
-	double *vz_ = new double[nvz];
+	REAL *vz_ = new REAL[nvz];
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', nvz, 1, vx__, 1, vz_, 1);
 
 	for (int i = 0; i < nvx; ++i) {
@@ -73,8 +73,8 @@ int main(){
 		}
 	}
 	
-	double* vn_abs_r1_tmp = new double[nv];
-	double sum = 0;
+	REAL* vn_abs_r1_tmp = new REAL[nv];
+	REAL sum = 0;
 	for (int i = 0; i < nv; ++i) {
 		vn_abs_r1_tmp[i] = pow(vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i], 0.5);
 		sum += vn_abs_r1_tmp[i] * vn_abs_r1_tmp[i];
@@ -102,23 +102,23 @@ int main(){
 	n2 = 44;
 	n3 = 44;
 
-	double eps = 1e-5;
+	REAL eps = 1e-5;
 	
-	double *a1 = new double[n1*n2*n3];
-	double *a2 = new double[n1*n2*n3];
-	double *a3 = new double[n1*n2*n3];
+	REAL *a1 = new REAL[n1*n2*n3];
+	REAL *a2 = new REAL[n1*n2*n3];
+	REAL *a3 = new REAL[n1*n2*n3];
 
-	double s;
-	double s_res;
+	REAL s;
+	REAL s_res;
 
-	double a_norm;
-	double diff_norm;
-	double diff;
+	REAL a_norm;
+	REAL diff_norm;
+	REAL diff;
 
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
-				a1[i*n2*n3 + j*n3 + k] = double(rand());
+				a1[i*n2*n3 + j*n3 + k] = REAL(rand());
 				a2[(n1 - i - 1)*n2*n3 + j*n3 + k] = a1[i*n2*n3 + j*n3 + k];
 			}
 		}
@@ -135,7 +135,7 @@ int main(){
 
 	Tensor error = t_r_t - t_t_r;
 
-	double *error_full = error.full();
+	REAL *error_full = error.full();
 
 //	for (int i = 0; i < n1*n2*n3; ++i) {
 //		cout << a1[i] << " ";
@@ -152,9 +152,9 @@ int main(){
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
-				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a2[i*n2*n3 + j*n3 + k] = g(double(i), double(j), double(k));
-				a3[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k)) + g(double(i), double(j), double(k));
+				a1[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k));
+				a2[i*n2*n3 + j*n3 + k] = g(REAL(i), REAL(j), REAL(k));
+				a3[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k)) + g(REAL(i), REAL(j), REAL(k));
 				s += a3[i*n2*n3 + j*n3 + k];
 			}
 		}
@@ -170,7 +170,7 @@ int main(){
 
 	cout << "s_diff sum = " << (s_res - s) / s << endl;
 
-	double *t3_1_full;
+	REAL *t3_1_full;
 	t3_1_full = t3_1.full();
 
 //	print_matrix("t3_full", n1*n2, n3, t3_full, n3);
@@ -188,9 +188,9 @@ int main(){
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
-				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a2[i*n2*n3 + j*n3 + k] = g(double(i), double(j), double(k));
-				a3[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k)) * g(double(i), double(j), double(k));
+				a1[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k));
+				a2[i*n2*n3 + j*n3 + k] = g(REAL(i), REAL(j), REAL(k));
+				a3[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k)) * g(REAL(i), REAL(j), REAL(k));
 				s += a3[i*n2*n3 + j*n3 + k];
 			}
 		}
@@ -205,7 +205,7 @@ int main(){
 
 	cout << "s_diff mult = " << (s_res - s) / s << endl;
 
-	double *t3_2_full;
+	REAL *t3_2_full;
 	t3_2_full = t3_2.full();
 
 //	print_matrix("t3_full", n1*n2, n3, t3_full, n3);
@@ -224,7 +224,7 @@ int main(){
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
 				a1[i*n2*n3 + j*n3 + k] = 2.0;
-				a2[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a2[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k));
 				a3[i*n2*n3 + j*n3 + k] = a1[i*n2*n3 + j*n3 + k] / a2[i*n2*n3 + j*n3 + k];
 				s += a3[i*n2*n3 + j*n3 + k];
 			}
@@ -241,7 +241,7 @@ int main(){
 
 	cout << "s_diff div = " << (s_res - s) / s << endl;
 
-	double *t3_3_full;
+	REAL *t3_3_full;
 	t3_3_full = t3_3.full();
 
 //	print_matrix("t3_full", n1*n2, n3, t3_full, n3);
@@ -259,9 +259,9 @@ int main(){
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
-				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a2[i*n2*n3 + j*n3 + k] = g(double(i), double(j), double(k));
-				a3[i*n2*n3 + j*n3 + k] = 2 * f(double(i), double(j), double(k));
+				a1[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k));
+				a2[i*n2*n3 + j*n3 + k] = g(REAL(i), REAL(j), REAL(k));
+				a3[i*n2*n3 + j*n3 + k] = 2 * f(REAL(i), REAL(j), REAL(k));
 				s += a3[i*n2*n3 + j*n3 + k];
 			}
 		}
@@ -276,7 +276,7 @@ int main(){
 
 	cout << "s_diff rmult = " << (s_res - s) / s << endl;
 
-	double *t3_4_full;
+	REAL *t3_4_full;
 	t3_4_full = t3_4.full();
 
 //	print_matrix("t3_full", n1*n2, n3, t3_full, n3);
@@ -294,9 +294,9 @@ int main(){
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
-				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a2[i*n2*n3 + j*n3 + k] = g(double(i), double(j), double(k));
-				a3[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k)) + g(double(i), double(j), double(k)) + f(double(i), double(j), double(k));
+				a1[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k));
+				a2[i*n2*n3 + j*n3 + k] = g(REAL(i), REAL(j), REAL(k));
+				a3[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k)) + g(REAL(i), REAL(j), REAL(k)) + f(REAL(i), REAL(j), REAL(k));
 				s += a3[i*n2*n3 + j*n3 + k];
 			}
 		}
@@ -313,7 +313,7 @@ int main(){
 
 	cout << "s_diff sum = " << (s_res - s) / s << endl;
 
-	double *t3_5_full;
+	REAL *t3_5_full;
 	t3_5_full = t3_5.full();
 
 //	print_matrix("t3_full", n1*n2, n3, t3_full, n3);
@@ -337,18 +337,18 @@ int main(){
 /*************************************************************************************/
 // QR test
 /*
-	double* A = new double[n1*n2];
-	double* B = new double[n1*n2]();
+	REAL* A = new REAL[n1*n2];
+	REAL* B = new REAL[n1*n2]();
 
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
-			A[i*n2 + j] = double(i*n2 + j + 1);
+			A[i*n2 + j] = REAL(i*n2 + j + 1);
 		}
 	}
 
 	int size = min(n1, n2);
 
-	double *tau = new double[size];
+	REAL *tau = new REAL[size];
 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'U', n1, n2, A, n2, B, n2);
 
@@ -356,7 +356,7 @@ int main(){
 
 	print_matrix("A", n1, n2, A, n2);
 
-	double** QR = qr(n1, n2, A);
+	REAL** QR = qr(n1, n2, A);
 
 	print_matrix("Q", n1, size, QR[0], size);
 	print_matrix("R", size, n2, QR[1], n2);
@@ -378,7 +378,7 @@ int main(){
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
-				a1[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a1[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k));
 			}
 		}
 	}
@@ -398,15 +398,15 @@ int main(){
 /*************************************************************************************/
 // Transpose test
 /*
-	double *a_0 = new double[n1*n2*n3];
-	double *a = new double[n1*n2*n3];
-	double *a_true = new double[n1*n2*n3];
+	REAL *a_0 = new REAL[n1*n2*n3];
+	REAL *a = new REAL[n1*n2*n3];
+	REAL *a_true = new REAL[n1*n2*n3];
 
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
-				a_0[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
-				a[i*n2*n3 + j*n3 + k] = f(double(i), double(j), double(k));
+				a_0[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k));
+				a[i*n2*n3 + j*n3 + k] = f(REAL(i), REAL(j), REAL(k));
 				a_true[k*n2*n1 + j*n1 + i] = a[i*n2*n3 + j*n3 + k];
 			}
 		}

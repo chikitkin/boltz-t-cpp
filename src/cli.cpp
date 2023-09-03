@@ -9,27 +9,26 @@
 
 int main(int argc, char *argv[])
 {
-    typedef Full Tensor;
+    typedef Tucker Tensor;
 	std::shared_ptr < GasParams > gas_params = std::make_shared < GasParams > ();
-
 
 	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();
 	std::shared_ptr < Config > config = std::make_shared < Config > ();
     
-    double Mach;
-	double Kn;
-	double delta;
-	double l_s;
+    REAL Mach;
+	REAL Kn;
+	REAL delta;
+	REAL l_s;
 	
-	double n_in;
-	double u_in;
-	double T_in;
+	REAL n_in;
+	REAL u_in;
+	REAL T_in;
 	
-	double n_out;
-	double u_out;
-	double T_out;
+	REAL n_out;
+	REAL u_out;
+	REAL T_out;
 
-	double T_wall;
+	REAL T_wall;
 
 	int nv;
 	
@@ -68,21 +67,21 @@ int main(int argc, char *argv[])
 
 //	delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
 
-	double n_s = n_in;
-	double T_s = T_in;
+	REAL n_s = n_in;
+	REAL T_s = T_in;
 
-	double p_s = gas_params->m * n_s * gas_params->Rg * T_s;
+	REAL p_s = gas_params->m * n_s * gas_params->Rg * T_s;
 
-	double v_s = pow(2. * gas_params->Rg * T_s, 0.5);
-	double mu_s = gas_params->mu(T_s);
+	REAL v_s = pow(2. * gas_params->Rg * T_s, 0.5);
+	REAL mu_s = gas_params->mu(T_s);
 
 //	l_s = delta * mu_s * v_s / p_s;
 
 	std::shared_ptr < Mesh > mesh = std::make_shared < Mesh > (mesh_path, l_s);
 
-	double vmax = 22.0 * v_s;
-	double hv = 2.0 * vmax / nv;
-	double *vx_ = new double[nv];
+	REAL vmax = 22.0 * v_s;
+	REAL hv = 2.0 * vmax / nv;
+	REAL *vx_ = new REAL[nv];
 	for (int i = 0; i < nv; ++i) {
 		vx_[i] = - vmax + (hv / 2.0) + i * hv;
 	}
@@ -99,8 +98,8 @@ int main(int argc, char *argv[])
 	{
 		int tag;
 		bcType type;
-		double n, ux, uy, uz, T;
-		double T_wall;
+		REAL n, ux, uy, uz, T;
+		REAL T_wall;
 		std::cout << "BC types are:" << std::endl;
 		while (getline(cfg, line)) {
 			std::string bc_type;
@@ -154,7 +153,7 @@ int main(int argc, char *argv[])
 		}
     }
 
-//	std::vector < double > params;
+//	std::vector < REAL > params;
 //
 //	params = comp_macro_params<Tensor>(f_in, v, gas_params);
 //

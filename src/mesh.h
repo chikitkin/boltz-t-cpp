@@ -28,12 +28,12 @@ enum faceType
 class Mesh {
 public:
 	// Constructor
-	Mesh(const std::string& path, double scale = 1.0);
-	void read(const std::string& path, double scale = 1.0);
+	Mesh(const std::string& path, REAL scale = 1.0);
+	void read(const std::string& path, REAL scale = 1.0);
 
 	int nVerts;
-	std::vector<std::vector<double>> vertsCoo;
-	void readVerts(std::ifstream &data, double scale);
+	std::vector<std::vector<REAL>> vertsCoo;
+	void readVerts(std::ifstream &data, REAL scale);
 	std::vector<std::vector<int>> vertsCells;
 
 	int nCells;
@@ -41,15 +41,15 @@ public:
 	std::vector<cellType> cellTypes;
 	void readHexa(std::ifstream &data);
 	void readTetra(std::ifstream &data);
-	std::vector<std::vector<double>> cellCenters;
-	std::vector<double> cellVolumes;
+	std::vector<std::vector<REAL>> cellCenters;
+	std::vector<REAL> cellVolumes;
 	std::vector<std::vector<int>> computeFacesOfCell(int ic);
 	std::vector<std::vector<int>> cellNeighbors;
 	std::vector<std::vector<int>> cellFaces;
 	std::vector<std::vector<bool>> isOuterNormal;
 	int getOutIndex(int ic, int j); // 1 if out, 0 else
-	double getOutSign(int ic, int j); // 1.0 if out, -1.0 else
-	std::vector<double> cellDiameters;
+	REAL getOutSign(int ic, int j); // 1.0 if out, -1.0 else
+	std::vector<REAL> cellDiameters;
 
 	int nBoundaryFaces;
 	std::vector<std::vector<int>> boundaryFaces;
@@ -62,17 +62,17 @@ public:
 	std::map<int, std::vector<int>> boundaryFacesForEachTag; // TODO or unordered?
 	std::vector<bool> isOuterNormalBoundary;
 	int getOutIndex(int jf); // 1 if out, 0 else
-	double getOutSign(int jf); // 1.0 if out, -1.0 else
+	REAL getOutSign(int jf); // 1.0 if out, -1.0 else
 
 	int nFaces;
 	std::vector<std::vector<int>> faces;
 	std::vector<faceType> faceTypes;
 	std::vector<std::vector<int>> leftRightCells;
-	std::vector<double> faceAreas;
-	std::vector<std::vector<double>> faceNormals;
-	std::vector<std::vector<double>> faceCenters;
+	std::vector<REAL> faceAreas;
+	std::vector<std::vector<REAL>> faceNormals;
+	std::vector<std::vector<REAL>> faceCenters;
 
-	double computeTetraVolume(std::vector<std::vector<double>> tetra);
+	REAL computeTetraVolume(std::vector<std::vector<REAL>> tetra);
 
 	int getNumFacesOfCell(int ic);
 	int getFacesOfCell(int ic, int jf);
@@ -93,8 +93,8 @@ public:
 	std::vector < int > iPerm;
 
 
-	void write_tecplot(std::vector < std::vector <double> > data, std::string filename,
-			std::vector <std::string> var_names, double time = 0.0);
+	void write_tecplot(std::vector < std::vector <REAL> > data, std::string filename,
+			std::vector <std::string> var_names, REAL time = 0.0);
 };
 
 #endif /* MESH_H_ */

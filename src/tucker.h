@@ -3,13 +3,13 @@
 
 #include "header.h"
 
-double *svd_trunc(int m, int n, double *a, double eps, int &r);
-double *svd_trunc_rmax(int m, int n, double *a, int rmax);
+REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int &r);
+REAL *svd_trunc_rmax(int m, int n, REAL *a, int rmax);
 
-double **compress(int n1, int n2, int n3,
-		double *a, double eps, int &r1, int &r2, int &r3, int rmax = 1e+6);
+REAL **compress(int n1, int n2, int n3,
+		REAL *a, REAL eps, int &r1, int &r2, int &r3, int rmax = 1e+6);
 
-double **qr(int m, int n, const double *a);
+REAL **qr(int m, int n, const REAL *a);
 
 class Tucker {
 public:
@@ -17,11 +17,11 @@ public:
 	// Default constructor
 	Tucker();
 	// Zero tensor with given ranks
-	Tucker(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_);
+	Tucker(int n1_, int n2_, int n3_, int r1_=1, int r2_=1, int r3_=1);
 	// Compress a tensor with given accuracy
-	Tucker(int n1_, int n2_, int n3_, double *a, double eps = 1e-14);
+	Tucker(int n1_, int n2_, int n3_, REAL *a, REAL eps=1e-14);
 	// Create a rank-1 tensor from given factors
-	Tucker(int n1_, int n2_, int n3_, double *u1_, double *u2_, double *u3_);
+	Tucker(int n1_, int n2_, int n3_, REAL *u1_, REAL *u2_, REAL *u3_);
 	// Copy constructor
 	Tucker(const Tucker& t);
 	// Copy assignment operator
@@ -32,20 +32,20 @@ public:
 	// Print ranks
 	std::vector<int> n() const;
 	std::vector<int> r() const;
-	double compression() const;
+	REAL compression() const;
 	// Print tensor
 	friend std::ostream& operator << (std::ostream &out, const Tucker& t);
 	// Get element
-	double At(int i1, int i2, int i3) const;
+	REAL At(int i1, int i2, int i3) const;
 
 	// Orthogonalize factors with QR
 	void orthogonalize();
 	// Recompress tensor
-	void round(double tol = 1e-14, int rmax = 1000000);
-	double *full() const;
+	void round(REAL tol=1e-14, int rmax=1000000);
+	REAL *full() const;
 	// Compute sum of all elements
-	double sum() const;
-	double norm();
+	REAL sum() const;
+	REAL norm();
 
 	friend Tucker operator -(const Tucker& t);
 	// Element-wise summation
@@ -53,12 +53,12 @@ public:
 	friend Tucker operator -(const Tucker& t1, const Tucker& t2);
 	// Element-wise multiplication
 	friend Tucker operator *(const Tucker& t1, const Tucker& t2);
-	friend Tucker operator *(const double alpha, const Tucker& t);
-	friend Tucker operator *(const Tucker& t, const double alpha);
+	friend Tucker operator *(const REAL alpha, const Tucker& t);
+	friend Tucker operator *(const Tucker& t, const REAL alpha);
 	friend Tucker operator /(const Tucker& t1, const Tucker& t2);
 	friend Tucker reflect(const Tucker& t, char axis);
 
-	friend Tucker round_t(const Tucker& t, double tol = 1e-14, int rmax = 1000000);
+	friend Tucker round_t(const Tucker& t, REAL tol, int rmax);
 /*
 	std::string to_string();
 	friend Tucker from_string(std::string &tensor_string);
@@ -67,15 +67,15 @@ private:
 	int I(int i1, int i2, int i3);
 	std::vector <int> multiI(int I);
 
-	double* g;
+	REAL* g;
 	// sizes along each dimension;
 	int n1, n2, n3; // TODO was const
 	// u ranks;
 	int r1, r2, r3;
 	// us;
-	double* u1;
-	double* u2;
-	double* u3;
+	REAL* u1;
+	REAL* u2;
+	REAL* u3;
 };
 
 #endif /* TUCKER_H_ */
