@@ -124,17 +124,17 @@ void full(MKL_INT n1, MKL_INT n2, MKL_INT n3, MKL_INT r1, MKL_INT r2, MKL_INT r3
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							n1, r2*r3, r1, alpha, tuc[1], r1, tuc[0], r2*r3, beta, z1, r2*r3);
 
-	mkl_dimatcopy ('R', 'T', n1, r2*r3, alpha, z1, r2*r3, n1);
+	MKL_Dimatcopy ('R', 'T', n1, r2*r3, alpha, z1, r2*r3, n1);
 
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							n2, r3*n1, r2, alpha, tuc[2], r2, z1, r3*n1, beta, z2, r3*n1);
 
-	mkl_dimatcopy ('R', 'T', n2, r3*n1, alpha, z2, r3*n1, n2);
+	MKL_Dimatcopy ('R', 'T', n2, r3*n1, alpha, z2, r3*n1, n2);
 
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							n3, n1*n2, r3, alpha, tuc[3], r3, z2, n1*n2, beta, res, n1*n2);
 
-	mkl_dimatcopy ('R', 'T', n3, n1*n2, alpha, res, n1*n2, n3);
+	MKL_Dimatcopy ('R', 'T', n3, n1*n2, alpha, res, n1*n2, n3);
 
 	delete [] z1;
 	delete [] z2;
@@ -156,9 +156,9 @@ double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL
 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z1, 1);
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z2, 1);
-	mkl_dimatcopy ('R', 'T', n1, n2*n3, alpha, z2, n2*n3, n1);
+	MKL_Dimatcopy ('R', 'T', n1, n2*n3, alpha, z2, n2*n3, n1);
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z3, 1);
-	mkl_dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
+	MKL_Dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
 
 	q1 = svd_trunc(n1, (n2 * n3), z1, eps, r1);
 	q2 = svd_trunc(n2, (n1 * n3), z2, eps, r2);
@@ -167,13 +167,13 @@ double **compress(MKL_INT n1, MKL_INT n2, MKL_INT n3, double *a, double eps, MKL
 	double *h = new double[r1*r2*r3]();
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							n1*n2, r3, n3, alpha, a, n3, q3, r3, beta, z3, r3);
-	mkl_dimatcopy ('R', 'T', n1*n2, r3, alpha, z3, r3, n1*n2);
+	MKL_Dimatcopy ('R', 'T', n1*n2, r3, alpha, z3, r3, n1*n2);
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							r3*n1, r2, n2, alpha, z3, n2, q2, r2, beta, z2, r2);
-	mkl_dimatcopy ('R', 'T', r3*n1, r2, alpha, z2, r2, r3*n1);
+	MKL_Dimatcopy ('R', 'T', r3*n1, r2, alpha, z2, r2, r3*n1);
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							r2*r3, r1, n1, alpha, z2, n1, q1, r1, beta, h, r1);
-	mkl_dimatcopy ('R', 'T', r2*r3, r1, alpha, h, r1, r2*r3);
+	MKL_Dimatcopy ('R', 'T', r2*r3, r1, alpha, h, r1, r2*r3);
 
 	result[0] = h;
 	result[1] = q1;

@@ -1,6 +1,0 @@
-#!/bin/sh
-#SBATCH
-now=$(date '+%d_%m_%Y_%H:%M:%S')
-mkdir $now
-cd $now
-srun ../../../src/cli.o ../cyl.cfg

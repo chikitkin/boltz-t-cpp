@@ -1,0 +1,1 @@
+sbatch -p RT -n 1 --ntasks-per-node=1 --cpus-per-task=12 cyl

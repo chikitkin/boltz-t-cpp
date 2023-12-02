@@ -225,8 +225,6 @@ public:
 	std::string path;
 
 	std::vector < Tensor > vn;
-	std::vector < Tensor > vnm;
-	std::vector < Tensor > vnp;
 	std::vector < Tensor > vn_abs;
 	Tensor vn_abs_r1;
 

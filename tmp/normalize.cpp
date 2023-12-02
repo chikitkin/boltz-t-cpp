@@ -16,18 +16,18 @@ Tensor normalize() {
 
 		double *z1 = new double[r1*r2*r3];
 		LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', r1*r2*r3, 1, core, 1, z1, 1);
-		mkl_dimatcopy ('R', 'T', r1, r2*r3, alpha, z1, r2*r3, r1);
-		mkl_dimatcopy ('R', 'T', min(n1, r1), r1, alpha, QR1[1], r1, min(n1, r1));
+		MKL_Dimatcopy ('R', 'T', r1, r2*r3, alpha, z1, r2*r3, r1);
+		MKL_Dimatcopy ('R', 'T', min(n1, r1), r1, alpha, QR1[1], r1, min(n1, r1));
 		double *z2 = new double[min(n1, r1)*r2*r3];
 		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 										r2*r3, min(n1, r1), r1, alpha, z1, r1, QR1[1], min(n1, r1), beta, z2, min(n1, r1));
-		mkl_dimatcopy ('R', 'T', r2, min(n1, r1)*r3, alpha, z2, min(n1, r1)*r3, r2);
-		mkl_dimatcopy ('R', 'T', min(n2, r2), r2, alpha, QR2[1], r2, min(n2, r2));
+		MKL_Dimatcopy ('R', 'T', r2, min(n1, r1)*r3, alpha, z2, min(n1, r1)*r3, r2);
+		MKL_Dimatcopy ('R', 'T', min(n2, r2), r2, alpha, QR2[1], r2, min(n2, r2));
 		double *z3 = new double[min(n1, r1)*min(n2, r2)*r3];
 		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 				min(n1, r1)*r3, min(n2, r2), r2, alpha, z2, r2, QR2[1], min(n2, r2), beta, z3, min(n2, r2));
-		mkl_dimatcopy ('R', 'T', r3, min(n1, r1)*min(n2, r2), alpha, z3, min(n1, r1)*min(n2, r2), r3);
-		mkl_dimatcopy ('R', 'T', min(n3, r3), r3, alpha, QR3[1], r3, min(n3, r3));
+		MKL_Dimatcopy ('R', 'T', r3, min(n1, r1)*min(n2, r2), alpha, z3, min(n1, r1)*min(n2, r2), r3);
+		MKL_Dimatcopy ('R', 'T', min(n3, r3), r3, alpha, QR3[1], r3, min(n3, r3));
 		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 				min(n1, r1)*min(n2, r2), min(n3, r3), r3, alpha, z3, r3, QR3[1], min(n3, r3), beta, t.core, min(n3, r3));
 

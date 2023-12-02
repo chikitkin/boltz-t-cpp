@@ -134,28 +134,22 @@ VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, REAL *vx__, REA
 
 	zerox = new REAL[nvx]();
 	onesx = new REAL[nvx];
-	for (int i = 0; i < nvx; ++i) {
-		onesx[i] = 1.0;
-	}
+	std::fill_n(onesx, nvx, 1.0);
 
 	zeroy = new REAL[nvy]();
 	onesy = new REAL[nvy];
-	for (int i = 0; i < nvy; ++i) {
-		onesy[i] = 1.0;
-	}
+	std::fill_n(onesy, nvy, 1.0);
 
 	zeroz = new REAL[nvz]();
 	onesz = new REAL[nvz];
-	for (int i = 0; i < nvz; ++i) {
-		onesz[i] = 1.0;
-	}
+	std::fill_n(onesz, nvy, 1.0);
 
 	vx_t = Tensor(nvx, nvy, nvz, vx_, onesy, onesz);
 	vy_t = Tensor(nvx, nvy, nvz, onesx, vy_, onesz);
 	vz_t = Tensor(nvx, nvy, nvz, onesx, onesy, vz_);
 
 	v2 = vx_t * vx_t + vy_t * vy_t + vz_t * vz_t;
-	v2.round(1e-7);
+	v2.round(static_cast<REAL>(1e-7));
 
 	zero = Tensor(nvx, nvy, nvz, zerox, zeroy, zeroz);
 	ones = Tensor(nvx, nvy, nvz, onesx, onesy, onesz);
@@ -166,7 +160,7 @@ VelocityGrid<Tensor>::VelocityGrid(int nvx_, int nvy_, int nvz_, REAL *vx__, REA
 	}
 	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp);
 	delete [] vn_abs_r1_tmp;
-	vn_abs_r1.round(1e-14, 1);
+	vn_abs_r1.round(static_cast<REAL>(1e-14), 1);
 }
 
 template <class Tensor>
@@ -226,8 +220,8 @@ Tensor Solution<Tensor>::comp_j(const std::vector <REAL>& params, const Tensor& 
 	REAL uy = params[2];
 	REAL uz = params[3];
 	REAL T = params[4];
-	REAL rho = params[5];
-	REAL p = params[6];
+	// REAL rho = params[5];
+	// REAL p = params[6];
 	REAL nu = params[7];
 
 	REAL *tmp = new REAL[std::max({v->nvx, v->nvy, v->nvz})];
@@ -248,7 +242,7 @@ Tensor Solution<Tensor>::comp_j(const std::vector <REAL>& params, const Tensor& 
 	Tensor cz(v->nvx, v->nvy, v->nvz, v->onesx, v->onesy, tmp);
 
 	Tensor c2 = ((cx * cx) + (cy * cy) + (cz * cz));
-	c2.round(1e-7);
+	c2.round(static_cast<REAL>(1e-14));
 
 	REAL Sx = (1.0 / n) * v->hv3 * (cx * c2 * f).sum();
 	REAL Sy = (1.0 / n) * v->hv3 * (cy * c2 * f).sum();
@@ -258,7 +252,7 @@ Tensor Solution<Tensor>::comp_j(const std::vector <REAL>& params, const Tensor& 
 
 	Tensor f_plus = fmax * (v->ones + ((4.0 / 5.0) * (1.0 - gas_params->Pr) * (Sx*cx + Sy*cy + Sz*cz) * ((c2 + (- 5.0 / 2.0) * v->ones))));
 	Tensor J = nu * (f_plus - f);
-	J.round(1e-7);
+	J.round(static_cast<REAL>(1e-14));
 
 	delete [] tmp;
 
@@ -345,48 +339,41 @@ Solution<Tensor>::Solution(
   problem(problem),
   config(config)
 {
+	std::cout << "Init started." << std::endl;
+
+	int numThreads = omp_get_max_threads();
+	std::cout << "Number of threads is: " << numThreads << std::endl;
+
 //	path = "./" + "job_tuck_" + config.solver_type + '_' + '/'; // TODO datetime.now().strftime("%Y.%m.%d_%H:%M:%S") + '/';
 	path = "./";
 	// TODO make directory
 
 	vn.resize(mesh->nFaces, Tensor());
-	vnm.resize(mesh->nFaces, Tensor());
-	vnp.resize(mesh->nFaces, Tensor());
 	vn_abs.resize(mesh->nFaces, Tensor());
 
+	auto TIME0 = omp_get_wtime();
 	#pragma omp parallel for schedule(dynamic)
 	for (int jf = 0; jf < mesh->nFaces; ++jf) {
 		// TODO why is it so slow?
 		REAL* vn_tmp = new REAL[v->nv];
-		REAL* vnm_tmp = new REAL[v->nv];
-		REAL* vnp_tmp = new REAL[v->nv];
 		REAL* vn_abs_tmp = new REAL[v->nv];
 		for (int i = 0; i < v->nv; ++i) {
 			vn_tmp[i] = 
 					mesh->faceNormals[jf][0] * v->vx[i] +
 					mesh->faceNormals[jf][1] * v->vy[i] +
 					mesh->faceNormals[jf][2] * v->vz[i];
-			if (vn_tmp[i] <= 0.0) {
-				vnm_tmp[i] = vn_tmp[i];
-				vnp_tmp[i] = 0.0;
-			}
-			else {
-				vnm_tmp[i] = 0.0;
-				vnp_tmp[i] = vn_tmp[i];
-			}
-			vn_abs_tmp[i] = vnp_tmp[i] - vnm_tmp[i];
+			vn_abs_tmp[i] = abs(vn_tmp[i]);
 		}
-		vn[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_tmp, 1e-3);
-		vnm[jf] = Tensor(v->nvx, v->nvy, v->nvz, vnm_tmp, config->tol);
-		vnp[jf] = Tensor(v->nvx, v->nvy, v->nvz, vnp_tmp, config->tol);
-		vn_abs[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_abs_tmp);
-		vn_abs[jf].round(1e-14, 6);
+		vn[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_tmp, static_cast<REAL>(1e-3));
+		vn_abs[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_abs_tmp, static_cast<REAL>(1e-3));
+		vn_abs[jf].round(static_cast<REAL>(1e-14), 6);
 
 		delete [] vn_tmp;
-		delete [] vnm_tmp;
-		delete [] vnp_tmp;
 		delete [] vn_abs_tmp;
 	}
+	auto TIME1 = omp_get_wtime();
+	std::cout << "vnm vnp time " << TIME1 - TIME0 << " s" << std::endl;
+
 	h = *std::min_element(mesh->cellDiameters.begin(), mesh->cellDiameters.end());
 	tau = h * config->CFL / (*std::max_element(v->vx_, v->vx_ + v->nvx) * (pow(3.0, 0.5)));
 
@@ -403,31 +390,24 @@ Solution<Tensor>::Solution(
 			int jf = mesh->cellFaces[ic][j];
 
 			REAL* vn_tmp = new REAL[v->nv];
-			REAL* vnm_tmp = new REAL[v->nv];
 			REAL* vnp_tmp = new REAL[v->nv];
-			REAL* vn_abs_tmp = new REAL[v->nv];
 			for (int i = 0; i < v->nv; ++i) {
 				vn_tmp[i] = mesh->getOutSign(ic, j) * (
 				mesh->faceNormals[jf][0] * v->vx[i] +
 				mesh->faceNormals[jf][1] * v->vy[i] +
 				mesh->faceNormals[jf][2] * v->vz[i]);
 				if (vn_tmp[i] <= 0.0) {
-					vnm_tmp[i] = vn_tmp[i];
 					vnp_tmp[i] = 0.0;
 				}
 				else {
-					vnm_tmp[i] = 0.0;
 					vnp_tmp[i] = vn_tmp[i];
 				}
-				vn_abs_tmp[i] = vnp_tmp[i] - vnm_tmp[i];
 
 				diag_tmp[i] += (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnp_tmp[i];
 			}
 			diag_sc += 0.5 * (mesh->faceAreas[jf] / mesh->cellVolumes[ic]);
 			delete [] vn_tmp;
-			delete [] vnm_tmp;
 			delete [] vnp_tmp;
-			delete [] vn_abs_tmp;
 		}
 		
 		diag_r1[ic] = diag_sc * v->vn_abs_r1;
@@ -442,7 +422,10 @@ Solution<Tensor>::Solution(
 		
 		delete [] diag_tmp;
 		delete [] diag_t_full;
+		delete [] ratio;
 	}
+	auto TIME2 = omp_get_wtime();
+	std::cout << "diag_r1 time " << TIME2 - TIME1 << " s" << std::endl;
 
 	f.resize(mesh->nCells, Tensor());
 
@@ -459,6 +442,8 @@ Solution<Tensor>::Solution(
 		}
 	}
 	// TODO: other inits
+	auto TIME3 = omp_get_wtime();
+	std::cout << "initial time " << TIME3 - TIME2 << " s" << std::endl;
 
 	fLeftRight.resize(mesh->nFaces, std::vector<Tensor>{Tensor(), Tensor()});
 	slope.resize(mesh->nFaces, Tensor());
@@ -479,6 +464,8 @@ Solution<Tensor>::Solution(
 	data.resize(mesh->nCells, std::vector < REAL >());
 
 	bcList.reserve(mesh->nBoundaryFaces);
+	auto TIME4 = omp_get_wtime();
+	std::cout << "resize  time " << TIME4 - TIME3 << " s" << std::endl;
 
 	for (int ibc = 0; ibc < problem->bcTags.size(); ++ibc) {
 		int tag = problem->bcTags[ibc];
@@ -544,11 +531,15 @@ Solution<Tensor>::Solution(
 			}
 		}
 	}
+	auto TIME5 = omp_get_wtime();
+	std::cout << "bounds  time " << TIME5 - TIME4 << " s" << std::endl;
 				
 	it = 0;
 	create_res();
 
 	mesh->divideMesh(omp_get_max_threads());
+
+	std::cout << "Init finished." << std::endl;
 }
 
 // template <class Tensor>
@@ -597,7 +588,6 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 
 	it = 0;
 
-
 	int numThreads = omp_get_max_threads();
 	std::cout << "Number of threads is: " << numThreads << std::endl;
 	std::vector<double> timesForFaceFluxes(mesh->nFaces, 1.0);
@@ -605,10 +595,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 	std::vector<double> timesForCellsUpdate(mesh->nCells, 1.0);
 
 	while(it < nt) {
-		it += 1;
-		// reconstruction for inner faces
-		auto t0 = omp_get_wtime();
 
+		std::cout << "Step " << it << "." << std::endl;
+		it += 1;
+
+		// reconstruction for inner faces
+		auto TIME0 = omp_get_wtime();
 		// 1st order
 		#pragma omp parallel for schedule(dynamic)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
@@ -618,10 +610,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				fLeftRight[jf][1 - mesh->getOutIndex(ic, j)] = f[ic];
 			}
 		}
-
 		// 2nd order
 		// reconstruction_2nd_order();
-		auto t1 = omp_get_wtime();
+		auto TIME1 = omp_get_wtime();
+		timings[RECONSTRUCTION].push_back(TIME1 - TIME0);
+		std::cout << "RECONSTRUCTION      time " << TIME1 - TIME0 << " s" << std::endl;
+
 		// boundary condition
 		// loop over all boundary faces
 		#pragma omp parallel for schedule(dynamic)
@@ -638,13 +632,15 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					config->tol
 			);			
 		}
-
-		auto t2 = omp_get_wtime();
+		auto TIME2 = omp_get_wtime();
+		timings[BOUNDARY_CONDITIONS].push_back(TIME2 - TIME1);
+		std::cout << "BOUNDARY_CONDITIONS time " << TIME2 - TIME1 << " s" << std::endl;
 
 		// Compute ranges for each thread
 		//std::vector<int> threadRanges = getParallelRanges(timesForFaceFluxes, numThreads);
 
 		// Riemann solver - compute fluxes
+		// loop over all faces
 		#pragma omp parallel for schedule(dynamic)
 		for (int jf = 0; jf < mesh->nFaces; ++jf) {
 			auto begin = omp_get_wtime();
@@ -654,10 +650,15 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			auto end = omp_get_wtime();
 			timesForFaceFluxes[jf] = end - begin;
 		}
-		auto t3 = omp_get_wtime();
+		auto TIME3 = omp_get_wtime();
+		timings[FLUXES].push_back(TIME3 - TIME2);
+		std::cout << "FLUXES              time " << TIME3 - TIME2 << " s" << std::endl;
+
 		// Compute ranges for each thread
 		//threadRanges = getParallelRanges(timesForCellsRHS, numThreads);
+
 		// computation of the right hand side
+		// loop over all cells
 		#pragma omp parallel for schedule(dynamic)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			auto begin = omp_get_wtime();
@@ -666,7 +667,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
 				int jf = mesh->cellFaces[ic][j];
 				rhs[ic] = rhs[ic] - (mesh->getOutSign(ic, j) / mesh->cellVolumes[ic]) * flux[jf];
-				rhs[ic].round(config->tol);
+				// rhs[ic].round(config->tol);
 			}
 			// compute macroparameters and collision integral
 			std::vector<REAL> params = comp_macro_params(f[ic]);
@@ -702,15 +703,18 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		REAL frob_norm = 0.0;
 		#pragma omp parallel for reduction(+:frob_norm)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
-			frob_norm += pow(rhs[ic].norm(), 2.0);
+			frob_norm += pow(rhs[ic].norm() / 2e+20, 2.0); // TODO magic number
 		}
 		frob_norm = pow(frob_norm / mesh->nCells, 0.5);
 		frob_norm_iter.push_back(frob_norm);
 		update_res(frob_norm);
+		auto TIME4 = omp_get_wtime();
+		timings[RHS].push_back(TIME4 - TIME3);
+		std::cout << "RHS                 time " << TIME4 - TIME3 << " s" << std::endl;
 
-		auto t4 = omp_get_wtime();
+		// Update values
+		// 
 		if (!config->isImplicit) {
-			// Update values
 			#pragma omp parallel for schedule(dynamic)
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				auto begin = omp_get_wtime();
@@ -721,7 +725,6 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			}
 		}
 		else {
-			std::cout << "implicit step " << it << std::endl;
 			#pragma omp parallel for schedule(dynamic)
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				df[ic] = rhs[ic];
@@ -742,14 +745,14 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 						if ((icn >= 0) && (icn_perm > ic_perm)) {
 							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 							df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnm_loc * df[icn];
-							df[ic].round(config->tol);
+							// df[ic].round(config->tol);
 						}
 					}
 					// divide by diagonal coefficient
 					div_tmp = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]);
-					div_tmp.round(1e-3, 1);
+					div_tmp.round(static_cast<REAL>(1e-3), 1);
+					df[ic].round(config->tol); // TODO less rounding?
 					df[ic] = df[ic] / div_tmp;
-					df[ic].round(config->tol);
 				}
 			}
 
@@ -770,12 +773,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 						if ((icn >= 0) && (icn_perm < ic_perm)) {
 							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 							incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnm_loc * df[icn];
-							incr.round(config->tol);
+							// incr.round(config->tol);
 						}
 					}
 					// divide by diagonal coefficient
 					div_tmp = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]);
-					div_tmp.round(1e-3, 1);
+					div_tmp.round(static_cast<REAL>(1e-3), 1);
 					df[ic] = df[ic] + (incr / div_tmp);
 					df[ic].round(config->tol);
 				}
@@ -787,15 +790,13 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				f[ic].round(config->tol);
 			}
 		}
-		auto t5 = omp_get_wtime();
-		// TODO save
-		timings[RECONSTRUCTION].push_back(t1 - t0);
-		timings[BOUNDARY_CONDITIONS].push_back(t2 - t1);
-		timings[FLUXES].push_back(t3 - t2);
-		timings[RHS].push_back(t4 - t3);
-		timings[UPDATE].push_back(t5 - t4);
+		auto TIME5 = omp_get_wtime();
+		timings[UPDATE].push_back(TIME5 - TIME4);
+		std::cout << "UPDATE              time " << TIME5 - TIME4 << " s" << std::endl;
 
-		if (it % 10 == 0) {
+		// TODO save timings
+
+		if (it % config->saveTecStep == 0) {
 			mesh->write_tecplot(data, "tec.dat",
 					{"n", "ux", "uy", "uz", "T", "rho", "p", "nu", "compression"});
 			write_wall_params();

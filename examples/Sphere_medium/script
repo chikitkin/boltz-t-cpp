@@ -1,0 +1,4 @@
+#!/bin/sh
+#SBATCH
+export OMP_NUM_THREADS=8
+srun ../../src/cli.o sphere.cfg

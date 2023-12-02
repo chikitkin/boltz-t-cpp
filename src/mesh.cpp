@@ -455,15 +455,15 @@ void Mesh::read(const std::string& path, REAL scale) {
 			std::vector<REAL> bec0(vec0);
 			std::vector<REAL> bec1(vec1);
 			for (int ie = 0; ie < 3; ++ie) {
-				bec0[ie] /= std::max(1e-13, len0);
-				bec1[ie] /= std::max(1e-13, len1);
+				bec0[ie] /= std::max(static_cast<REAL>(1e-13), len0);
+				bec1[ie] /= std::max(static_cast<REAL>(1e-13), len1);
 			}
 			std::vector<REAL> normal(3);
 			normal[0] = (bec0[1]*bec1[2] - bec0[2]*bec1[1]);
 			normal[1] = (bec0[2]*bec1[0] - bec0[0]*bec1[2]);
 			normal[2] = (bec0[0]*bec1[1] - bec0[1]*bec1[0]);
 			REAL length = sqrt(pow(normal[0], 2) + pow(normal[1], 2) + pow(normal[2], 2));
-			if (length < 1e-10) {
+			if (length < static_cast<REAL>(1e-10)) {
 				std::cout << "flag = False" << std::endl;
 			}
 			else {

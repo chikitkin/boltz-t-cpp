@@ -28,8 +28,6 @@ int main(int argc, char *argv[])
 	REAL u_out;
 	REAL T_out;
 
-	REAL T_wall;
-
 	int nv;
 	
 	int steps;
@@ -62,6 +60,10 @@ int main(int argc, char *argv[])
         else if (line.find("isImplicit") != -1) { line_stream >> config->isImplicit; }
         else if (line.find("tol") != -1) { line_stream >> config->tol; }
         else if (line.find("steps") != -1) { line_stream >> steps; }
+
+		else if (line.find("saveTecStep") != -1) { line_stream >> config->saveTecStep; }
+		else if (line.find("saveMacroStep") != -1) { line_stream >> config->saveMacroStep; }
+
         else if (line.find("boundary:") != -1) { break; }
 	}
 
@@ -70,10 +72,10 @@ int main(int argc, char *argv[])
 	REAL n_s = n_in;
 	REAL T_s = T_in;
 
-	REAL p_s = gas_params->m * n_s * gas_params->Rg * T_s;
+	// REAL p_s = gas_params->m * n_s * gas_params->Rg * T_s;
 
 	REAL v_s = pow(2. * gas_params->Rg * T_s, 0.5);
-	REAL mu_s = gas_params->mu(T_s);
+	// REAL mu_s = gas_params->mu(T_s);
 
 //	l_s = delta * mu_s * v_s / p_s;
 
@@ -97,7 +99,6 @@ int main(int argc, char *argv[])
 
 	{
 		int tag;
-		bcType type;
 		REAL n, ux, uy, uz, T;
 		REAL T_wall;
 		std::cout << "BC types are:" << std::endl;
@@ -171,12 +172,6 @@ int main(int argc, char *argv[])
 	auto end = omp_get_wtime();
 
 	std::cout << "Time: " << end - start << " seconds." << std::endl;
-
-	std::cout << "n = " << S.n[39] << std::endl;
-	std::cout << "ux = " << S.ux[39] << std::endl;
-	std::cout << "uy = " << S.uy[39] << std::endl;
-	std::cout << "uz = " << S.uz[39] << std::endl;
-	std::cout << "T = " << S.T[39] << std::endl;
 
 	std::ofstream out;
 	out.open("T.txt");

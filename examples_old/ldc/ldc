@@ -1,0 +1,4 @@
+#!/bin/sh
+#SBATCH
+export OMP_NUM_THREADS=52
+srun ../../src/cli.o ldc.cfg

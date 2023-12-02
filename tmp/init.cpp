@@ -68,9 +68,9 @@ void compress(double eps) {
 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z1, 1);
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z2, 1);
-	mkl_dimatcopy ('R', 'T', n1, n2*n3, alpha, z2, n2*n3, n1);
+	MKL_Dimatcopy ('R', 'T', n1, n2*n3, alpha, z2, n2*n3, n1);
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z3, 1);
-	mkl_dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
+	MKL_Dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
 
 	q1 = svd_trunc(n1, (n2 * n3), z1, eps, r1);
 	q2 = svd_trunc(n2, (n1 * n3), z2, eps, r2);
@@ -100,7 +100,7 @@ void compress(double eps) {
 
 	print_matrix( "z3", n1*n2, r3, z3, r3 );
 
-	mkl_dimatcopy ('R', 'T', n1*n2, r3, alpha, z3, r3, n1*n2);
+	MKL_Dimatcopy ('R', 'T', n1*n2, r3, alpha, z3, r3, n1*n2);
 
 	print_matrix( "z3", r3, n1*n2, z3, n1*n2 );
 
@@ -109,7 +109,7 @@ void compress(double eps) {
 
 	print_matrix( "z2", r3*n1, r2, z2, r2 );
 
-	mkl_dimatcopy ('R', 'T', r3*n1, r2, alpha, z2, r2, r3*n1);
+	MKL_Dimatcopy ('R', 'T', r3*n1, r2, alpha, z2, r2, r3*n1);
 
 	print_matrix( "z2", r2, r3*n1, z2, r3*n1 );
 
@@ -118,7 +118,7 @@ void compress(double eps) {
 
 	print_matrix( "h", r2*r3, r1, h, r1 );
 
-	mkl_dimatcopy ('R', 'T', r2*r3, r1, alpha, h, r1, r2*r3);
+	MKL_Dimatcopy ('R', 'T', r2*r3, r1, alpha, h, r1, r2*r3);
 
 	print_matrix( "h", r1, r2*r3, h, r2*r3 );
 
@@ -153,17 +153,17 @@ void compress(double eps) {
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							n1, r2*r3, r1, alpha, q1, r1, h, r2*r3, beta, z1, r2*r3);
 
-	mkl_dimatcopy ('R', 'T', n1, r2*r3, alpha, z1, r2*r3, n1);
+	MKL_Dimatcopy ('R', 'T', n1, r2*r3, alpha, z1, r2*r3, n1);
 
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							n2, r3*n1, r2, alpha, q2, r2, z1, r3*n1, beta, z2, r3*n1);
 
-	mkl_dimatcopy ('R', 'T', n2, r3*n1, alpha, z2, r3*n1, n2);
+	MKL_Dimatcopy ('R', 'T', n2, r3*n1, alpha, z2, r3*n1, n2);
 
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 							n3, n1*n2, r3, alpha, q3, r3, z2, n1*n2, beta, a_appr, n1*n2);
 
-	mkl_dimatcopy ('R', 'T', n3, n1*n2, alpha, a_appr, n1*n2, n3);
+	MKL_Dimatcopy ('R', 'T', n3, n1*n2, alpha, a_appr, n1*n2, n3);
 
 	print_matrix( "a", n1*n2, n3, a, n3 );
 	print_matrix( "a_appr", n1*n2, n3, a_appr, n3 );
