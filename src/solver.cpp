@@ -92,7 +92,7 @@ REAL GasParams::mu(REAL T) const {
 template <class Tensor>
 Tensor Problem<Tensor>::getInit(REAL x, REAL y, REAL z,
 		const std::vector<Tensor>& initData) {
-	if (x < 0.0) {
+	if (x <= 0.0) {
 		return initData[0];
 	}
 	else {

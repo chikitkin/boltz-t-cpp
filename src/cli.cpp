@@ -67,6 +67,8 @@ int main(int argc, char *argv[])
         else if (line.find("boundary:") != -1) { break; }
 	}
 
+	mesh_path = argv[2];
+
 //	delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
 
 	REAL n_s = n_in;
