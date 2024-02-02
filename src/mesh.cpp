@@ -223,7 +223,7 @@ Mesh::Mesh(const std::string& path, REAL scale) {
 void Mesh::read(const std::string& path, REAL scale) {
 
 	std::ifstream data;
-	data.open(path + "mesh.mesh");
+	data.open(path);
 	if (data.fail())
 	{
 		std::cout << "Could not open mesh data" << std::endl;
