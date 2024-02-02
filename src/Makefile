@@ -1,4 +1,4 @@
-CC=icpx
+CC=icc
 
 CFLAGS=-std=c++14 -g -Wall -O3 -qopenmp -mkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include"
 
