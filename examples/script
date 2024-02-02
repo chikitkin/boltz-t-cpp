@@ -9,22 +9,22 @@ cd $now
 
 mkdir Shock-wave
 cd Shock-wave
-srun ../../../src/cli.o ../../Shock-wave_160/config.cfg ../../Shock-wave_160/mesh.mesh
-srun python3 ../../plot.py res.txt
-srun python3 ../../plot.py T.txt
+../../../src/cli.o ../../Shock-wave_160/config.cfg ../../Shock-wave_160/mesh.mesh
+python3 ../../plot.py res.txt
+python3 ../../plot.py T.txt
 cd ..
 
 mkdir Cylinder
 cd Cylinder
-srun ../../../src/cli.o ../../Cylinder_medium/config.cfg ../../Cylinder_medium/mesh.mesh
-srun python3 ../../plot.py res.txt
-srun python3 ../../cylinder.py wall.txt
+../../../src/cli.o ../../Cylinder_medium/config.cfg ../../Cylinder_medium/mesh.mesh
+python3 ../../plot.py res.txt
+python3 ../../cylinder.py wall.txt
 cd ..
 
 mkdir Sphere
 cd Sphere
-srun ../../../src/cli.o ../../Sphere_medium/config.cfg ../../Sphere_medium/mesh.mesh
-srun python3 ../../plot.py res.txt
-srun python3 ../../surface.py wall.txt
+../../../src/cli.o ../../Sphere_medium/config.cfg ../../Sphere_medium/mesh.mesh
+python3 ../../plot.py res.txt
+python3 ../../surface.py wall.txt
 cd ..
 
