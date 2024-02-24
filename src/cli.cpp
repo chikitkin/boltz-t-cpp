@@ -18,6 +18,8 @@ int main(int argc, char *argv[])
     REAL Mach;
 	REAL Kn;
 	REAL delta;
+	REAL lambda;
+
 	REAL l_s;
 	
 	REAL n_in;
@@ -164,9 +166,11 @@ int main(int argc, char *argv[])
 
 	delta = (l_s * p_s) / (mu_s * v_s);
 	Kn = (8. / (5. * PI)) / delta;
+	lambda = l_s * Kn;
 	// print parameters
-	std::cout << "Mean free path, delta = " << delta << std::endl;
+	std::cout << "Rarefaction parameter, delta = " << delta << std::endl;
 	std::cout << "Knudsen number, Kn = " << Kn << std::endl;
+	std::cout << "Mean free path, lambda = " << lambda << std::endl;
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 
