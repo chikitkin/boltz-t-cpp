@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 //	std::cout << "T " << (params[4] - T_l) / T_l << " = 0" << std::endl;
 
 	delta = (l_s * p_s) / (mu_s * v_s);
-	Kn = (8. / (5. * PI)) / Kn;
+	Kn = (8. / (5. * PI)) / delta;
 	// print parameters
 	std::cout << "Mean free path, delta = " << delta << std::endl;
 	std::cout << "Knudsen number, Kn = " << Kn << std::endl;

@@ -1,1 +1,1 @@
-sbatch -p 52cores -n 1 --ntasks-per-node=1 --cpus-per-task=52 script-slurm
+sbatch -p module8 -n 1 --ntasks-per-node=1 --cpus-per-task=16 script-slurm
