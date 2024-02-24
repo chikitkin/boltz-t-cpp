@@ -69,17 +69,13 @@ int main(int argc, char *argv[])
 	
 	mesh_path = argv[2];
 
-//	delta = 8.0 / (5.0 * pow(PI, 0.5) * Kn);
-
 	REAL n_s = n_in;
 	REAL T_s = T_in;
 
-	// REAL p_s = gas_params->m * n_s * gas_params->Rg * T_s;
+	REAL p_s = gas_params->m * n_s * gas_params->Rg * T_s;
 
 	REAL v_s = pow(2. * gas_params->Rg * T_s, 0.5);
-	// REAL mu_s = gas_params->mu(T_s);
-
-//	l_s = delta * mu_s * v_s / p_s;
+	REAL mu_s = gas_params->mu(T_s);
 
 	std::shared_ptr < Mesh > mesh = std::make_shared < Mesh > (mesh_path, l_s);
 
@@ -166,6 +162,11 @@ int main(int argc, char *argv[])
 //	std::cout << "uz " << (params[3]) << " = 0" << std::endl;
 //	std::cout << "T " << (params[4] - T_l) / T_l << " = 0" << std::endl;
 
+	delta = (l_s * p_s) / (mu_s * v_s);
+	Kn = (8. / (5. * PI)) / Kn;
+	// print parameters
+	std::cout << "Mean free path, delta = " << delta << std::endl;
+	std::cout << "Knudsen number, Kn = " << Kn << std::endl;
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 
