@@ -7,6 +7,24 @@
 
 #include <ctime>
 
+template <class Tensor>
+int check_velocity_grid(REAL n, REAL u, REAL T, 
+        std::shared_ptr < VelocityGrid<Tensor> > v,
+        std::shared_ptr < GasParams > gas_params,
+        REAL T_s)
+{
+    Tensor f = f_maxwell_t<Tensor>(v, n, u, 0.0, 0.0, T, gas_params->Rg);
+    std::vector<REAL> params = comp_macro_params(f, v, gas_params, T_s);
+    
+    std::cout << "n:  " << (params[0] - n) / n << " = 0" << std::endl;
+	std::cout << "ux: " << (params[1] - u) / u << " = 0" << std::endl;
+	std::cout << "uy: " << params[2] << " = 0" << std::endl;
+	std::cout << "uz: " << params[3] << " = 0" << std::endl;
+	std::cout << "T:  " << (params[4] - T) / T << " = 0" << std::endl;
+	
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
     typedef Tucker Tensor;
@@ -19,6 +37,7 @@ int main(int argc, char *argv[])
 	REAL Kn;
 	REAL delta;
 	REAL lambda;
+	REAL Re;
 
 	REAL l_s;
 	
@@ -30,7 +49,9 @@ int main(int argc, char *argv[])
 	REAL u_out;
 	REAL T_out;
 
-	int nv;
+	int nvx;
+	int nvy;
+	int nvz;
 	
 	int steps;
 		
@@ -45,10 +66,7 @@ int main(int argc, char *argv[])
     while (getline(cfg, line)) {
         std::istringstream line_stream(line.substr(line.find("=") + 1));
             
-        if (line.find("mesh_path") != -1) { line_stream >> mesh_path; }
-        else if (line.find("Mach") != -1) { line_stream >> Mach; }
-        else if (line.find("Kn") != -1) { line_stream >> Kn; }
-        else if (line.find("delta") != -1) { line_stream >> delta; }
+        if (line.find("Mach") != -1) { line_stream >> Mach; }
         else if (line.find("l_s") != -1) { line_stream >> l_s; }
         else if (line.find("n_in") != -1) { line_stream >> n_in; }
         else if (line.find("u_in") != -1) { line_stream >> u_in; }
@@ -57,7 +75,17 @@ int main(int argc, char *argv[])
         else if (line.find("u_out") != -1) { line_stream >> u_out; }
         else if (line.find("T_out") != -1) { line_stream >> T_out; }
         
-        else if (line.find("nv") != -1) { line_stream >> nv; }
+        else if (line.find("Mol") != -1) { line_stream >> gas_params->Mol; }
+        else if (line.find("Pr") != -1) { line_stream >> gas_params->Pr; }
+        else if (line.find("C") != -1) { line_stream >> gas_params->C; }
+        else if (line.find("T_0") != -1) { line_stream >> gas_params->T_0; }
+        else if (line.find("mu_0") != -1) { line_stream >> gas_params->mu_0; }
+        else if (line.find("omega") != -1) { line_stream >> gas_params->omega; }
+        else if (line.find("g") != -1) { line_stream >> gas_params->g; }
+        
+        else if (line.find("nvx") != -1) { line_stream >> nvx; }
+        else if (line.find("nvy") != -1) { line_stream >> nvy; }
+        else if (line.find("nvz") != -1) { line_stream >> nvz; }
         else if (line.find("CFL") != -1) { line_stream >> config->CFL; }
         else if (line.find("isImplicit") != -1) { line_stream >> config->isImplicit; }
         else if (line.find("tol") != -1) { line_stream >> config->tol; }
@@ -69,38 +97,102 @@ int main(int argc, char *argv[])
         else if (line.find("boundary:") != -1) { break; }
 	}
 	
+	gas_params->Rg = gas_params->Ru / gas_params->Mol; // = self.Ru / self.Mol  # J / (kg * K)
+	gas_params->m = gas_params->Mol / gas_params->Na; // # kg
+	
 	mesh_path = argv[2];
 
 	REAL n_s = n_in;
 	REAL T_s = T_in;
 
-	REAL p_s = gas_params->m * n_s * gas_params->Rg * T_s;
+	REAL rho_s = gas_params->m * n_s;
+	REAL p_s = rho_s * gas_params->Rg * T_s;
 
 	REAL v_s = pow(2. * gas_params->Rg * T_s, 0.5);
-	REAL mu_s = gas_params->mu(T_s);
+	REAL mu_s = gas_params->mu(T_s, T_s);
+	
+	REAL c = pow(gas_params->g * gas_params->Rg * T_s, 0.5);
+	REAL S_inf = u_in / v_s;
+	
+	delta = (l_s * p_s) / (mu_s * v_s);
+	lambda = (8.0 / (5.0 * pow(PI, 0.5))) * l_s / delta;
+	Kn = lambda / l_s;
+	Mach = u_in / c;
+	Re = rho_s * u_in * l_s / mu_s;
+	// print parameters
+	std::cout << "p^{star} = " << p_s  << std::endl;
+	std::cout << "mu^{star} = " << mu_s  << std::endl;
+	
+	std::cout << "v^{star} = " << v_s  << std::endl;
+	std::cout << "mu^{star} = " << mu_s << std::endl;
+	std::cout << "S^{inf} = " << S_inf << std::endl;
+	
+	std::cout << "Speed of sound,            c = " << c      << std::endl;
+	std::cout << "Rarefaction parameter, delta = " << delta  << std::endl;
+	std::cout << "Knudsen number,           Kn = " << Kn     << std::endl;
+	std::cout << "Mean free path,       lambda = " << lambda << std::endl;
+	std::cout << "Mach number,            Mach = " << Mach   << std::endl;
+	std::cout << "Reynolds numbers,         Re = " << Re     << std::endl;
 
 	std::shared_ptr < Mesh > mesh = std::make_shared < Mesh > (mesh_path, l_s);
 
-	REAL vmax = 22.0 * v_s;
-	REAL hv = 2.0 * vmax / nv;
-	REAL *vx_ = new REAL[nv];
-	for (int i = 0; i < nv; ++i) {
-		vx_[i] = - vmax + (hv / 2.0) + i * hv;
-	}
-
-	std::shared_ptr < VelocityGrid<Tensor> > v = std::make_shared < VelocityGrid<Tensor> > (nv, nv, nv, vx_, vx_, vx_);
+	REAL vmax = 20.0 * v_s; // WAS 22.0
 	
-	Tensor f_in = f_maxwell_t<Tensor>(v, n_in, u_in, 0.0, 0.0, T_in, gas_params->Rg);
+	REAL hvx = 2.0 * vmax / nvx;
+	REAL *vx_ = new REAL[nvx];
+	for (int i = 0; i < nvx; ++i) {
+		vx_[i] = - vmax + (hvx / 2.0) + i * hvx;
+	}
+	
+	REAL hvy = 2.0 * vmax / nvy;
+	REAL *vy_ = new REAL[nvy];
+	for (int i = 0; i < nvy; ++i) {
+		vy_[i] = - vmax + (hvy / 2.0) + i * hvy;
+	}
+	
+	REAL hvz = 2.0 * vmax / nvz;
+	REAL *vz_ = new REAL[nvz];
+	for (int i = 0; i < nvz; ++i) {
+		vz_[i] = - vmax + (hvz / 2.0) + i * hvz;
+	}
+	
+	std::cout << "v_min =  " << vx_[0]     << std::endl;
+	std::cout << "v_max =  " << vx_[nvx-1] << std::endl;
+	std::cout << "v step = " << hvx        << std::endl;
+	
+	std::shared_ptr < VelocityGrid<Tensor> > v = std::make_shared < VelocityGrid<Tensor> > (nvx, nvy, nvz, vx_, vy_, vz_);
+	
+	Tensor f_in  = f_maxwell_t<Tensor>(v, n_in,  u_in,  0.0, 0.0, T_in,  gas_params->Rg);
 	Tensor f_out = f_maxwell_t<Tensor>(v, n_out, u_out, 0.0, 0.0, T_out, gas_params->Rg);
 
 	problem->gas_params = gas_params;
 	problem->v = v;
 	problem->initData = {f_in, f_out};
+	
+	problem->params_in  = {n_in,  u_in,  0.0, 0.0, T_in};
+	problem->params_out = {n_out, u_out, 0.0, 0.0, T_out};
+	
+    // Inlet
+	// std::vector<REAL> params = comp_macro_params(problem->initData[0], v, gas_params, T_s);
 
+    // std::cout << "Inlet" << std::endl;
+	// std::cout << "n:  " << (params[0] - problem->params_in[0]) / (problem->params_in[0]) << " = 0" << std::endl;
+	// std::cout << "ux: " << (params[1] - problem->params_in[1]) / (problem->params_in[1]) << " = 0" << std::endl;
+	// std::cout << "uy: " << problem->params_in[2] << " = 0" << std::endl;
+	// std::cout << "uz: " << problem->params_in[3] << " = 0" << std::endl;
+	// std::cout << "T:  " << (params[4] - problem->params_in[4]) / (problem->params_in[4]) << " = 0" << std::endl;
+	
+	// Rankine-Hugoniot
+	n_out = (gas_params->g + 1.) * Mach * Mach / ((gas_params->g - 1.) * Mach * Mach + 2.) * n_in;
+	u_out = ((gas_params->g - 1.) * Mach * Mach + 2.) / ((gas_params->g + 1.) * Mach * Mach) * u_in;
+	T_out = (2. * gas_params->g * Mach * Mach - (gas_params->g - 1.)) * ((gas_params->g - 1.) * Mach * Mach + 2.) / (pow(gas_params->g + 1, 2) * Mach * Mach) * T_in;
+	std::cout << "Rankine-Hugoniot n, u, T" << std::endl;
+	std::cout << n_out << " " << u_out << " " << T_out << std::endl;
+
+    REAL T_wall = 200.0; // TODO magic number, should not fail if no wall
 	{
 		int tag;
 		REAL n, ux, uy, uz, T;
-		REAL T_wall;
 		std::cout << "BC types are:" << std::endl;
 		while (getline(cfg, line)) {
 			std::string bc_type;
@@ -153,24 +245,14 @@ int main(int argc, char *argv[])
 			}
 		}
     }
-
-//	std::vector < REAL > params;
-//
-//	params = comp_macro_params<Tensor>(f_in, v, gas_params);
-//
-//	std::cout << "n " << (params[0] - n_l) / n_l << " = 0" << std::endl;
-//	std::cout << "ux " << (params[1] - u_l) / u_l << " = 0" << std::endl;
-//	std::cout << "uy " << (params[2]) << " = 0" << std::endl;
-//	std::cout << "uz " << (params[3]) << " = 0" << std::endl;
-//	std::cout << "T " << (params[4] - T_l) / T_l << " = 0" << std::endl;
-
-	delta = (l_s * p_s) / (mu_s * v_s);
-	Kn = (8. / (5. * PI)) / delta;
-	lambda = l_s * Kn;
-	// print parameters
-	std::cout << "Rarefaction parameter, delta = " << delta << std::endl;
-	std::cout << "Knudsen number, Kn = " << Kn << std::endl;
-	std::cout << "Mean free path, lambda = " << lambda << std::endl;
+    
+    std::cout << "Check v ranges" << std::endl;
+	std::cout << "Inlet" << std::endl;
+	check_velocity_grid(n_in, u_in, T_in, v, gas_params, T_s);
+    std::cout << "Rankine-Hugoniot" << std::endl;
+    check_velocity_grid(n_out, u_out, T_out, v, gas_params, T_s);
+	std::cout << "Wall" << std::endl;
+    check_velocity_grid(n_in, 0.0, T_wall, v, gas_params, T_s);
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 

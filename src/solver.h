@@ -25,21 +25,21 @@ public:
 	REAL kB = 1.381e-23; // Boltzmann constant, J / K
 	REAL Ru = 8.3144598; // Universal gas constant
 
+    // Argon
 	REAL Mol = 40e-3; // = Mol
-	REAL Rg = Ru / Mol; // = self.Ru  / self.Mol  # J / (kg * K)
-	REAL m = Mol / Na; // # kg
-
-	REAL g = 5.0 / 3.0; // # specific heat ratio
-	REAL d = 3.418e-10; // # diameter of molecule
-
 	REAL Pr = 2.0 / 3.0;
-
 	REAL C = 144.4;
 	REAL T_0 = 273.11;
 	REAL mu_0 = 2.125e-5;
+	REAL omega = 0.734;
+	
+	REAL g = 5.0 / 3.0; // # specific heat ratio
+		
+	REAL Rg = Ru / Mol; // = self.Ru / self.Mol  # J / (kg * K)
+	REAL m = Mol / Na; // # kg
 
 	REAL mu_suth(REAL T) const;
-	REAL mu(REAL T) const;
+	REAL mu(REAL T, REAL T_s) const;
 };
 
 template <class Tensor>
@@ -154,7 +154,8 @@ public:
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
 			REAL tol) override {
-				return Tensor(BoundaryCondition<Tensor>::bcData);
+				// return Tensor(BoundaryCondition<Tensor>::bcData);
+				return Tensor(f);
 	}
 };
 
@@ -184,6 +185,9 @@ public:
 	std::vector < int > bcTags;
 	std::vector < bcType > bcTypes;
 	std::vector < Tensor > bcData;
+	
+	std::vector < REAL > params_in;
+	std::vector < REAL > params_out;
 };
 
 struct Config {
@@ -255,8 +259,6 @@ public:
 
 	std::vector < BoundaryCondition<Tensor> *> bcList; // TODO make shared
 
-	std::vector <REAL> comp_macro_params(const Tensor& f);
-	Tensor comp_j(const std::vector <REAL>& params, const Tensor& f);
 	void write_wall_params();
 
 	int it;
@@ -278,6 +280,17 @@ public:
     void reconstruction_2nd_order();
 
 };
+
+template <class Tensor>
+std::vector <REAL> comp_macro_params(const Tensor& f, 
+        std::shared_ptr < VelocityGrid<Tensor> > v, 
+        std::shared_ptr < GasParams > gas_params,
+        REAL T_s);
+        
+template <class Tensor>
+Tensor comp_j(const std::vector <REAL>& params, const Tensor& f, REAL tol, 
+        std::shared_ptr < VelocityGrid<Tensor> > v, 
+        std::shared_ptr < GasParams > gas_params);
 
 template <class Tensor>
 REAL *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,

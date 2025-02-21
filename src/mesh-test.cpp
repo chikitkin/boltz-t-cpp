@@ -3,22 +3,23 @@
 
 int main(int argc, char *argv[]) {
 
-	Mesh mesh("../examples/Sphere/");
+	// Mesh mesh("../examples/Sphere_coarse/mesh.mesh");
+	Mesh mesh(argv[1]);
 
 	std::cout << "nBoundaryFaces " << mesh.nBoundaryFaces << std::endl;
 	std::cout << "nCells " << mesh.nCells << std::endl;
 	std::cout << "nVerts " << mesh.nVerts << std::endl;
 	std::cout << "nFaces " << mesh.nFaces << std::endl;
 
-	int nParts = atoi(argv[1]);
+	int nParts = atoi(argv[2]);
 	mesh.divideMesh(nParts);
 
 	std::vector < std::vector <REAL> > data;
 	for (int ic = 0; ic < mesh.nCells; ++ic) {
-		data.push_back(std::vector <REAL> {static_cast<REAL>(mesh.cellPartitions[ic])});
+		data.push_back(std::vector <REAL> {static_cast<REAL>(mesh.cellPartitions[ic]), static_cast<REAL>(mesh.cellColors[ic])});
 	}
 
-	mesh.write_tecplot(data, "tec.dat", {"partition"});
+	mesh.write_tecplot(data, "tec.dat", {"partition", "color"});
 
 	for (int color = 0; color < mesh.nColors; ++color) {
 		for (int partition = 0; partition < mesh.nPartitions; ++partition) {
