@@ -62,7 +62,6 @@ int main(int argc, char *argv[])
 	std::ifstream cfg(cfg_path);
     std::string line;
     
-    std::string init;
     while (getline(cfg, line)) {
         std::istringstream line_stream(line.substr(line.find("=") + 1));
             
@@ -88,8 +87,13 @@ int main(int argc, char *argv[])
         else if (line.find("nvz") != -1) { line_stream >> nvz; }
         else if (line.find("CFL") != -1) { line_stream >> config->CFL; }
         else if (line.find("isImplicit") != -1) { line_stream >> config->isImplicit; }
+        else if (line.find("isRusanov") != -1) { line_stream >> config->isRusanov; }
+        else if (line.find("isImplicitIncrement") != -1) { line_stream >> config->isImplicitIncrement; }
         else if (line.find("tol") != -1) { line_stream >> config->tol; }
+        else if (line.find("order") != -1) { line_stream >> config->order; }
         else if (line.find("steps") != -1) { line_stream >> steps; }
+        
+        else if (line.find("initType") != -1) { line_stream >> config->initType; }
 
 		else if (line.find("saveTecStep") != -1) { line_stream >> config->saveTecStep; }
 		else if (line.find("saveMacroStep") != -1) { line_stream >> config->saveMacroStep; }
@@ -101,6 +105,10 @@ int main(int argc, char *argv[])
 	gas_params->m = gas_params->Mol / gas_params->Na; // # kg
 	
 	mesh_path = argv[2];
+	
+	if (config->initType != 0) {
+	    config->initFilename = argv[3];
+	}
 
 	REAL n_s = n_in;
 	REAL T_s = T_in;
@@ -119,6 +127,7 @@ int main(int argc, char *argv[])
 	Kn = lambda / l_s;
 	Mach = u_in / c;
 	Re = rho_s * u_in * l_s / mu_s;
+	
 	// print parameters
 	std::cout << "p^{star} = " << p_s  << std::endl;
 	std::cout << "mu^{star} = " << mu_s  << std::endl;

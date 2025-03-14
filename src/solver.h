@@ -195,8 +195,12 @@ struct Config {
 
 	REAL CFL = 0.5;
 	REAL tol = 1e-7;
+	int order = 1;
+	
+	bool isRusanov = false;
+	bool isImplicitIncrement = true;
 
-	std::string initType = "default";
+	int initType = 0;
 	std::string initFilename = "";
 
 	int saveTecStep = 1e+5;
@@ -230,6 +234,7 @@ public:
 
 	std::vector < Tensor > vn;
 	std::vector < Tensor > vn_abs;
+	std::vector < REAL > vn_abs_max;
 	Tensor vn_abs_r1;
 
 	REAL h;
@@ -252,16 +257,19 @@ public:
 	std::vector < REAL > p;
 	std::vector < REAL > T;
 	std::vector < REAL > nu;
-	std::vector < REAL > rank;
 	std::vector < REAL > compression;
+	std::vector < REAL > rank_x;
+	std::vector < REAL > rank_y;
+	std::vector < REAL > rank_z;
 	std::vector < std::vector < REAL > > data;
 	std::map<AlgoritmParts, std::vector<double>> timings;
 
 	std::vector < BoundaryCondition<Tensor> *> bcList; // TODO make shared
 
 	void write_wall_params();
+	void write_macro_restart();
 
-	int it;
+//	int it;
 	std::vector <REAL> frob_norm_iter;
 
 	void plot_residual();

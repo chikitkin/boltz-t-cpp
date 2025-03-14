@@ -79,8 +79,8 @@ ax = plt.axes(projection ="3d")
 im = ax.scatter3D(x, y, z, c=cf)
 ax.set_title(r'$c_f$', fontsize=48)
 
-ax.view_init(35, 135, 0)
-ax.set_aspect('equal')
+# ax.view_init(35, 135, 0)
+# ax.set_aspect('equal')
 fig.colorbar(im)
 
 plt.savefig('surface.png')

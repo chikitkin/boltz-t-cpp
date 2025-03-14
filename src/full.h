@@ -51,7 +51,7 @@ public:
 	friend Full reflect(const Full& t, char axis);
 	friend Full minmod(const Full& t1, const Full& t2);
 
-	friend Full round_t(const Full& t, REAL tol, int rmax);
+	friend Full round_t(const Full& t, REAL tol=1e-14, int rmax=1000000);
 /*
 	std::string to_string();
 	friend Full from_string(std::string &tensor_string);

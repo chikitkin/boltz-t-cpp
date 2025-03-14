@@ -18,9 +18,9 @@ Full::Full(int n1_, int n2_, int n3_, int r1_, int r2_, int r3_)
 {
 //	std::cout << "Zero constructor called" << std::endl;
 	// Create zero tensor
-	r1 = r1_;
-	r2 = r2_;
-	r3 = r3_;
+	r1 = 1;
+	r2 = 1;
+	r3 = 1;
 	g = new REAL[n1 * n2 * n3](); // () IMPORTANT
 }
 // Compress a tensor with given accuracy
@@ -179,7 +179,7 @@ Full operator +(const Full& t1, const Full& t2) // TODO return reference (or not
 		std::cout << "Different shapes in sum!" << std::endl;
 		exit(-1);
 	}
-	Full result(t1.n1, t1.n2, t1.n3, t1.r1+t2.r1, t1.r2+t2.r2, t1.r3+t2.r3);
+	Full result(t1.n1, t1.n2, t1.n3, 1, 1, 1);
 
 	int n1 = t1.n1;
 	int n2 = t1.n2;
@@ -229,7 +229,7 @@ Full operator *(const Full& t1, const Full& t2)
 		std::cout << "Different shapes in sum!" << std::endl;
 		exit(-1);
 	}
-	Full result(t1.n1, t1.n2, t1.n3, t1.r1+t2.r1, t1.r2+t2.r2, t1.r3+t2.r3);
+	Full result(t1.n1, t1.n2, t1.n3, 1, 1, 1);
 
 	int n1 = t1.n1;
 	int n2 = t1.n2;
@@ -357,7 +357,7 @@ Full minmod(const Full& t1, const Full& t2)
     return res;
 }
 
-Full round_t(const Full& t, REAL tol = 1e-14, int rmax = 1000000)
+Full round_t(const Full& t, REAL tol, int rmax)
 {
 	Full res(t);
 

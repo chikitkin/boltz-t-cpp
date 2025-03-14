@@ -57,8 +57,9 @@ public:
 	friend Tucker operator *(const Tucker& t, const REAL alpha);
 	friend Tucker operator /(const Tucker& t1, const Tucker& t2);
 	friend Tucker reflect(const Tucker& t, char axis);
+	friend Tucker minmod(const Tucker& t1, const Tucker& t2);
 
-	friend Tucker round_t(const Tucker& t, REAL tol, int rmax);
+	friend Tucker round_t(const Tucker& t, REAL tol=1e-14, int rmax=1000000);
 /*
 	std::string to_string();
 	friend Tucker from_string(std::string &tensor_string);

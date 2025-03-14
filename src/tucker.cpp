@@ -561,7 +561,18 @@ Tucker reflect(const Tucker& t, char axis)
 	}
 }
 
-Tucker round_t(const Tucker& t, REAL tol = 1e-14, int rmax = 1000000)
+Tucker minmod(const Tucker& t1, const Tucker& t2)
+{
+    // check that shapes are equal
+	if (t1.n() != t2.n()) {
+		std::cout << "Different shapes in minmod!" << std::endl;
+		exit(-1);
+	}
+    return 0.5 * (t1 + t2);
+}
+
+
+Tucker round_t(const Tucker& t, REAL tol, int rmax)
 {
 	Tucker res(t);
 
