@@ -17,6 +17,8 @@
 #include <numeric>
 #include <memory>
 
+#include <limits>
+
 #include <omp.h>
 
 #include "mkl.h"

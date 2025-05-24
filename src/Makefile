@@ -1,11 +1,14 @@
+# CC=icc
 CC=icc
 
-CFLAGS=-std=c++14 -g -Wall -O3 -qopenmp -mkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include"
+# CFLAGS=-std=c++14 -g -Wall -O3 -qopenmp -mkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include"
+CFLAGS=-std=c++14 -Wall -O3 -qopenmp -qmkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include"
 
 all: cli.o
 	
 #pre-build:
 #	$(source /opt/intel/oneapi/setvars.sh)
+#   source /opt/intel/oneapi/setvars.sh
 
 cli.o: full.o tucker.o mesh.o solver.o cli.cpp
 	$(CC) $(CFLAGS) full.o tucker.o mesh.o solver.o cli.cpp -o cli.o

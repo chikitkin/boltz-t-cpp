@@ -10,13 +10,14 @@ REAL distance_3d(std::vector<REAL> x, std::vector<REAL> y) {
     return pow(squared, 0.5);
 }
 
-// Argon
-REAL GasParams::mu_suth(REAL T) const {
-	return mu_0 * ((T_0 + C) / (T + C)) * (pow(T / T_0, 3.0 / 2.0));
+// Power law
+REAL GasParams::mu(REAL T) const {
+	return pow(T, omega);
 }
 
-REAL GasParams::mu(REAL T, REAL T_s) const {
-	return mu_suth(T_s) * (pow(T / T_s, omega));
+// Baseline to compute mu_star
+REAL GasParams::mu_suth(REAL T) const {
+	return mu_0 * ((T_0 + C) / (T + C)) * (pow(T / T_0, 3.0 / 2.0));
 }
 
 std::vector<int> getParallelRanges(const std::vector<double>& times, int numThreads) {
@@ -48,11 +49,10 @@ REAL *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,
 {
 	REAL *fmax = new REAL[v->nv];
 
-	REAL C = n * pow(1.0 / (2.0 * PI * Rg * T), 1.5); // TODO pi
-	REAL s = 2.0 * Rg * T;
+	REAL C = n / pow((PI * T), 1.5); // TODO pi
 
 	for (int i = 0; i < v->nv; ++i) {
-		fmax[i] = C * exp(-((pow(v->vx[i] - ux, 2) + pow(v->vy[i] - uy, 2) + pow(v->vz[i] - uz, 2)) / s));
+		fmax[i] = C * exp( -(pow(v->vx[i] - ux, 2) + pow(v->vy[i] - uy, 2) + pow(v->vz[i] - uz, 2)) / T);
 	}
 
 	return fmax;
@@ -63,22 +63,21 @@ Tensor f_maxwell_t(std::shared_ptr < VelocityGrid<Tensor> > v,
 		REAL n, REAL ux, REAL uy, REAL uz,
 		REAL T, REAL Rg)
 {
-	REAL C = n * pow(1.0 / (2.0 * PI * Rg * T), 1.5);
-	REAL s = 2.0 * Rg * T;
+	REAL C = n / pow((PI * T), 1.5); // TODO pi
 
 	REAL *u1 = new REAL[v->nvx];
 	for (int i = 0; i < v->nvx; ++i) {
-		u1[i] = exp(-(pow(v->vx_[i] - ux, 2.0) / s));
+		u1[i] = exp( -(pow(v->vx_[i] - ux, 2.0)) / T);
 	}
 
 	REAL *u2 = new REAL[v->nvy];
 	for (int i = 0; i < v->nvy; ++i) {
-		u2[i] = exp(-(pow(v->vy_[i] - uy, 2.0) / s));
+		u2[i] = exp( -(pow(v->vy_[i] - uy, 2.0)) / T);
 	}
 
 	REAL *u3 = new REAL[v->nvz];
 	for (int i = 0; i < v->nvz; ++i) {
-		u3[i] = exp(-(pow(v->vz_[i] - uz, 2.0) / s));
+		u3[i] = exp( -(pow(v->vz_[i] - uz, 2.0)) / T);
 	}
 
 	Tensor fmax(v->nvx, v->nvy, v->nvz, u1, u2, u3);
@@ -91,12 +90,12 @@ Tensor f_maxwell_t(std::shared_ptr < VelocityGrid<Tensor> > v,
 }
 
 template <class Tensor>
-std::vector <REAL> comp_macro_params(const Tensor& f, std::shared_ptr < VelocityGrid<Tensor> > v, std::shared_ptr < GasParams > gas_params, REAL T_s)
+std::vector <REAL> comp_macro_params(const Tensor& f, std::shared_ptr < VelocityGrid<Tensor> > v, std::shared_ptr < GasParams > gas_params)
 {
 	REAL n = v->hv3 * f.sum();
 
 	if (n <= 0.0) {
-		n = 1.0;
+		n = std::numeric_limits<REAL>::min();
 	}
 
 	REAL ux = (1.0 / n) * v->hv3 * (v->vx_t * f).sum();
@@ -105,16 +104,17 @@ std::vector <REAL> comp_macro_params(const Tensor& f, std::shared_ptr < Velocity
 
 	REAL u2 = pow(ux, 2.0) + pow(uy, 2.0) + pow(uz, 2.0);
 
-	REAL T = (1.0 / (3.0 * n * gas_params->Rg)) * (v->hv3 * (v->v2 * f).sum() - n * u2);
+	REAL T = (2.0 / (3.0 * n)) * (v->hv3 * (v->v2 * f).sum() - n * u2);
 
 	if (T <= 0.0) {
-		T = 1.0;
+		T = std::numeric_limits<REAL>::min();
 	}
 
-	REAL rho = gas_params->m * n;
-	REAL p = rho * gas_params->Rg * T;
-	REAL mu = gas_params->mu(T, T_s); // TODO temperature
-	REAL nu = p / mu;
+	REAL rho = n;
+	REAL p = rho * T;
+
+	REAL mu = gas_params->mu(T); // TODO temperature
+	REAL nu = (8.0 / (5.0 * pow(PI, 0.5))) * (n * T / mu) / gas_params->Kn;
 
 	return {n, ux, uy, uz, T, rho, p, nu};
 }
@@ -134,31 +134,30 @@ Tensor comp_j(const std::vector <REAL>& params, const Tensor& f, REAL tol, std::
 	REAL *tmp = new REAL[std::max({v->nvx, v->nvy, v->nvz})];
 
 	for (int i = 0; i < v->nvx; ++i) {
-		tmp[i] = (1.0 / pow(2.0 * gas_params->Rg * T, 0.5)) * (v->vx_[i] - ux);
+		tmp[i] = v->vx_[i] - ux;
 	}
-	Tensor cx(v->nvx, v->nvy, v->nvz, tmp, v->onesy, v->onesz);
+	Tensor vx(v->nvx, v->nvy, v->nvz, tmp, v->onesy, v->onesz);
 
 	for (int i = 0; i < v->nvy; ++i) {
-		tmp[i] = (1.0 / pow(2.0 * gas_params->Rg * T, 0.5)) * (v->vy_[i] - uy);
+		tmp[i] = v->vy_[i] - uy;
 	}
-	Tensor cy(v->nvx, v->nvy, v->nvz, v->onesx, tmp, v->onesz);
+	Tensor vy(v->nvx, v->nvy, v->nvz, v->onesx, tmp, v->onesz);
 
 	for (int i = 0; i < v->nvz; ++i) {
-		tmp[i] = (1.0 / pow(2.0 * gas_params->Rg * T, 0.5)) * (v->vz_[i] - uz);
+		tmp[i] = v->vz_[i] - uz;
 	}
-	Tensor cz(v->nvx, v->nvy, v->nvz, v->onesx, v->onesy, tmp);
+	Tensor vz(v->nvx, v->nvy, v->nvz, v->onesx, v->onesy, tmp);
 
-	Tensor c2 = ((cx * cx) + (cy * cy) + (cz * cz));
-	c2.round(static_cast<REAL>(1e-14));
-	// std::cout << c2.r()[0] << " " << c2.r()[1] << " " << c2.r()[2] << "c2 ranks" << std::endl;
-
-	REAL Sx = (1.0 / n) * v->hv3 * (cx * c2 * f).sum();
-	REAL Sy = (1.0 / n) * v->hv3 * (cy * c2 * f).sum();
-	REAL Sz = (1.0 / n) * v->hv3 * (cz * c2 * f).sum();
+	Tensor v2 = ((vx * vx) + (vy * vy) + (vz * vz));
+	v2.round(static_cast<REAL>(1e-14));
+	
+	REAL qx = 0.5 * v->hv3 * (vx * v2 * f).sum();
+	REAL qy = 0.5 * v->hv3 * (vy * v2 * f).sum();
+	REAL qz = 0.5 * v->hv3 * (vz * v2 * f).sum();
 
 	Tensor fmax = f_maxwell_t(v, n, ux, uy, uz, T, gas_params->Rg);
 
-	Tensor f_plus = fmax * (v->ones + ((4.0 / 5.0) * (1.0 - gas_params->Pr) * (Sx*cx + Sy*cy + Sz*cz) * ((c2 + (- 5.0 / 2.0) * v->ones))));
+	Tensor f_plus = fmax * (v->ones + ((8.0 / 5.0) * (1.0 - gas_params->Pr) * (1.0 / (n*T*T)) * (vx*qx + vy*qy + vz*qz) * (((1.0 / T) * v2 + (- 5.0 / 2.0) * v->ones)))); // TODO round
 	Tensor J = nu * (f_plus - f);
 	J.round(static_cast<REAL>(tol));
 
@@ -262,7 +261,7 @@ VelocityGrid<Tensor>::~VelocityGrid()
 }
 
 template <class Tensor>
-void Solution<Tensor>::write_wall_params()
+void Solution<Tensor>::write_wall_params() // TODO FIX FOR DIMENSIONLESS
 {
 	std::ofstream file;
 	file.open("wall.txt", std::ofstream::trunc);
@@ -282,16 +281,16 @@ void Solution<Tensor>::write_wall_params()
 			file << x << " " << y << " " << z << " ";
 			Tensor fWall = fLeftRight[jf][1 - mesh->getOutIndex(jf)];
 
-			std::vector<REAL> params = comp_macro_params(fWall, v, gas_params, problem->params_in[4]);
+			std::vector<REAL> params = comp_macro_params(fWall, v, gas_params);
 			REAL n = params[0];
 			REAL T = params[4];
 			REAL rho = params[5];
 			REAL p = params[6];
 			file << n << " " << T << " " << rho << " " << p << " ";
 
-			REAL Px = gas_params->m * v->hv3 * (vn[jf] * v->vx_t * fWall).sum();
-			REAL Py = gas_params->m * v->hv3 * (vn[jf] * v->vy_t * fWall).sum();
-			REAL Pz = gas_params->m * v->hv3 * (vn[jf] * v->vz_t * fWall).sum();
+			REAL Px = 2.0 * v->hv3 * (vn[jf] * v->vx_t * fWall).sum();
+			REAL Py = 2.0 * v->hv3 * (vn[jf] * v->vy_t * fWall).sum();
+			REAL Pz = 2.0 * v->hv3 * (vn[jf] * v->vz_t * fWall).sum();
 			file << Px << " " << Py << " " << Pz << " ";
 			REAL Mx = 0.5 * v->hv3 * (v->vx_t * v->v2 * fWall).sum();
 			REAL My = 0.5 * v->hv3 * (v->vy_t * v->v2 * fWall).sum();
@@ -714,7 +713,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			auto begin = omp_get_wtime();
 			// compute macroparameters and collision integral
-			std::vector<REAL> params = comp_macro_params(f[ic], v, gas_params, problem->params_in[4]);
+			std::vector<REAL> params = comp_macro_params(f[ic], v, gas_params);
 			rhs[ic] = comp_j(params, f[ic], config->tol, v, gas_params);
 			// sum up fluxes from all faces of this cell
 			for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
@@ -757,7 +756,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		REAL frob_norm = 0.0;
 		#pragma omp parallel for reduction(+:frob_norm)
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
-			frob_norm += pow(rhs[ic].norm(), 2.0); // TODO magic number
+			frob_norm += pow(rhs[ic].norm(), 2.0);
 		}
 		frob_norm = pow(frob_norm / mesh->nCells, 0.5);
 		frob_norm_iter.push_back(frob_norm);

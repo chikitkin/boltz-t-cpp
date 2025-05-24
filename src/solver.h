@@ -38,8 +38,19 @@ public:
 	REAL Rg = Ru / Mol; // = self.Ru / self.Mol  # J / (kg * K)
 	REAL m = Mol / Na; // # kg
 
+	REAL mu(REAL T) const;
 	REAL mu_suth(REAL T) const;
-	REAL mu(REAL T, REAL T_s) const;
+
+	// Problem-specific
+	REAL l_s;
+	REAL n_s;
+	REAL v_s;
+	REAL T_s;
+	REAL rho_s;
+	REAL p_s;
+	REAL mu_s;
+
+	REAL Kn;
 };
 
 template <class Tensor>
@@ -292,8 +303,7 @@ public:
 template <class Tensor>
 std::vector <REAL> comp_macro_params(const Tensor& f, 
         std::shared_ptr < VelocityGrid<Tensor> > v, 
-        std::shared_ptr < GasParams > gas_params,
-        REAL T_s);
+        std::shared_ptr < GasParams > gas_params);
         
 template <class Tensor>
 Tensor comp_j(const std::vector <REAL>& params, const Tensor& f, REAL tol, 

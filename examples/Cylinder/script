@@ -1,0 +1,15 @@
+#!/bin/sh
+#SBATCH
+
+# export OMP_NUM_THREADS=$nt
+
+now=$(date '+%Y_%m_%d__%H_%M_%S')
+mkdir $now
+cd $now
+
+../../../src/cli.o ../config.cfg ../mesh_medium.mesh ../macro_restart.txt
+python3 ../../plot.py res.txt
+python3 ../../plot.py T.txt
+
+
+
