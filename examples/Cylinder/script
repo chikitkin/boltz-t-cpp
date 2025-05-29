@@ -9,7 +9,7 @@ cd $now
 
 ../../../src/cli.o ../config.cfg ../mesh_medium.mesh ../macro_restart.txt
 python3 ../../plot.py res.txt
-python3 ../../plot.py T.txt
+python3 ../../cylinder.py wall.txt
 
 
 

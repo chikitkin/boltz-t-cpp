@@ -41,12 +41,21 @@ int main(int argc, char *argv[])
 	REAL l_s;
 	
 	REAL n_in;
-	REAL u_in;
+	REAL ux_in = 0.0;
+	REAL uy_in = 0.0;
+	REAL uz_in = 0.0;
 	REAL T_in;
 	
 	REAL n_out;
-	REAL u_out;
+	REAL ux_out = 0.0;
+	REAL uy_out = 0.0;
+	REAL uz_out = 0.0;
 	REAL T_out;
+
+	REAL channel_length = -1.0; // IN Z DIRECTION
+
+	REAL u_in;
+	REAL u_out;
 
 	int nvx;
 	int nvy;
@@ -55,7 +64,6 @@ int main(int argc, char *argv[])
 	int steps;
 		
 	std::string mesh_path;
-	
 	
     std::string cfg_path = argv[1];
 	std::ifstream cfg(cfg_path);
@@ -67,10 +75,14 @@ int main(int argc, char *argv[])
         if (line.find("Mach") != -1) { line_stream >> Mach; }
         else if (line.find("l_s") != -1) { line_stream >> gas_params->l_s; }
         else if (line.find("n_in") != -1) { line_stream >> n_in; }
-        else if (line.find("u_in") != -1) { line_stream >> u_in; }
+        else if (line.find("ux_in") != -1) { line_stream >> ux_in; }
+        else if (line.find("uy_in") != -1) { line_stream >> uy_in; }
+        else if (line.find("uz_in") != -1) { line_stream >> uz_in; }
         else if (line.find("T_in") != -1) { line_stream >> T_in; }
         else if (line.find("n_out") != -1) { line_stream >> n_out; }
-        else if (line.find("u_out") != -1) { line_stream >> u_out; }
+        else if (line.find("ux_out") != -1) { line_stream >> ux_out; }
+        else if (line.find("uy_out") != -1) { line_stream >> uy_out; }
+        else if (line.find("uz_out") != -1) { line_stream >> uz_out; }
         else if (line.find("T_out") != -1) { line_stream >> T_out; }
         
         else if (line.find("Mol") != -1) { line_stream >> gas_params->Mol; }
@@ -91,6 +103,8 @@ int main(int argc, char *argv[])
         else if (line.find("tol") != -1) { line_stream >> config->tol; }
         else if (line.find("order") != -1) { line_stream >> config->order; }
         else if (line.find("steps") != -1) { line_stream >> steps; }
+
+		else if (line.find("channel_length") != -1) { line_stream >> channel_length; }
         
         else if (line.find("initType") != -1) { line_stream >> config->initType; }
 
@@ -99,6 +113,9 @@ int main(int argc, char *argv[])
 
         else if (line.find("boundary:") != -1) { break; }
 	}
+
+	u_in = pow(ux_in*ux_in + uy_in*uy_in + uz_in*uz_in, 0.5);
+	u_out = pow(ux_out*ux_out + uy_out*uy_out + uz_out*uz_out, 0.5);
 	
 	gas_params->Rg = gas_params->Ru / gas_params->Mol; // = self.Ru / self.Mol  # J / (kg * K)
 	gas_params->m = gas_params->Mol / gas_params->Na; // # kg
@@ -123,16 +140,18 @@ int main(int argc, char *argv[])
 	
 	delta = (gas_params->l_s * gas_params->p_s) / (gas_params->mu_s * gas_params->v_s);
 	gas_params->Kn = 8.0 / (5.0 * pow(PI, 0.5)) / delta;
+	lambda = gas_params->Kn * gas_params->l_s;
 	Mach = u_in / c;
 	Re = gas_params->rho_s * u_in * gas_params->l_s / gas_params->mu_s;
 	
 	// print parameters
-	std::cout << "p^{star} = " << gas_params->p_s << std::endl;
-	std::cout << "mu^{star} = " << gas_params->mu_s << std::endl;
+	std::cout << "rho^{star} = " << gas_params->rho_s << std::endl;
+	std::cout << "p^{star}   = " << gas_params->p_s << std::endl;
+	std::cout << "mu^{star}  = " << gas_params->mu_s << std::endl;
 	
-	std::cout << "v^{star} = " << gas_params->v_s << std::endl;
-	std::cout << "mu^{star} = " << gas_params->mu_s << std::endl;
-	std::cout << "S^{inf} = " << S_inf << std::endl;
+	std::cout << "v^{star}   = " << gas_params->v_s << std::endl;
+	std::cout << "mu^{star}  = " << gas_params->mu_s << std::endl;
+	std::cout << "S^{inf}    = " << S_inf << std::endl;
 	
 	std::cout << "Speed of sound,            c = " << c      << std::endl;
 	std::cout << "Rarefaction parameter, delta = " << delta  << std::endl;
@@ -145,7 +164,7 @@ int main(int argc, char *argv[])
 
 	std::cout << "START DIMENSIONLESS" << std::endl;
 
-	REAL vmax = 20.0; // WAS 22.0
+	REAL vmax = 22.0; // WAS 22.0
 	
 	REAL hvx = 2.0 * vmax / nvx;
 	REAL *vx_ = new REAL[nvx];
@@ -172,22 +191,30 @@ int main(int argc, char *argv[])
 	std::shared_ptr < VelocityGrid<Tensor> > v = std::make_shared < VelocityGrid<Tensor> > (nvx, nvy, nvz, vx_, vy_, vz_);
 
 	n_in /= gas_params->n_s;
-	u_in /= gas_params->v_s;
+	ux_in /= gas_params->v_s;
+	uy_in /= gas_params->v_s;
+	uz_in /= gas_params->v_s;
 	T_in /= gas_params->T_s;
 
 	n_out /= gas_params->n_s;
-	u_out /= gas_params->v_s;
+	ux_out /= gas_params->v_s;
+	uy_out /= gas_params->v_s;
+	uz_out /= gas_params->v_s;
 	T_out /= gas_params->T_s;
+
+
+	u_in /= gas_params->v_s;
+	u_out /= gas_params->v_s;
 	
-	Tensor f_in  = f_maxwell_t<Tensor>(v, n_in,  u_in,  0.0, 0.0, T_in,  gas_params->Rg);
-	Tensor f_out = f_maxwell_t<Tensor>(v, n_out, u_out, 0.0, 0.0, T_out, gas_params->Rg);
+	Tensor f_in  = f_maxwell_t<Tensor>(v, n_in, ux_in, uy_in, uz_in, T_in, gas_params->Rg);
+	Tensor f_out = f_maxwell_t<Tensor>(v, n_out, ux_out, uy_out, uz_out, T_out, gas_params->Rg);
 
 	problem->gas_params = gas_params;
 	problem->v = v;
 	problem->initData = {f_in, f_out};
 	
-	problem->params_in  = {n_in,  u_in,  0.0, 0.0, T_in};
-	problem->params_out = {n_out, u_out, 0.0, 0.0, T_out};
+	problem->params_in  = {n_in, ux_in, uy_in, uz_in, T_in};
+	problem->params_out = {n_out, ux_out, uy_out, uz_out, T_out};
 	
     // Inlet
 	// std::vector<REAL> params = comp_macro_params(problem->initData[0], v, gas_params, T_s);
@@ -204,7 +231,7 @@ int main(int argc, char *argv[])
 	REAL u_rh = ((gas_params->g - 1.) * Mach * Mach + 2.) / ((gas_params->g + 1.) * Mach * Mach) * u_in;
 	REAL T_rh = (2. * gas_params->g * Mach * Mach - (gas_params->g - 1.)) * ((gas_params->g - 1.) * Mach * Mach + 2.) / (pow(gas_params->g + 1, 2) * Mach * Mach) * T_in;
 	std::cout << "Rankine-Hugoniot n, u, T" << std::endl;
-	std::cout << n_rh << " " << u_rh << " " << T_rh << std::endl;
+	std::cout << n_rh*gas_params->n_s << " " << u_rh*gas_params->v_s << " " << T_rh*gas_params->T_s << std::endl;
 
     REAL T_wall = 200.0/gas_params->T_s; // TODO magic number, should not fail if no wall
 	{
@@ -289,6 +316,17 @@ int main(int argc, char *argv[])
     check_velocity_grid(n_out, u_out, T_out, v, gas_params);
 	std::cout << "Wall" << std::endl;
     check_velocity_grid(n_in, 0.0, T_wall, v, gas_params);
+
+	// WRITE MACRO START
+	if (channel_length > 0.0) {
+		std::ofstream file;
+		file.open("../macro_start.txt", std::ofstream::trunc);
+
+		for (int ic = 0; ic < mesh->nCells; ++ic) {
+			file << 1.0 - (mesh->cellCenters[ic][2] / channel_length) << " " << 0.0 << " " << 0.0 << " " << 0.0 << " " << T_wall << "\n";
+		}
+		file.close();
+	}
 
 	Solution<Tensor> S(gas_params, mesh, v, problem, config);
 

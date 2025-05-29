@@ -94,8 +94,9 @@ std::vector <REAL> comp_macro_params(const Tensor& f, std::shared_ptr < Velocity
 {
 	REAL n = v->hv3 * f.sum();
 
-	if (n <= 0.0) {
-		n = std::numeric_limits<REAL>::min();
+	if (n < 0.0) {
+		std::cout << "n < 0" << std::endl;
+		n = 0.0; // 1e-10;
 	}
 
 	REAL ux = (1.0 / n) * v->hv3 * (v->vx_t * f).sum();
@@ -107,7 +108,8 @@ std::vector <REAL> comp_macro_params(const Tensor& f, std::shared_ptr < Velocity
 	REAL T = (2.0 / (3.0 * n)) * (v->hv3 * (v->v2 * f).sum() - n * u2);
 
 	if (T <= 0.0) {
-		T = std::numeric_limits<REAL>::min();
+		std::cout << "T < 0" << std::endl;
+		T = std::numeric_limits<REAL>::min(); // 1e-10;
 	}
 
 	REAL rho = n;
@@ -310,6 +312,12 @@ void Solution<Tensor>::write_macro_restart()
 
 	for (int ic = 0; ic < mesh->nCells; ++ic) {
 	    file << n[ic] << " " << ux[ic] << " " << uy[ic] << " " << uz[ic] << " " << T[ic] << "\n";
+	}
+	file.close();
+
+	file.open("cell_centers.txt", std::ofstream::trunc);
+	for (int ic = 0; ic < mesh->nCells; ++ic) {
+	    file << mesh->cellCenters[ic][0] << " " << mesh->cellCenters[ic][1] << " " << mesh->cellCenters[ic][2] << "\n";
 	}
 	file.close();
 }
@@ -687,14 +695,16 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		for (int jf = 0; jf < mesh->nFaces; ++jf) {
 			auto begin = omp_get_wtime();
 			if (!config->isRusanov) {
-			    flux[jf] = 0.5 * mesh->faceAreas[jf] *
-					    (round_t(round_t(fLeftRight[jf][0] + fLeftRight[jf][1], config->tol) * vn[jf], config->tol) - 
-					        round_t(round_t(fLeftRight[jf][1] - fLeftRight[jf][0], config->tol) * vn_abs[jf], config->tol));
+			    // flux[jf] = 0.5 * mesh->faceAreas[jf] *
+				// 	    (round_t(round_t(fLeftRight[jf][0] + fLeftRight[jf][1], config->tol) * vn[jf], config->tol) - 
+				// 	        round_t(round_t(fLeftRight[jf][1] - fLeftRight[jf][0], config->tol) * vn_abs[jf], config->tol));
+				flux[jf] = 0.5 * mesh->faceAreas[jf] * ((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - (fLeftRight[jf][1] - fLeftRight[jf][0]) * vn_abs[jf]);
 			}
 			else {
-			    flux[jf] = 0.5 * mesh->faceAreas[jf] *
-					    (round_t(round_t(fLeftRight[jf][0] + fLeftRight[jf][1], config->tol) * vn[jf], config->tol) - 
-					        vn_abs_max[jf] * round_t(fLeftRight[jf][1] - fLeftRight[jf][0], config->tol));
+			    // flux[jf] = 0.5 * mesh->faceAreas[jf] *
+				// 	    (round_t(round_t(fLeftRight[jf][0] + fLeftRight[jf][1], config->tol) * vn[jf], config->tol) - 
+				// 	        vn_abs_max[jf] * round_t(fLeftRight[jf][1] - fLeftRight[jf][0], config->tol));
+			    flux[jf] = 0.5 * mesh->faceAreas[jf] * ((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] -  vn_abs_max[jf] * (fLeftRight[jf][1] - fLeftRight[jf][0]));
 			}
 			flux[jf].round(config->tol);
 			auto end = omp_get_wtime();
@@ -797,20 +807,22 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 						int icn_perm = mesh->iPerm[icn];
 						if ((icn >= 0) && (icn_perm > ic_perm)) {
 						    if (!config->isRusanov) {
-							    vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-							    // vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+								// TODO important
+							    // vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+							    vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
                             }
                             else {
                                 vnm_loc = 0.5 * (-vn_abs_max[jf] * v->ones + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
                             }
-						    df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * round_t(vnm_loc * df[icn], config->tol);
+						    // df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * round_t(vnm_loc * df[icn], config->tol);
+							df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * df[icn]);
 						    df[ic].round(config->tol);
 						}
 					}
 					// divide by diagonal coefficient
 					div_tmp = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]);
 					div_tmp.round(static_cast<REAL>(1e-3), 1); // TODO magic number
-					df[ic].round(config->tol); // TODO less rounding?
+					// df[ic].round(config->tol); // TODO less rounding?
 					df[ic] = df[ic] / div_tmp;
 				}
 			}
@@ -831,13 +843,15 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 						int icn_perm = mesh->iPerm[icn];
 						if ((icn >= 0) && (icn_perm < ic_perm)) {
 						    if (!config->isRusanov) {
-							    vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-							    // vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+								// TODO important
+							    // vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+							    vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 					        }
 					        else {
 					            vnm_loc = 0.5 * (-vn_abs_max[jf] * v->ones + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 					        }
-						    incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * round_t(vnm_loc * df[icn], config->tol);
+						    // incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * round_t(vnm_loc * df[icn], config->tol);
+						    incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * df[icn]);
 						    incr.round(config->tol);
 						}
 					}
