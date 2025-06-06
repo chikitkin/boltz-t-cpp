@@ -8,18 +8,18 @@
 #include <ctime>
 
 template <class Tensor>
-int check_velocity_grid(REAL n, REAL u, REAL T, 
+int check_velocity_grid(REAL n, REAL ux, REAL uy, REAL uz, REAL T, 
         std::shared_ptr < VelocityGrid<Tensor> > v,
         std::shared_ptr < GasParams > gas_params)
 {
-    Tensor f = f_maxwell_t<Tensor>(v, n, u, 0.0, 0.0, T, gas_params->Rg);
+    Tensor f = f_maxwell_t<Tensor>(v, n, ux, uy, uz, T, gas_params->Rg);
     std::vector<REAL> params = comp_macro_params(f, v, gas_params);
     
-    std::cout << "n:  " << (params[0] - n) / n << " = 0" << std::endl;
-	std::cout << "ux: " << (params[1] - u) / u << " = 0" << std::endl;
-	std::cout << "uy: " << params[2] << " = 0" << std::endl;
-	std::cout << "uz: " << params[3] << " = 0" << std::endl;
-	std::cout << "T:  " << (params[4] - T) / T << " = 0" << std::endl;
+    std::cout << "\tn:  " << abs(params[0] - n) / n << " = 0" << std::endl;
+	std::cout << "\tux: " << abs(params[1] - ux) / ux << " = 0" << std::endl;
+	std::cout << "\tuy: " << abs(params[2] - uy) / uy << " = 0" << std::endl;
+	std::cout << "\tuz: " << abs(params[3] - uz) / uz << " = 0" << std::endl;
+	std::cout << "\tT:  " << abs(params[4] - T) / T   << " = 0" << std::endl;
 	
 	return 0;
 }
@@ -31,14 +31,6 @@ int main(int argc, char *argv[])
 
 	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();
 	std::shared_ptr < Config > config = std::make_shared < Config > ();
-    
-    REAL Mach;
-	REAL Kn;
-	REAL delta;
-	REAL lambda;
-	REAL Re;
-
-	REAL l_s;
 	
 	REAL n_in;
 	REAL ux_in = 0.0;
@@ -57,6 +49,7 @@ int main(int argc, char *argv[])
 	REAL u_in;
 	REAL u_out;
 
+	REAL vmax = 22.0;
 	int nvx;
 	int nvy;
 	int nvz;
@@ -67,49 +60,52 @@ int main(int argc, char *argv[])
 	
     std::string cfg_path = argv[1];
 	std::ifstream cfg(cfg_path);
+	cfg.precision(17); // TODO magic number
     std::string line;
     
     while (getline(cfg, line)) {
         std::istringstream line_stream(line.substr(line.find("=") + 1));
+		line_stream.precision(17); // TODO magic number
             
-        if (line.find("Mach") != -1) { line_stream >> Mach; }
-        else if (line.find("l_s") != -1) { line_stream >> gas_params->l_s; }
-        else if (line.find("n_in") != -1) { line_stream >> n_in; }
-        else if (line.find("ux_in") != -1) { line_stream >> ux_in; }
-        else if (line.find("uy_in") != -1) { line_stream >> uy_in; }
-        else if (line.find("uz_in") != -1) { line_stream >> uz_in; }
-        else if (line.find("T_in") != -1) { line_stream >> T_in; }
-        else if (line.find("n_out") != -1) { line_stream >> n_out; }
-        else if (line.find("ux_out") != -1) { line_stream >> ux_out; }
-        else if (line.find("uy_out") != -1) { line_stream >> uy_out; }
-        else if (line.find("uz_out") != -1) { line_stream >> uz_out; }
-        else if (line.find("T_out") != -1) { line_stream >> T_out; }
+        if      (line.find("l_s")   != std::string::npos) { line_stream >> gas_params->l_s; }
+        else if (line.find("n_in")  != std::string::npos) { line_stream >> n_in; }
+        else if (line.find("ux_in") != std::string::npos) { line_stream >> ux_in; }
+        else if (line.find("uy_in") != std::string::npos) { line_stream >> uy_in; }
+        else if (line.find("uz_in") != std::string::npos) { line_stream >> uz_in; }
+        else if (line.find("T_in")  != std::string::npos) { line_stream >> T_in; }
+        else if (line.find("n_out")  != std::string::npos) { line_stream >> n_out; }
+        else if (line.find("ux_out") != std::string::npos) { line_stream >> ux_out; }
+        else if (line.find("uy_out") != std::string::npos) { line_stream >> uy_out; }
+        else if (line.find("uz_out") != std::string::npos) { line_stream >> uz_out; }
+        else if (line.find("T_out")  != std::string::npos) { line_stream >> T_out; }
         
-        else if (line.find("Mol") != -1) { line_stream >> gas_params->Mol; }
-        else if (line.find("Pr") != -1) { line_stream >> gas_params->Pr; }
-        else if (line.find("C") != -1) { line_stream >> gas_params->C; }
-        else if (line.find("T_0") != -1) { line_stream >> gas_params->T_0; }
-        else if (line.find("mu_0") != -1) { line_stream >> gas_params->mu_0; }
-        else if (line.find("omega") != -1) { line_stream >> gas_params->omega; }
-        else if (line.find("g") != -1) { line_stream >> gas_params->g; }
+        else if (line.find("gas_params_Mol")   != std::string::npos) { line_stream >> gas_params->Mol; }
+        else if (line.find("gas_params_Pr")    != std::string::npos) { line_stream >> gas_params->Pr; }
+        else if (line.find("gas_params_C")     != std::string::npos) { line_stream >> gas_params->C; }
+        else if (line.find("gas_params_T_0")   != std::string::npos) { line_stream >> gas_params->T_0; }
+        else if (line.find("gas_params_mu_0")  != std::string::npos) { line_stream >> gas_params->mu_0; }
+        else if (line.find("gas_params_omega") != std::string::npos) { line_stream >> gas_params->omega; }
+        else if (line.find("gas_params_g")     != std::string::npos) { line_stream >> gas_params->g; }
         
-        else if (line.find("nvx") != -1) { line_stream >> nvx; }
-        else if (line.find("nvy") != -1) { line_stream >> nvy; }
-        else if (line.find("nvz") != -1) { line_stream >> nvz; }
-        else if (line.find("CFL") != -1) { line_stream >> config->CFL; }
-        else if (line.find("isImplicit") != -1) { line_stream >> config->isImplicit; }
-        else if (line.find("isRusanov") != -1) { line_stream >> config->isRusanov; }
-        else if (line.find("isImplicitIncrement") != -1) { line_stream >> config->isImplicitIncrement; }
-        else if (line.find("tol") != -1) { line_stream >> config->tol; }
-        else if (line.find("order") != -1) { line_stream >> config->order; }
-        else if (line.find("steps") != -1) { line_stream >> steps; }
+        else if (line.find("nvx")   != std::string::npos) { line_stream >> nvx; }
+        else if (line.find("nvy")   != std::string::npos) { line_stream >> nvy; }
+        else if (line.find("nvz")   != std::string::npos) { line_stream >> nvz; }
+        else if (line.find("vmax")  != std::string::npos) { line_stream >> vmax; }
+        else if (line.find("CFL")   != std::string::npos) { line_stream >> config->CFL; }
+        else if (line.find("tol")   != std::string::npos) { line_stream >> config->tol; }
+        else if (line.find("order") != std::string::npos) { line_stream >> config->order; }
+        else if (line.find("steps") != std::string::npos) { line_stream >> steps; }
+        else if (line.find("isImplicit")  != std::string::npos) { line_stream >> config->isImplicit; }
+        else if (line.find("isRusanov")   != std::string::npos) { line_stream >> config->isRusanov; }
+        else if (line.find("isIncrement") != std::string::npos) { line_stream >> config->isIncrement; }
 
-		else if (line.find("channel_length") != -1) { line_stream >> channel_length; }
+		else if (line.find("channel_length") != std::string::npos) { line_stream >> channel_length; }
         
-        else if (line.find("initType") != -1) { line_stream >> config->initType; }
-
-		else if (line.find("saveTecStep") != -1) { line_stream >> config->saveTecStep; }
-		else if (line.find("saveMacroStep") != -1) { line_stream >> config->saveMacroStep; }
+        else if (line.find("initType")        != std::string::npos) { line_stream >> config->initType; }
+		else if (line.find("saveTecStep")     != std::string::npos) { line_stream >> config->saveTecStep; }
+		else if (line.find("saveMacroStep")   != std::string::npos) { line_stream >> config->saveMacroStep; }
+		else if (line.find("saveRestartStep") != std::string::npos) { line_stream >> config->saveRestartStep; }
+		else if (line.find("vnAbsRestart")    != std::string::npos) { line_stream >> config->vnAbsRestart; }
 
         else if (line.find("boundary:") != -1) { break; }
 	}
@@ -132,23 +128,23 @@ int main(int argc, char *argv[])
 	gas_params->rho_s = gas_params->m * gas_params->n_s;
 	gas_params->p_s = gas_params->rho_s * gas_params->Rg * gas_params->T_s;
 
-	gas_params->v_s = pow(2. * gas_params->Rg * gas_params->T_s, 0.5);
+	gas_params->v_s = pow(2.0 * gas_params->Rg * gas_params->T_s, 0.5);
 	gas_params->mu_s = gas_params->mu_suth(gas_params->T_s);
 	
 	REAL c = pow(gas_params->g * gas_params->Rg * gas_params->T_s, 0.5);
 	REAL S_inf = u_in / gas_params->v_s;
 	
-	delta = (gas_params->l_s * gas_params->p_s) / (gas_params->mu_s * gas_params->v_s);
+	REAL delta     = (gas_params->l_s * gas_params->p_s) / (gas_params->mu_s * gas_params->v_s);
 	gas_params->Kn = 8.0 / (5.0 * pow(PI, 0.5)) / delta;
-	lambda = gas_params->Kn * gas_params->l_s;
-	Mach = u_in / c;
-	Re = gas_params->rho_s * u_in * gas_params->l_s / gas_params->mu_s;
+	REAL lambda    = gas_params->Kn * gas_params->l_s;
+	REAL Mach      = u_in / c;
+	REAL Re        = gas_params->rho_s * u_in * gas_params->l_s / gas_params->mu_s;
 	
 	// print parameters
+	std::cout << "n^{star}   = " << gas_params->n_s << std::endl;
+	std::cout << "T^{star}   = " << gas_params->T_s << std::endl;
 	std::cout << "rho^{star} = " << gas_params->rho_s << std::endl;
 	std::cout << "p^{star}   = " << gas_params->p_s << std::endl;
-	std::cout << "mu^{star}  = " << gas_params->mu_s << std::endl;
-	
 	std::cout << "v^{star}   = " << gas_params->v_s << std::endl;
 	std::cout << "mu^{star}  = " << gas_params->mu_s << std::endl;
 	std::cout << "S^{inf}    = " << S_inf << std::endl;
@@ -163,8 +159,6 @@ int main(int argc, char *argv[])
 	std::shared_ptr < Mesh > mesh = std::make_shared < Mesh > (mesh_path, 1.0); // gas_params->l_s);
 
 	std::cout << "START DIMENSIONLESS" << std::endl;
-
-	REAL vmax = 22.0; // WAS 22.0
 	
 	REAL hvx = 2.0 * vmax / nvx;
 	REAL *vx_ = new REAL[nvx];
@@ -202,29 +196,27 @@ int main(int argc, char *argv[])
 	uz_out /= gas_params->v_s;
 	T_out /= gas_params->T_s;
 
-
 	u_in /= gas_params->v_s;
 	u_out /= gas_params->v_s;
 	
 	Tensor f_in  = f_maxwell_t<Tensor>(v, n_in, ux_in, uy_in, uz_in, T_in, gas_params->Rg);
 	Tensor f_out = f_maxwell_t<Tensor>(v, n_out, ux_out, uy_out, uz_out, T_out, gas_params->Rg);
 
+	// std::cout << "f_in string: " << f_in.to_string() << std::endl;
+	std::cout << "f_in string error norm: " << (from_string(f_in.to_string(), f_in) - f_in).norm() / f_in.norm() << std::endl;
+
+	// std::cout << "f_out string: " << f_out.to_string() << std::endl;
+	std::cout << "f_out string error norm: " << (from_string(f_out.to_string(), f_in) - f_out).norm() / f_out.norm() << std::endl;
+
+	std::cout << "Test minmod" << std::endl;
+	std::cout << minmod(f_in + f_out, f_out - 2 * f_in, config->tol) << std::endl;
+
 	problem->gas_params = gas_params;
 	problem->v = v;
 	problem->initData = {f_in, f_out};
 	
-	problem->params_in  = {n_in, ux_in, uy_in, uz_in, T_in};
+	problem->params_in  = {n_in,  ux_in,  uy_in,  uz_in,  T_in};
 	problem->params_out = {n_out, ux_out, uy_out, uz_out, T_out};
-	
-    // Inlet
-	// std::vector<REAL> params = comp_macro_params(problem->initData[0], v, gas_params, T_s);
-
-    // std::cout << "Inlet" << std::endl;
-	// std::cout << "n:  " << (params[0] - problem->params_in[0]) / (problem->params_in[0]) << " = 0" << std::endl;
-	// std::cout << "ux: " << (params[1] - problem->params_in[1]) / (problem->params_in[1]) << " = 0" << std::endl;
-	// std::cout << "uy: " << problem->params_in[2] << " = 0" << std::endl;
-	// std::cout << "uz: " << problem->params_in[3] << " = 0" << std::endl;
-	// std::cout << "T:  " << (params[4] - problem->params_in[4]) / (problem->params_in[4]) << " = 0" << std::endl;
 	
 	// Rankine-Hugoniot
 	REAL n_rh = (gas_params->g + 1.) * Mach * Mach / ((gas_params->g - 1.) * Mach * Mach + 2.) * n_in;
@@ -308,21 +300,28 @@ int main(int argc, char *argv[])
 			}
 		}
     }
+	cfg.close();
     
     std::cout << "Check v ranges" << std::endl;
-	std::cout << "Inlet" << std::endl;
-	check_velocity_grid(n_in, u_in, T_in, v, gas_params);
-    std::cout << "Rankine-Hugoniot" << std::endl;
-    check_velocity_grid(n_out, u_out, T_out, v, gas_params);
-	std::cout << "Wall" << std::endl;
-    check_velocity_grid(n_in, 0.0, T_wall, v, gas_params);
+	std::cout << "Inlet:" << std::endl;
+	check_velocity_grid(n_in, ux_in, uy_in, uz_in, T_in, v, gas_params);
+    std::cout << "Outlet:" << std::endl;
+    check_velocity_grid(n_out, ux_out, uy_out, uz_out, T_out, v, gas_params);
+    std::cout << "Rankine-Hugoniot:" << std::endl;
+    check_velocity_grid(n_rh, u_rh, 0.0, 0.0, T_rh, v, gas_params);
+	std::cout << "Wall:" << std::endl;
+    check_velocity_grid(n_in, 0.0, 0.0, 0.0, T_wall, v, gas_params);
+	std::cout << "Inlet 2:" << std::endl;
+	std::vector<REAL> params = comp_macro_params(f_in, v, gas_params);
+	std::cout << "\t" << abs(params[0] - n_in) / n_in << " = 0, " << abs(params[4] - T_in) / T_in << " = 0"  << std::endl;
 
 	// WRITE MACRO START
+	std::cout << "channel_length = " << channel_length << std::endl;
 	if (channel_length > 0.0) {
 		std::ofstream file;
 		file.open("../macro_start.txt", std::ofstream::trunc);
-
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
+			file << mesh->cellCenters[ic][0] << " " << mesh->cellCenters[ic][1] << " " << mesh->cellCenters[ic][2] << " ";
 			file << 1.0 - (mesh->cellCenters[ic][2] / channel_length) << " " << 0.0 << " " << 0.0 << " " << 0.0 << " " << T_wall << "\n";
 		}
 		file.close();

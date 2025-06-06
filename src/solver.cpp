@@ -96,7 +96,7 @@ std::vector <REAL> comp_macro_params(const Tensor& f, std::shared_ptr < Velocity
 
 	if (n < 0.0) {
 		std::cout << "n < 0" << std::endl;
-		n = 0.0; // 1e-10;
+		n = 1e-8;
 	}
 
 	REAL ux = (1.0 / n) * v->hv3 * (v->vx_t * f).sum();
@@ -109,46 +109,32 @@ std::vector <REAL> comp_macro_params(const Tensor& f, std::shared_ptr < Velocity
 
 	if (T <= 0.0) {
 		std::cout << "T < 0" << std::endl;
-		T = std::numeric_limits<REAL>::min(); // 1e-10;
+		T = 1e-8;
 	}
 
-	REAL rho = n;
-	REAL p = rho * T;
-
-	REAL mu = gas_params->mu(T); // TODO temperature
+	REAL mu = gas_params->mu(T);
 	REAL nu = (8.0 / (5.0 * pow(PI, 0.5))) * (n * T / mu) / gas_params->Kn;
 
-	return {n, ux, uy, uz, T, rho, p, nu};
+	// REAL rho = n;
+	// REAL p = rho * T;
+	// REAL Mach = pow((ux*ux + uy*uy + uz*uz) / (gas_params->g * gas_params->Rg * T), 0.5)
+
+	return {n, ux, uy, uz, T, nu};
 }
 
 template <class Tensor>
 Tensor comp_j(const std::vector <REAL>& params, const Tensor& f, REAL tol, std::shared_ptr < VelocityGrid<Tensor> > v, std::shared_ptr < GasParams > gas_params)
 {
-	REAL n = params[0];
+	REAL n  = params[0];
 	REAL ux = params[1];
 	REAL uy = params[2];
 	REAL uz = params[3];
-	REAL T = params[4];
-	// REAL rho = params[5];
-	// REAL p = params[6];
-	REAL nu = params[7];
+	REAL T  = params[4];
+	REAL nu = params[5];
 
-	REAL *tmp = new REAL[std::max({v->nvx, v->nvy, v->nvz})];
-
-	for (int i = 0; i < v->nvx; ++i) {
-		tmp[i] = v->vx_[i] - ux;
-	}
-	Tensor vx(v->nvx, v->nvy, v->nvz, tmp, v->onesy, v->onesz);
-
-	for (int i = 0; i < v->nvy; ++i) {
-		tmp[i] = v->vy_[i] - uy;
-	}
-	Tensor vy(v->nvx, v->nvy, v->nvz, v->onesx, tmp, v->onesz);
-
-	for (int i = 0; i < v->nvz; ++i) {
-		tmp[i] = v->vz_[i] - uz;
-	}
-	Tensor vz(v->nvx, v->nvy, v->nvz, v->onesx, v->onesy, tmp);
+	Tensor vx = v->vx_t + (-ux) * v->ones;
+	Tensor vy = v->vy_t + (-uy) * v->ones;
+	Tensor vz = v->vz_t + (-uz) * v->ones;
 
 	Tensor v2 = ((vx * vx) + (vy * vy) + (vz * vz));
 	v2.round(static_cast<REAL>(1e-14));
@@ -163,11 +149,10 @@ Tensor comp_j(const std::vector <REAL>& params, const Tensor& f, REAL tol, std::
 	Tensor J = nu * (f_plus - f);
 	J.round(static_cast<REAL>(tol));
 
-	delete [] tmp;
-
 	return J;
 }
 
+// TODO fix HARDCODE
 template <class Tensor>
 Tensor Problem<Tensor>::getInit(REAL x, REAL y, REAL z,
 		const std::vector<Tensor>& initData) {
@@ -263,43 +248,57 @@ VelocityGrid<Tensor>::~VelocityGrid()
 }
 
 template <class Tensor>
-void Solution<Tensor>::write_wall_params() // TODO FIX FOR DIMENSIONLESS
+void Solution<Tensor>::write_boundary_params() // TODO FIX FOR DIMENSIONLESS
 {
 	std::ofstream file;
-	file.open("wall.txt", std::ofstream::trunc);
+	file.precision(17); // TODO magic number
+	file.open("boundary.txt", std::ofstream::trunc);
 
 	file << "x" << " " << "y" << " " << "z" << " ";
-	file << "n" << " " << "T" << " " << "rho" << " " << "p" << " ";
+	file << "n" << " " << "T" << " ";
 	file << "Px" << " " << "Py" << " " << "Pz" << " ";
 	file << "Mx" << " " << "My" << " " << "Mz" << " ";
+	file << "type" << " ";
 	file << "\n";
 
 	for (int ibf = 0; ibf < bcList.size(); ++ibf) {
-		if (bcList[ibf]->type == WALL) {
+		{
 			int jf = bcList[ibf]->jf;
 			REAL x = mesh->faceCenters[jf][0];
 			REAL y = mesh->faceCenters[jf][1];
 			REAL z = mesh->faceCenters[jf][2];
 			file << x << " " << y << " " << z << " ";
-			Tensor fWall = fLeftRight[jf][1 - mesh->getOutIndex(jf)];
+			Tensor f = fLeftRight[jf][1 - mesh->getOutIndex(jf)];
 
-			std::vector<REAL> params = comp_macro_params(fWall, v, gas_params);
+			std::vector<REAL> params = comp_macro_params(f, v, gas_params);
 			REAL n = params[0];
 			REAL T = params[4];
-			REAL rho = params[5];
-			REAL p = params[6];
-			file << n << " " << T << " " << rho << " " << p << " ";
+			file << n << " " << T << " ";
 
-			REAL Px = 2.0 * v->hv3 * (vn[jf] * v->vx_t * fWall).sum();
-			REAL Py = 2.0 * v->hv3 * (vn[jf] * v->vy_t * fWall).sum();
-			REAL Pz = 2.0 * v->hv3 * (vn[jf] * v->vz_t * fWall).sum();
+			REAL Px = 2.0 * v->hv3 * (vn[jf] * v->vx_t * f).sum();
+			REAL Py = 2.0 * v->hv3 * (vn[jf] * v->vy_t * f).sum();
+			REAL Pz = 2.0 * v->hv3 * (vn[jf] * v->vz_t * f).sum();
 			file << Px << " " << Py << " " << Pz << " ";
-			REAL Mx = 0.5 * v->hv3 * (v->vx_t * v->v2 * fWall).sum();
-			REAL My = 0.5 * v->hv3 * (v->vy_t * v->v2 * fWall).sum();
-			REAL Mz = 0.5 * v->hv3 * (v->vz_t * v->v2 * fWall).sum();
+			REAL Mx = 0.5 * v->hv3 * (v->vx_t * v->v2 * f).sum();
+			REAL My = 0.5 * v->hv3 * (v->vy_t * v->v2 * f).sum();
+			REAL Mz = 0.5 * v->hv3 * (v->vz_t * v->v2 * f).sum();
 			file << Mx << " " << My << " " << Mz;
+			file << bcList[ibf]->type;
 			file << "\n";
 		}
+	}
+	file.close();
+}
+
+template <class Tensor>
+void Solution<Tensor>::write_restart()
+{
+	std::ofstream file;
+	file.precision(17); // TODO magic number
+	file.open("restart.txt", std::ofstream::trunc);
+
+	for (int ic = 0; ic < mesh->nCells; ++ic) {
+	    file << f[ic].to_string() << "\n";
 	}
 	file.close();
 }
@@ -308,16 +307,12 @@ template <class Tensor>
 void Solution<Tensor>::write_macro_restart()
 {
 	std::ofstream file;
+	file.precision(17); // TODO magic number
 	file.open("macro_restart.txt", std::ofstream::trunc);
 
 	for (int ic = 0; ic < mesh->nCells; ++ic) {
+	    file << mesh->cellCenters[ic][0] << " " << mesh->cellCenters[ic][1] << " " << mesh->cellCenters[ic][2] << " ";
 	    file << n[ic] << " " << ux[ic] << " " << uy[ic] << " " << uz[ic] << " " << T[ic] << "\n";
-	}
-	file.close();
-
-	file.open("cell_centers.txt", std::ofstream::trunc);
-	for (int ic = 0; ic < mesh->nCells; ++ic) {
-	    file << mesh->cellCenters[ic][0] << " " << mesh->cellCenters[ic][1] << " " << mesh->cellCenters[ic][2] << "\n";
 	}
 	file.close();
 }
@@ -344,6 +339,17 @@ void Solution<Tensor>::update_res(REAL frob_norm) {
 	file.open("res.txt", std::ofstream::app);
 	file << frob_norm << "\n";
 	file.close();
+}
+
+template <class Tensor>
+REAL Solution<Tensor>::vector_norm(std::vector<Tensor> vec) {
+	REAL res = 0.0;
+	#pragma omp parallel for reduction(+:res)
+	for (int ic = 0; ic < mesh->nCells; ++ic) {
+		res += pow(vec[ic].norm(), 2.0);
+	}
+	res = pow(res, 0.5); // was / mesh->nCells
+	return res;
 }
 
 template <class Tensor>
@@ -374,32 +380,35 @@ Solution<Tensor>::Solution(
 	vn_abs_max.resize(mesh->nFaces);
 
 	auto TIME0 = omp_get_wtime();
-	#pragma omp parallel for schedule(dynamic)
-	for (int jf = 0; jf < mesh->nFaces; ++jf) {
-		// TODO why is it so slow?
-		REAL* vn_tmp = new REAL[v->nv];
-		REAL* vn_abs_tmp = new REAL[v->nv];
-		REAL vn_abs_max_tmp = 0.0;
-		for (int i = 0; i < v->nv; ++i) {
-			vn_tmp[i] = 
-					mesh->faceNormals[jf][0] * v->vx[i] +
-					mesh->faceNormals[jf][1] * v->vy[i] +
-					mesh->faceNormals[jf][2] * v->vz[i];
-			vn_abs_tmp[i] = abs(vn_tmp[i]);
-			if (vn_abs_tmp[i] > vn_abs_max_tmp) {
-			    vn_abs_max_tmp = vn_abs_tmp[i];
+	if (config->vnAbsRestart != 2) {
+		#pragma omp parallel for schedule(dynamic)
+		for (int jf = 0; jf < mesh->nFaces; ++jf) {
+			// TODO why is it so slow?
+			REAL* vn_tmp = new REAL[v->nv];
+			REAL* vn_abs_tmp = new REAL[v->nv];
+			REAL vn_abs_max_tmp = 0.0;
+			for (int i = 0; i < v->nv; ++i) {
+				vn_tmp[i] = 
+						mesh->faceNormals[jf][0] * v->vx[i] +
+						mesh->faceNormals[jf][1] * v->vy[i] +
+						mesh->faceNormals[jf][2] * v->vz[i];
+				vn_abs_tmp[i] = abs(vn_tmp[i]);
+				if (vn_abs_tmp[i] > vn_abs_max_tmp) {
+					vn_abs_max_tmp = vn_abs_tmp[i];
+				}
 			}
-		}
-		vn[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_tmp, static_cast<REAL>(1e-3));
-		vn_abs[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_abs_tmp, static_cast<REAL>(1e-3));
-		vn_abs[jf].round(static_cast<REAL>(1e-14), 6);
-		vn_abs_max[jf] = vn_abs_max_tmp;
+			vn[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_tmp);
+			vn[jf].round(static_cast<REAL>(1e-3));
+			vn_abs[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_abs_tmp);
+			vn_abs[jf].round(static_cast<REAL>(1e-14), 6);
+			vn_abs_max[jf] = vn_abs_max_tmp;
 
-		delete [] vn_tmp;
-		delete [] vn_abs_tmp;
+			delete [] vn_tmp;
+			delete [] vn_abs_tmp;
+		}
 	}
 	auto TIME1 = omp_get_wtime();
-	std::cout << "vnm vnp time " << TIME1 - TIME0 << " s" << std::endl;
+	std::cout << "vn abs time " << TIME1 - TIME0 << " s" << std::endl;
 
 	h = *std::min_element(mesh->cellDiameters.begin(), mesh->cellDiameters.end());
 	tau = h * config->CFL / pow(pow(v->hvx, 2) + pow(v->hvy, 2) + pow(v->hvz, 2), 0.5);
@@ -407,69 +416,107 @@ Solution<Tensor>::Solution(
 	diag.resize(mesh->nCells, Tensor());
 	diag_r1.resize(mesh->nCells, Tensor());
 
-	#pragma omp parallel for schedule(dynamic)
-	for (int ic = 0; ic < mesh->nCells; ++ic) {
+	if (config->vnAbsRestart != 2) {
+		#pragma omp parallel for schedule(dynamic)
+		for (int ic = 0; ic < mesh->nCells; ++ic) {
 
-		REAL *diag_tmp = new REAL [v->nv]();
-		REAL diag_sc = 0.0;
+			REAL *diag_tmp = new REAL [v->nv]();
+			REAL diag_sc = 0.0;
 
-		for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
-			int jf = mesh->cellFaces[ic][j];
+			for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+				int jf = mesh->cellFaces[ic][j];
 
-			REAL* vn_tmp = new REAL[v->nv];
-			REAL* vnp_tmp = new REAL[v->nv];
-			for (int i = 0; i < v->nv; ++i) {
-				vn_tmp[i] = mesh->getOutSign(ic, j) * (
-				mesh->faceNormals[jf][0] * v->vx[i] +
-				mesh->faceNormals[jf][1] * v->vy[i] +
-				mesh->faceNormals[jf][2] * v->vz[i]);
-				if (vn_tmp[i] <= 0.0) {
-					vnp_tmp[i] = 0.0;
+				REAL* vn_tmp = new REAL[v->nv];
+				REAL* vnp_tmp = new REAL[v->nv];
+				for (int i = 0; i < v->nv; ++i) {
+					vn_tmp[i] = mesh->getOutSign(ic, j) * (
+					mesh->faceNormals[jf][0] * v->vx[i] +
+					mesh->faceNormals[jf][1] * v->vy[i] +
+					mesh->faceNormals[jf][2] * v->vz[i]);
+					if (vn_tmp[i] <= 0.0) {
+						vnp_tmp[i] = 0.0;
+					}
+					else {
+						vnp_tmp[i] = vn_tmp[i];
+					}
+					diag_tmp[i] += (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnp_tmp[i];
 				}
-				else {
-					vnp_tmp[i] = vn_tmp[i];
-				}
-				diag_tmp[i] += (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * vnp_tmp[i];
+				diag_sc += 0.5 * (mesh->faceAreas[jf] / mesh->cellVolumes[ic]);
+				delete [] vn_tmp;
+				delete [] vnp_tmp;
 			}
-			diag_sc += 0.5 * (mesh->faceAreas[jf] / mesh->cellVolumes[ic]);
-			delete [] vn_tmp;
-			delete [] vnp_tmp;
-		}
-		
-		diag_r1[ic] = diag_sc * v->vn_abs_r1;
-		REAL *diag_t_full = diag_r1[ic].full();
+			
+			diag_r1[ic] = diag_sc * v->vn_abs_r1;
+			REAL *diag_t_full = diag_r1[ic].full();
 
-		REAL *ratio = new REAL [v->nv];
-		for (int i = 0; i < v->nv; ++i) {
-			ratio[i] = diag_t_full[i] / diag_tmp[i];
+			REAL *ratio = new REAL [v->nv];
+			for (int i = 0; i < v->nv; ++i) {
+				ratio[i] = diag_t_full[i] / diag_tmp[i];
+			}
+			
+			diag_r1[ic] = (1.0 / *std::min_element(ratio, ratio + v->nv)) * diag_r1[ic];
+			
+			delete [] diag_tmp;
+			delete [] diag_t_full;
+			delete [] ratio;
 		}
-		
-		diag_r1[ic] = (1.0 / *std::min_element(ratio, ratio + v->nv)) * diag_r1[ic];
-		
-		delete [] diag_tmp;
-		delete [] diag_t_full;
-		delete [] ratio;
 	}
 	auto TIME2 = omp_get_wtime();
 	std::cout << "diag_r1 time " << TIME2 - TIME1 << " s" << std::endl;
 
+	if (config->vnAbsRestart == 1) {
+		// SAVE to file
+		std::ofstream file;
+		file.precision(17); // TODO magic number
+		file.open("../vn_abs_restart.txt", std::ofstream::trunc);
+		for (int jf = 0; jf < mesh->nFaces; ++jf) {
+			file << vn[jf].to_string() << "\n";
+			file << vn_abs[jf].to_string() << "\n";
+			file << vn_abs_max[jf] << "\n";
+		}
+		for (int ic = 0; ic < mesh->nCells; ++ic) {
+			file << diag_r1[ic].to_string() << "\n";
+		}
+		file.close();
+	}
+	if (config->vnAbsRestart == 2) {
+		// READ FROM FILE
+		std::ifstream file("../vn_abs_restart.txt");
+		std::string line;
+		for (int jf = 0; jf < mesh->nFaces; ++jf) {
+			getline(file, line); vn[jf] = from_string(line, v->zero);
+			getline(file, line); vn_abs[jf] = from_string(line, v->zero);
+			getline(file, line); std::istringstream ss(line); ss.precision(17); ss >> vn_abs_max[jf];
+		}
+		for (int ic = 0; ic < mesh->nCells; ++ic) {
+			getline(file, line); diag_r1[ic] = from_string(line, v->zero);
+		}
+		file.close();
+	}
+	std::cout << "READ/SAVE TO FILE " << omp_get_wtime() - TIME2 << "s" << std::endl;
+
 	f.resize(mesh->nCells, Tensor());
 
-	n.resize(mesh->nCells, 0.0);
-	rho.resize(mesh->nCells, 0.0);
-	ux.resize(mesh->nCells, 0.0);
-	uy.resize(mesh->nCells, 0.0);
-	uz.resize(mesh->nCells, 0.0);
-	p.resize(mesh->nCells, 0.0);
-	T.resize(mesh->nCells, 0.0);
-	nu.resize(mesh->nCells, 0.0);
+	n.   resize(mesh->nCells, 0.0);
+	ux.  resize(mesh->nCells, 0.0);
+	uy.  resize(mesh->nCells, 0.0);
+	uz.  resize(mesh->nCells, 0.0);
+	T.   resize(mesh->nCells, 0.0);
+	nu.  resize(mesh->nCells, 0.0);
+	rho. resize(mesh->nCells, 0.0);
+	p.   resize(mesh->nCells, 0.0);
+	Mach.resize(mesh->nCells, 0.0);
+
 	compression.resize(mesh->nCells, 0.0);
 	rank_x.resize(mesh->nCells, 0.0);
 	rank_y.resize(mesh->nCells, 0.0);
 	rank_z.resize(mesh->nCells, 0.0);
+	max_rank.resize(mesh->nCells, 0.0);
 	data.resize(mesh->nCells, std::vector < REAL >());
 
+	std::cout << "f init start, ";
 	if (config->initType == 0) {
+		std::cout << "initType=0" << std::endl;
 		REAL x;
 		REAL y;
 		REAL z;
@@ -479,27 +526,45 @@ Solution<Tensor>::Solution(
 			z = mesh->cellCenters[ic][2];
 			f[ic] = problem->getInit(x, y, z,
 					problem->initData);
+			std::cout << ic << " ";
 		}
 	}
 	else if (config->initType == 1) {
-	
-	}
-	else if (config->initType == 2) {
+		std::cout << "initType=1" << std::endl;
         std::string init_path = config->initFilename;
 	    std::ifstream init(init_path);
+		init.precision(17); // TODO magic number
         std::string line;
         int ic = 0;
+		while (getline(init, line)) {
+			f[ic] = from_string(line, v->zero);
+			++ic;
+			std::cout << ic << " ";
+		}
+		init.close();
+	}
+	else if (config->initType == 2) {
+		std::cout << "initType=2" << std::endl;
+        std::string init_path = config->initFilename;
+	    std::ifstream init(init_path);
+		init.precision(17); // TODO magic number
+        std::string line;
+        int ic = 0;
+		REAL x, y, z;
         while (getline(init, line)) {
             std::istringstream line_stream(line);
-            line_stream >> n[ic] >> ux[ic] >> uy[ic] >> uz[ic] >> T[ic];
+			line_stream.precision(17); // TODO magic number
+            line_stream >> x >> y >> z >> n[ic] >> ux[ic] >> uy[ic] >> uz[ic] >> T[ic];
             f[ic] = f_maxwell_t(v, n[ic], ux[ic], uy[ic], uz[ic], T[ic], gas_params->Rg);
             ++ic;
+			std::cout << ic << " ";
         }
+		init.close();
 	}
 	else {
 	    std::cout << "Incorrect init" << std::endl;
 	}
-	// TODO: other inits
+	std::cout << "\n";
 	auto TIME3 = omp_get_wtime();
 	std::cout << "initial time " << TIME3 - TIME2 << " s" << std::endl;
 
@@ -610,9 +675,9 @@ void Solution<Tensor>::reconstruction_2nd_order() {
     for (int ic = 0; ic < mesh->nCells; ++ic) {
         std::vector < int > hexaFaces = mesh->cellFaces[ic];
         
-        Tensor slope0 = minmod(-mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], mesh->getOutSign(ic, 2) * slope[hexaFaces[2]]);
-        Tensor slope1 = minmod(-mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], mesh->getOutSign(ic, 3) * slope[hexaFaces[3]]);
-        Tensor slope2 = minmod(-mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], mesh->getOutSign(ic, 5) * slope[hexaFaces[5]]);
+        Tensor slope0 = minmod(-mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], mesh->getOutSign(ic, 2) * slope[hexaFaces[2]], config->tol);
+        Tensor slope1 = minmod(-mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], mesh->getOutSign(ic, 3) * slope[hexaFaces[3]], config->tol);
+        Tensor slope2 = minmod(-mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], mesh->getOutSign(ic, 5) * slope[hexaFaces[5]], config->tol);
         
         std::vector<REAL> cellCenter = mesh->cellCenters[ic];
         
@@ -704,7 +769,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			    // flux[jf] = 0.5 * mesh->faceAreas[jf] *
 				// 	    (round_t(round_t(fLeftRight[jf][0] + fLeftRight[jf][1], config->tol) * vn[jf], config->tol) - 
 				// 	        vn_abs_max[jf] * round_t(fLeftRight[jf][1] - fLeftRight[jf][0], config->tol));
-			    flux[jf] = 0.5 * mesh->faceAreas[jf] * ((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] -  vn_abs_max[jf] * (fLeftRight[jf][1] - fLeftRight[jf][0]));
+			    flux[jf] = 0.5 * mesh->faceAreas[jf] * ((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - vn_abs_max[jf] * (fLeftRight[jf][1] - fLeftRight[jf][0]));
 			}
 			flux[jf].round(config->tol);
 			auto end = omp_get_wtime();
@@ -739,37 +804,34 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			uy[ic]  = params[2];
 			uz[ic]  = params[3];
 			T[ic]   = params[4];
-			rho[ic] = params[5];
-			p[ic]   = params[6];
-			nu[ic]  = params[7];
+			nu[ic]  = params[5];
 			compression[ic] = f[ic].compression();
 			rank_x[ic] = f[ic].r()[0];
 			rank_y[ic] = f[ic].r()[1];
 			rank_z[ic] = f[ic].r()[2];
+			max_rank[ic] = std::max({f[ic].r()[0], f[ic].r()[1], f[ic].r()[2]});
+			
+			REAL u = pow(ux[ic]*ux[ic] + uy[ic]*uy[ic] + uz[ic]*uz[ic], 0.5)*gas_params->v_s;
+			REAL Mach = u / pow(gas_params->g * gas_params->Rg * T[ic]*gas_params->T_s, 0.5);
 
 			data[ic] = {
-					n[ic],
-					ux[ic],
-					uy[ic],
-					uz[ic],
-					T[ic],
-					rho[ic],
-					p[ic],
-					nu[ic],
+					n[ic]  *gas_params->n_s,
+					ux[ic] *gas_params->v_s,
+					uy[ic] *gas_params->v_s,
+					uz[ic] *gas_params->v_s,
+					T[ic]  *gas_params->T_s,
+					n[ic]  *gas_params->rho_s,
+					n[ic]*gas_params->m*gas_params->p_s,
+					Mach,
 					compression[ic],
 					rank_x[ic],
 					rank_y[ic],
-					rank_z[ic]
+					rank_z[ic],
+					max_rank[ic]
 			};
 		}
 
-		REAL frob_norm = 0.0;
-		#pragma omp parallel for reduction(+:frob_norm)
-		for (int ic = 0; ic < mesh->nCells; ++ic) {
-			frob_norm += pow(rhs[ic].norm(), 2.0);
-		}
-		frob_norm = pow(frob_norm / mesh->nCells, 0.5);
-		frob_norm_iter.push_back(frob_norm);
+		REAL frob_norm = vector_norm(rhs);
 		update_res(frob_norm);
 		auto TIME4 = omp_get_wtime();
 		timings[RHS].push_back(TIME4 - TIME3);
@@ -808,8 +870,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 						if ((icn >= 0) && (icn_perm > ic_perm)) {
 						    if (!config->isRusanov) {
 								// TODO important
-							    // vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-							    vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+							    vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+							    // vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
                             }
                             else {
                                 vnm_loc = 0.5 * (-vn_abs_max[jf] * v->ones + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
@@ -844,8 +906,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 						if ((icn >= 0) && (icn_perm < ic_perm)) {
 						    if (!config->isRusanov) {
 								// TODO important
-							    // vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-							    vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+							    vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+							    // vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 					        }
 					        else {
 					            vnm_loc = 0.5 * (-vn_abs_max[jf] * v->ones + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
@@ -868,6 +930,21 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				f[ic] = f[ic] + df[ic];
 				f[ic].round(config->tol);
 			}
+			int  f_max_rank = 0;
+			int df_max_rank = 0;
+			for (int ic = 0; ic < mesh->nCells; ++ic) {
+				int  f_max_rank_tmp = std::max({ f[ic].r()[0],  f[ic].r()[1],   f[ic].r()[2]});
+				int df_max_rank_tmp = std::max({df[ic].r()[0], df[ic].r()[1],  df[ic].r()[2]});
+				if (f_max_rank_tmp > f_max_rank) {
+					f_max_rank = f_max_rank_tmp;
+				}
+				if (df_max_rank_tmp > df_max_rank) {
+					df_max_rank = df_max_rank_tmp;
+				}
+			}
+			std::cout << " f max rank = " <<  f_max_rank << std::endl;
+			std::cout << "df max rank = " << df_max_rank << std::endl;
+			std::cout << "df norm     = " << vector_norm(df) << std::endl;
 //			for (int ic = 0; ic < mesh->nCells; ++ic) {
 //				std::cout << "Tensor, r=(" << df[ic].r()[0] << "," << df[ic].r()[1] << "," << df[ic].r()[2] << ")";
 //				std::cout << ", n=(" << df[ic].n()[0] << "," << df[ic].n()[1] << "," << df[ic].n()[2] << ")" << std::endl;
@@ -879,18 +956,25 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 
 		// TODO save timings
 
-		if (it % config->saveTecStep == config->saveTecStep-1) {
+		if ((it > 0) && (it % config->saveTecStep == 0)) {
             std::ostringstream it_ss;
             it_ss << it;
             std::string it_string = it_ss.str();
 			mesh->write_tecplot(data, "tec_" + it_string + ".dat",
-					{"n", "ux", "uy", "uz", "T", "rho", "p", "nu", "compression", "rank_x", "rank_y", "rank_z"});
-			write_wall_params();
+					{"n", "ux", "uy", "uz", "T", "rho", "p", "Mach", "compression", "rank_x", "rank_y", "rank_z", "max_rank"});
+		}
+		if ((it > 0) && (it % config->saveRestartStep == 0)) {
+			write_restart();
+		}
+		if ((it > 0) && (it % config->saveMacroStep == 0)) {
+			write_boundary_params();
+			write_macro_restart();
 		}
 	}
 	mesh->write_tecplot(data, "tec_final.dat",
-			{"n", "ux", "uy", "uz", "T", "rho", "p", "nu", "compression", "rank_x", "rank_y", "rank_z"});
-	write_wall_params();
+			{"n", "ux", "uy", "uz", "T", "rho", "p", "nu", "compression", "rank_x", "rank_y", "rank_z", "max_rank"});
+	write_restart();
+	write_boundary_params();
 	write_macro_restart();
 }
 

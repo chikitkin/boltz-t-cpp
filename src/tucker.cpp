@@ -378,7 +378,10 @@ REAL Tucker::sum() const
 	delete [] ones;
 
 	S = tmp.full();
-	return S[0];
+	REAL res = S[0];
+	delete [] S;
+
+	return res;
 }
 
 REAL Tucker::norm()
@@ -561,14 +564,39 @@ Tucker reflect(const Tucker& t, char axis)
 	}
 }
 
-Tucker minmod(const Tucker& t1, const Tucker& t2)
+Tucker minmod(const Tucker& t1, const Tucker& t2, REAL tol)
 {
     // check that shapes are equal
 	if (t1.n() != t2.n()) {
 		std::cout << "Different shapes in minmod!" << std::endl;
 		exit(-1);
 	}
-    return 0.5 * (t1 + t2);
+
+	REAL * t1_full = t1.full();
+	REAL * t2_full = t2.full();
+	REAL * res_full = new REAL[t1.n1 * t1.n2 * t1.n3];
+
+    for (int i = 0; i < t1.n1 * t1.n2 * t1.n3; ++i) {
+        if (t1_full[i] * t2_full[i] <= 0.0) {
+            res_full[i] = 0.0;
+        }
+        else {
+            if (std::abs(t1_full[i]) < std::abs(t2_full[i])) {
+                res_full[i] = t1_full[i];
+            }
+            else {
+                res_full[i] = t2_full[i];
+            }
+        }
+    }
+
+	delete [] t1_full;
+	delete [] t2_full;
+
+	Tucker res(t1.n1, t1.n2, t1.n3, res_full, tol);
+	delete [] res_full;
+
+    return res;
 }
 
 
@@ -591,18 +619,7 @@ std::vector<int> Tucker::multiI(int I)
 	// TODO: implement
 	return {0, 0, 0};
 }
-/*
-std::string to_string()
-{
-    std::string res;
-    res.append("");
-}
 
-Tucker from_string(std::string &tensor_string)
-{
-
-}
-*/
 REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int &r)
 {
 	int info;
@@ -784,4 +801,36 @@ REAL **qr(int n1, int n2, const REAL *a)
 	return result;
 }
 
+std::string Tucker::to_string() const
+{
+	std::stringstream ss;
+	ss.precision(17); // TODO magic number
+	ss << n1 << " " << n2 << " " << n3 << " " << r1 << " " << r2 << " " << r3 << " ";
+	for (int i = 0; i < r1*r2*r3; ++i) { ss << g[i]  << " ";  }
+	for (int i = 0; i < n1*r1; ++i)    { ss << u1[i] << " "; }
+	for (int i = 0; i < n2*r2; ++i)    { ss << u2[i] << " "; }
+	for (int i = 0; i < n3*r3; ++i)    { ss << u3[i] << " "; }
+	return ss.str();
+}
+
+Tucker from_string(const std::string &tensor_string, const Tucker& foo)
+{
+	std::stringstream ss(tensor_string);
+	ss.precision(17); // TODO magic number
+
+	int n1, n2, n3;
+	int r1, r2, r3;
+
+	ss >> n1 >> n2 >> n3;
+	ss >> r1 >> r2 >> r3;
+
+	Tucker res(n1, n2, n3, r1, r2, r3);
+
+	for (int i = 0; i < r1*r2*r3; ++i) { ss >> res.g[i];  }
+	for (int i = 0; i < n1*r1; ++i)    { ss >> res.u1[i]; }
+	for (int i = 0; i < n2*r2; ++i)    { ss >> res.u2[i]; }
+	for (int i = 0; i < n3*r3; ++i)    { ss >> res.u3[i]; }
+
+	return res;
+}
 

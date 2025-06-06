@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits import mplot3d
 
-# x y z n T rho p Px Py Pz Mx My Mz 
+# x y z n T Px Py Pz Mx My Mz type
 data = np.loadtxt(sys.argv[1], skiprows=1)
 print(data.shape)
 
@@ -48,16 +48,13 @@ z = data[:, 2]
 n = data[:, 3]
 T = data[:, 4]
 
-rho = data[:, 5]# / rho_s
-p   = data[:, 6]# / p_s
+Px = data[:, 5]
+Py = data[:, 6]
+Pz = data[:, 7]
 
-Px = data[:, 7]
-Py = data[:, 8]
-Pz = data[:, 9]
-
-Mx = data[:, 10]# / (n_s * v_s ** 3)
-My = data[:, 11]# / (n_s * v_s ** 3)
-Mz = data[:, 12]# / (n_s * v_s ** 3)
+Mx = data[:, 8]# / (n_s * v_s ** 3)
+My = data[:, 9]# / (n_s * v_s ** 3)
+Mz = data[:, 10]# / (n_s * v_s ** 3)
 
 r = np.sqrt(x**2 + y**2 + z**2)
 R = np.mean(r)

@@ -332,7 +332,7 @@ Full reflect(const Full& t, char axis)
 	}
 }
 
-Full minmod(const Full& t1, const Full& t2)
+Full minmod(const Full& t1, const Full& t2, REAL tol)
 {
     // check that shapes are equal
 	if (t1.n() != t2.n()) {
@@ -376,15 +376,30 @@ std::vector<int> Full::multiI(int I)
 	// TODO: implement
 	return {0, 0, 0};
 }
-/*
-std::string to_string()
-{
 
+std::string Full::to_string() const
+{
+	std::stringstream ss;
+	ss.precision(17); // TODO magic number
+	ss << n1 << " " << n2 << " " << n3 << " " << r1 << " " << r2 << " " << r3 << " ";
+	for (int i = 0; i < n1*n2*n3; ++i) { ss << g[i] << " "; }
+	return ss.str();
 }
 
-Full from_string(std::string &tensor_string)
+Full from_string(const std::string &tensor_string, const Full& foo)
 {
+	std::stringstream ss(tensor_string);
+	ss.precision(17); // TODO magic number
 
+	int n1, n2, n3;
+	int r1, r2, r3;
+
+	ss >> n1 >> n2 >> n3;
+	ss >> r1 >> r2 >> r3;
+
+	Full res(n1, n2, n3, r1, r2, r3);
+
+	for (int i = 0; i < n1*n2*n3; ++i) { ss >> res.g[i];  }
+
+	return res;
 }
-*/
-

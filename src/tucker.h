@@ -57,13 +57,13 @@ public:
 	friend Tucker operator *(const Tucker& t, const REAL alpha);
 	friend Tucker operator /(const Tucker& t1, const Tucker& t2);
 	friend Tucker reflect(const Tucker& t, char axis);
-	friend Tucker minmod(const Tucker& t1, const Tucker& t2);
+	friend Tucker minmod(const Tucker& t1, const Tucker& t2, REAL tol);
 
 	friend Tucker round_t(const Tucker& t, REAL tol=1e-14, int rmax=1000000);
-/*
-	std::string to_string();
-	friend Tucker from_string(std::string &tensor_string);
-*/
+
+	std::string to_string() const;
+	friend Tucker from_string(const std::string &tensor_string, const Tucker& foo);
+
 private:
 	int I(int i1, int i2, int i3);
 	std::vector <int> multiI(int I);

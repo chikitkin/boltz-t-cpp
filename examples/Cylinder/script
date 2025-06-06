@@ -7,9 +7,9 @@ now=$(date '+%Y_%m_%d__%H_%M_%S')
 mkdir $now
 cd $now
 
-../../../src/cli.o ../config.cfg ../mesh_medium.mesh ../macro_restart.txt
-python3 ../../plot.py res.txt
-python3 ../../cylinder.py wall.txt
+../../../src/cli.o ../config.cfg ../mesh_medium.mesh
+python3 ../../plot_res.py res.txt
+python3 ../../plot_cylinder.py boundary.txt
 
 
 

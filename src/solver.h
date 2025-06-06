@@ -28,13 +28,13 @@ public:
     // Argon
 	REAL Mol = 40e-3; // = Mol
 	REAL Pr = 2.0 / 3.0;
-	REAL C = 144.4;
-	REAL T_0 = 273.11;
-	REAL mu_0 = 2.125e-5;
-	REAL omega = 0.734;
-	
 	REAL g = 5.0 / 3.0; // # specific heat ratio
-		
+
+	REAL omega = 0.734;
+	REAL mu_0 = 2.125e-5;
+	REAL T_0  = 273.11;
+	REAL C    = 144.4;
+
 	REAL Rg = Ru / Mol; // = self.Ru / self.Mol  # J / (kg * K)
 	REAL m = Mol / Na; // # kg
 
@@ -42,7 +42,7 @@ public:
 	REAL mu_suth(REAL T) const;
 
 	// Problem-specific
-	REAL l_s;
+	REAL l_s = 1.0;
 	REAL n_s;
 	REAL v_s;
 	REAL T_s;
@@ -202,20 +202,21 @@ public:
 };
 
 struct Config {
-	bool isImplicit = false;
-
 	REAL CFL = 0.5;
 	REAL tol = 1e-7;
 	int order = 1;
 	
+	bool isImplicit = false;
 	bool isRusanov = false;
-	bool isImplicitIncrement = true;
+	bool isIncrement = true;
+	int vnAbsRestart = 0; // 0 - don't write to file, 1 - write to file, 2 - read from file
 
 	int initType = 0;
 	std::string initFilename = "";
 
 	int saveTecStep = 1e+5;
 	int saveMacroStep = 1e+5;
+	int saveRestartStep = 1e+5;
 };
 
 template <class Tensor>
@@ -262,26 +263,32 @@ public:
 	std::vector < Tensor > df;
 
 	// Arrays for macroparameters
+
 	std::vector < REAL > n;
-	std::vector < REAL > rho;
 	std::vector < REAL > ux, uy, uz;
-	std::vector < REAL > p;
 	std::vector < REAL > T;
 	std::vector < REAL > nu;
+	std::vector < REAL > rho;
+	std::vector < REAL > p;
+	std::vector < REAL > Mach;
+
 	std::vector < REAL > compression;
 	std::vector < REAL > rank_x;
 	std::vector < REAL > rank_y;
 	std::vector < REAL > rank_z;
+	std::vector < REAL > max_rank;
 	std::vector < std::vector < REAL > > data;
 	std::map<AlgoritmParts, std::vector<double>> timings;
 
 	std::vector < BoundaryCondition<Tensor> *> bcList; // TODO make shared
 
-	void write_wall_params();
+	void write_boundary_params();
+	void write_restart();
 	void write_macro_restart();
 
 //	int it;
-	std::vector <REAL> frob_norm_iter;
+
+	REAL vector_norm(std::vector<Tensor> vec);
 
 	void plot_residual();
 	void create_res();
