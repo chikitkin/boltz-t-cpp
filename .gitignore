@@ -2,7 +2,6 @@
 *.o
 /Debug/
 *.dat
-*.txt
 /Default/
 *.out
 *.png

@@ -14,11 +14,11 @@ void print_matrix( char* desc, int m, int n, REAL* a, int lda )
 }
 
 REAL f(REAL x, REAL y, REAL z) {
-	return 2.0 + x + 4*y;
+	return 2.0 + x + 4*y + exp(-z*z);
 }
 
 REAL g(REAL x, REAL y, REAL z) {
-	return 3.0 + exp(x);
+	return exp(-x);
 }
 
 int main(){
@@ -26,6 +26,7 @@ int main(){
 	
 // vn_abs_r1 test
 	
+	Tensor vn_abs;
 	Tensor vn_abs_r1;
 
 	int nvx = 44;
@@ -82,18 +83,89 @@ int main(){
 	sum = pow(sum, 0.5);
 	std::cout << "sum " << sum << std::endl;
 
-	vn_abs_r1 = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp);
+	vn_abs = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp);
+	vn_abs_r1 = Tensor(vn_abs);
 	delete [] vn_abs_r1_tmp;
 
 	std::cout << "vn_abs_r1" << std::endl;
 	std::cout << vn_abs_r1 << std::endl;
 	std::cout << vn_abs_r1.norm() << std::endl;
 
-	vn_abs_r1.round(1e-7, 1);
-
-	std::cout << vn_abs_r1 << std::endl;
-	std::cout << vn_abs_r1.norm() << std::endl;
+	for (int r = 17; r > 0; --r) {
+		vn_abs_r1.round(1e-18, r);
+		std::cout << "rank = " << r << ", error norm = " << (vn_abs - vn_abs_r1).norm() << std::endl;
+	}
 	
+/*************************************************************************************/
+// Ortho test
+	int n1, n2, n3;
+	n1 = 34;
+	n2 = 21;
+	n3 = 12;
+	
+	REAL *a = new REAL[n1*n2*n3];
+	REAL *b = new REAL[n1*n2*n3];
+	REAL *F = new REAL[n1*n2*n3];
+
+	for (int i = 0; i < n1; ++i) {
+		for (int j = 0; j < n2; ++j) {
+			for (int k = 0; k < n3; ++k) {
+				a[i*n2*n3 + j*n3 + k] = f(i, j, k);
+				b[i*n2*n3 + j*n3 + k] = g(i, j, k);
+				F[i*n2*n3 + j*n3 + k] = (a[i*n2*n3 + j*n3 + k] / b[i*n2*n3 + j*n3 + k]);
+			}
+		}
+	}
+
+	Tensor a_t(n1, n2, n3, a, 1e-8);
+	Tensor b_t(n1, n2, n3, b, 1e-8);
+
+	Tensor c_t;
+
+	c_t = 3 * a_t + a_t * b_t;
+	Tensor d_t(c_t);
+
+	Tensor F_t(n1, n2, n3, F);
+
+	F_t = -(a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t);
+	std::cout << "F_t: " << F_t << std::endl;
+
+	REAL * F_t_full = F_t.full();
+
+	REAL F_err = 0.0;
+	REAL F_sum = 0.0;
+	for (int i = 0; i < n1*n2*n3; i++) {
+		F_err += pow(F_t_full[i] - F[i], 2);
+		F_sum += pow(F[i], 2);
+	}
+	F_err = pow(F_err, 0.5);
+	F_sum = pow(F_sum, 0.5);
+	std::cout << "compare full: " << F_err / F_sum << std::endl;
+
+	F_sum = 0.0;
+	for (int i = 0; i < n1*n2*n3; i++) {
+		F_sum += F[i];
+	}
+	std::cout << "compare sum: " << abs(F_sum - F_t.sum()) / abs(F_sum) << std::endl;
+
+	std::cout << F_t << std::endl;
+
+	REAL * d_t_full = d_t.full();
+	std::cout << "before ortho: " << (c_t - d_t).norm() / d_t.norm() << std::endl;
+	d_t.orthogonalize();
+	std::cout << " after ortho: " << (c_t - d_t).norm() / d_t.norm() << std::endl;
+
+	std::cout << b_t << std::endl;
+	std::cout << "divide error = " << ((a_t / b_t) - F_t).norm() / F_t.norm() << std::endl;
+
+	std::cout << "a_t string error norm: " << (from_string(a_t.to_string(), a_t) - a_t).norm() / a_t.norm() << std::endl;
+
+	std::cout << "Test sum 2 "  << (a_t + b_t).sum()  << std::endl;
+	std::cout << "Test full 2 " << (a_t + b_t).full() << std::endl;
+
+	std::cout << "Test minmod" << std::endl;
+	std::cout << minmod(-a_t, b_t, 1e-8) << std::endl;
+
 /*************************************************************************************/
 // Reflect test
 /*
@@ -331,7 +403,6 @@ int main(){
 	delete [] a2;
 	delete [] a3;
 /*************************************************************************************/
-	return 0;
 }
 
 /*************************************************************************************/

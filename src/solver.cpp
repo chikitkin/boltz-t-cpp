@@ -258,7 +258,7 @@ void Solution<Tensor>::write_boundary_params() // TODO FIX FOR DIMENSIONLESS
 	file << "n" << " " << "T" << " ";
 	file << "Px" << " " << "Py" << " " << "Pz" << " ";
 	file << "Mx" << " " << "My" << " " << "Mz" << " ";
-	file << "type" << " ";
+	file << "type" << " " << "p_inf" << " " << "S_inf";
 	file << "\n";
 
 	for (int ibf = 0; ibf < bcList.size(); ++ibf) {
@@ -282,8 +282,45 @@ void Solution<Tensor>::write_boundary_params() // TODO FIX FOR DIMENSIONLESS
 			REAL Mx = 0.5 * v->hv3 * (v->vx_t * v->v2 * f).sum();
 			REAL My = 0.5 * v->hv3 * (v->vy_t * v->v2 * f).sum();
 			REAL Mz = 0.5 * v->hv3 * (v->vz_t * v->v2 * f).sum();
-			file << Mx << " " << My << " " << Mz;
-			file << bcList[ibf]->type;
+			file << Mx << " " << My << " " << Mz << " ";
+			file << bcList[ibf]->type << " ";
+			file << gas_params->p_s << " " << gas_params->S_inf;
+
+			file << "\n";
+		}
+	}
+	file.close();
+}
+
+template <class Tensor>
+void Solution<Tensor>::write_rate() // TODO FIX FOR DIMENSIONLESS
+{
+	std::ofstream file;
+	file.precision(17); // TODO magic number
+	file.open("rate.txt", std::ofstream::trunc);
+
+	file << "x y z n ux uy uz T A nx ny nz" << std::endl;
+
+	for (int jf = 0; jf < mesh->nFaces; ++jf) {
+		{
+			REAL x = mesh->faceCenters[jf][0];
+			REAL y = mesh->faceCenters[jf][1];
+			REAL z = mesh->faceCenters[jf][2];
+			file << x << " " << y << " " << z << " ";
+
+			Tensor f = 0.5 * (fLeftRight[jf][0] + fLeftRight[jf][1]);
+
+			std::vector<REAL> params = comp_macro_params(f, v, gas_params);
+			REAL n  = params[0];
+			REAL ux = params[1];
+			REAL uy = params[2];
+			REAL uz = params[3];
+			REAL T  = params[4];
+			file << n << " " << ux << " " << uy << " " << uz << " " << T << " ";
+
+			file << mesh->faceAreas[jf] << " ";
+			file << mesh->faceNormals[jf][0] << " " << mesh->faceNormals[jf][1] << " " << mesh->faceNormals[jf][2];
+
 			file << "\n";
 		}
 	}
@@ -312,7 +349,7 @@ void Solution<Tensor>::write_macro_restart()
 
 	for (int ic = 0; ic < mesh->nCells; ++ic) {
 	    file << mesh->cellCenters[ic][0] << " " << mesh->cellCenters[ic][1] << " " << mesh->cellCenters[ic][2] << " ";
-	    file << n[ic] << " " << ux[ic] << " " << uy[ic] << " " << uz[ic] << " " << T[ic] << "\n";
+	    file << n[ic] << " " << ux[ic] << " " << uy[ic] << " " << uz[ic] << " " << T[ic] << " " << mesh->cellVolumes[ic] << "\n";
 	}
 	file.close();
 }
@@ -503,9 +540,6 @@ Solution<Tensor>::Solution(
 	uz.  resize(mesh->nCells, 0.0);
 	T.   resize(mesh->nCells, 0.0);
 	nu.  resize(mesh->nCells, 0.0);
-	rho. resize(mesh->nCells, 0.0);
-	p.   resize(mesh->nCells, 0.0);
-	Mach.resize(mesh->nCells, 0.0);
 
 	compression.resize(mesh->nCells, 0.0);
 	rank_x.resize(mesh->nCells, 0.0);
@@ -815,14 +849,14 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			REAL Mach = u / pow(gas_params->g * gas_params->Rg * T[ic]*gas_params->T_s, 0.5);
 
 			data[ic] = {
-					n[ic]  *gas_params->n_s,
-					ux[ic] *gas_params->v_s,
-					uy[ic] *gas_params->v_s,
-					uz[ic] *gas_params->v_s,
-					T[ic]  *gas_params->T_s,
-					n[ic]  *gas_params->rho_s,
-					n[ic]*gas_params->m*gas_params->p_s,
-					Mach,
+					n[ic]       * gas_params->n_s,   // n
+					ux[ic]      * gas_params->v_s,   // ux
+					uy[ic]      * gas_params->v_s,   // uy
+					uz[ic]      * gas_params->v_s,   // uz
+					T[ic]       * gas_params->T_s,   // T
+					n[ic]       * gas_params->rho_s, // rho
+					n[ic]*T[ic] * gas_params->p_s,   // p
+					Mach,                            // Mach
 					compression[ic],
 					rank_x[ic],
 					rank_y[ic],
@@ -967,15 +1001,16 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			write_restart();
 		}
 		if ((it > 0) && (it % config->saveMacroStep == 0)) {
-			write_boundary_params();
 			write_macro_restart();
+			write_boundary_params();
 		}
 	}
 	mesh->write_tecplot(data, "tec_final.dat",
-			{"n", "ux", "uy", "uz", "T", "rho", "p", "nu", "compression", "rank_x", "rank_y", "rank_z", "max_rank"});
+			{"n", "ux", "uy", "uz", "T", "rho", "p", "Mach", "compression", "rank_x", "rank_y", "rank_z", "max_rank"});
 	write_restart();
-	write_boundary_params();
 	write_macro_restart();
+	write_boundary_params();
+	// write_rate();
 }
 
 template class VelocityGrid<Full>;

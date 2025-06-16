@@ -26,6 +26,19 @@ void transpose(int n1, int n2, int n3, REAL* a, int dim)
 			delete [] a_tmp;
 			break;
 		}
+		case 021: {
+			REAL* a_tmp = new REAL [n1 * n2 * n3];
+			LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1 * n2 * n3, 1, a, 1, a_tmp, 1);
+			for (int i = 0; i < n1; ++i) {
+				for (int j = 0; j < n2; ++j) {
+					for (int k = 0; k < n3; ++k) {
+						a[i * n2 * n3 + k * n2 + j] = a_tmp[i * n2 * n3 + j * n3 + k];
+					}
+				}
+			}
+			delete [] a_tmp;
+			break;
+		}
 		default: {
 			std::cout << "Wrong dim, try 120, 201, 210." << std::endl;
 			exit(-1);
@@ -327,29 +340,29 @@ REAL *Tucker::full() const
 	const REAL alpha = 1.0;
 	const REAL beta = 0.0;
 
-	REAL *z1 = new REAL[n1*r2*r3];
-	REAL *z2 = new REAL[n1*n2*r3];
-	REAL *res = new REAL[n1*n2*n3];
+	REAL *tmp1 = new REAL[r1*r2*n3];
+	REAL *tmp2 = new REAL[n3*r1*n2];
+	REAL *tmp3 = new REAL[n1*n2*n3];
 
-	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-							n1, r2*r3, r1, alpha, u1, r1, g, r2*r3, beta, z1, r2*r3);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+//							m      n   k           A   k   B   k         C     n
+							r1*r2, n3, r3, alpha,  g,  r3, u3, r3, beta, tmp1, n3);
+	transpose(r1, r2, n3, tmp1, 201);
 
-	MKL_Dimatcopy ('R', 'T', n1, r2*r3, alpha, z1, r2*r3, n1);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+//							m      n   k           A      k   B   k         C     n
+							n3*r1, n2, r2, alpha,  tmp1,  r2, u2, r2, beta, tmp2, n2);
+	transpose(n3, r1, n2, tmp2, 021);
 
-	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-							n2, r3*n1, r2, alpha, u2, r2, z1, r3*n1, beta, z2, r3*n1);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+//							m      n   k           A      k   B   k         C     n
+							n3*n2, n1, r1, alpha,  tmp2,  r1, u1, r1, beta, tmp3, n1);
+	transpose(n3, n2, n1, tmp3, 210);
 
-	MKL_Dimatcopy ('R', 'T', n2, r3*n1, alpha, z2, r3*n1, n2);
+	delete [] tmp1;
+	delete [] tmp2;
 
-	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-							n3, n1*n2, r3, alpha, u3, r3, z2, n1*n2, beta, res, n1*n2);
-
-	MKL_Dimatcopy ('R', 'T', n3, n1*n2, alpha, res, n1*n2, n3);
-
-	delete [] z1;
-	delete [] z2;
-
-	return res;
+	return tmp3;
 }
 // Compute sum of all elements
 REAL Tucker::sum() const
@@ -574,6 +587,7 @@ Tucker minmod(const Tucker& t1, const Tucker& t2, REAL tol)
 
 	REAL * t1_full = t1.full();
 	REAL * t2_full = t2.full();
+
 	REAL * res_full = new REAL[t1.n1 * t1.n2 * t1.n3];
 
     for (int i = 0; i < t1.n1 * t1.n2 * t1.n3; ++i) {
@@ -650,6 +664,8 @@ REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int &r)
 			break;
 		}
 	}
+
+	r = std::max(1, r);
 
 	REAL *u = new REAL[m*r]; // TODO can be optimized
 

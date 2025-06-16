@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits import mplot3d
 
-# x y z n T Px Py Pz Mx My Mz type
+# x y z n T Px Py Pz Mx My Mz type p_inf S_inf
 data = np.loadtxt(sys.argv[1], skiprows=1)
 print(data.shape)
 
@@ -41,6 +41,8 @@ f_s = n_s * v_s ** 3
 
 mu_s = mu(T_s)
 
+data = data[data[:, 11] == 3]
+
 x = data[:, 0]
 y = data[:, 1]
 z = data[:, 2]
@@ -56,6 +58,9 @@ Mx = data[:, 8]# / (n_s * v_s ** 3)
 My = data[:, 9]# / (n_s * v_s ** 3)
 Mz = data[:, 10]# / (n_s * v_s ** 3)
 
+p_inf = data[0, 12]
+S_inf = data[0, 13]
+
 r = np.sqrt(x**2 + y**2 + z**2)
 R = np.mean(r)
 
@@ -64,11 +69,14 @@ normal = np.array([x/r, y/r, z/r])
 Pn = normal[0, :] * Px + normal[1, :] * Py + normal[2, :] * Pz
 Pt = np.sqrt(Px ** 2 + Py ** 2 + Pz ** 2 - Pn ** 2)
 En = normal[0, :] * Mx + normal[1, :] * My + normal[2, :] * Mz
-Et = np.sqrt(Mx ** 2 + My ** 2 + Mz ** 2 - En ** 2)
 
-cp = 2 * (Pn) / (rho_s * u_s ** 2)
-cf = 2 * (Pt) / (rho_s * u_s ** 2)
-ch = 2 * (En) / (rho_s * u_s ** 3)
+cp = (Pn - p_inf) / (S_inf ** 2)
+cf = (Pt) / (S_inf ** 2)
+ch = 2 * (En) / (S_inf ** 3)
+
+cp = abs(cp)
+cf = abs(cf)
+ch = abs(ch)
 
 angle = -np.arctan(y / x)
 angle = np.where(angle < 0, angle + np.pi, angle)
@@ -78,25 +86,47 @@ angle *= 180.0 / np.pi
 plt.figure(figsize = (10, 7))
 # d = np.loadtxt('DONE/cp.txt', delimiter=', ', skiprows=1)
 # plt.plot(d[:, 0], d[:, 1], 'k--', label='DSMC')
-plt.plot(distance_surface, cp, 'o', markersize=10)
+plt.plot(angle, cp, 'o', markersize=10)
 plt.suptitle(r'$c_p$', fontsize=48)
+plt.xlabel("Angle")
 plt.savefig('cp.png')
 plt.close()
 
 plt.figure(figsize = (10, 7))
 # d = np.loadtxt('DONE/cf.txt', delimiter=', ', skiprows=1)
 # plt.plot(d[:, 0], d[:, 1], 'k--', label='DSMC')
-plt.plot(distance_surface, cf, 'o', markersize=10)
+plt.plot(angle, cf, 'o', markersize=10)
 plt.suptitle(r'$c_f$', fontsize=48)
+plt.xlabel("Angle")
 plt.savefig('cf.png')
 plt.close()
 
 plt.figure(figsize = (10, 7))
 # d = np.loadtxt('DONE/ch.txt', delimiter=', ', skiprows=1)
 # plt.plot(d[:, 0], d[:, 1], 'k--', label='DSMC')
-plt.plot(distance_surface, ch, 'o', markersize=10)
+plt.plot(angle, ch, 'o', markersize=10)
 plt.suptitle(r'$c_h$', fontsize=48)
+plt.xlabel("Angle")
 plt.savefig('ch.png')
 plt.close()
 
-# TODO add Temperature profiles
+data = np.loadtxt(sys.argv[1], skiprows=1)
+data = data[data[:, 11] == 4]
+data = data[data[:, 0] < 0]
+data = data[data[:, 0] > -6]
+
+x = data[:, 0]
+y = data[:, 1]
+z = data[:, 2]
+
+n = data[:, 3]
+T = data[:, 4]
+
+plt.figure(figsize = (10, 7))
+# d = np.loadtxt('DONE/ch.txt', delimiter=', ', skiprows=1)
+# plt.plot(d[:, 0], d[:, 1], 'k--', label='DSMC')
+plt.plot(x, T, 'o', markersize=10)
+plt.suptitle(r'$T$', fontsize=48)
+plt.xlabel("x")
+plt.savefig('T.png')
+plt.close()

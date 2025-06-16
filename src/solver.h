@@ -51,6 +51,7 @@ public:
 	REAL mu_s;
 
 	REAL Kn;
+	REAL S_inf;
 };
 
 template <class Tensor>
@@ -268,9 +269,6 @@ public:
 	std::vector < REAL > ux, uy, uz;
 	std::vector < REAL > T;
 	std::vector < REAL > nu;
-	std::vector < REAL > rho;
-	std::vector < REAL > p;
-	std::vector < REAL > Mach;
 
 	std::vector < REAL > compression;
 	std::vector < REAL > rank_x;
@@ -285,6 +283,7 @@ public:
 	void write_boundary_params();
 	void write_restart();
 	void write_macro_restart();
+	void write_rate();
 
 //	int it;
 

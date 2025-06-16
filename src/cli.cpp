@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 	gas_params->mu_s = gas_params->mu_suth(gas_params->T_s);
 	
 	REAL c = pow(gas_params->g * gas_params->Rg * gas_params->T_s, 0.5);
-	REAL S_inf = u_in / gas_params->v_s;
+	gas_params->S_inf = u_in / gas_params->v_s;
 	
 	REAL delta     = (gas_params->l_s * gas_params->p_s) / (gas_params->mu_s * gas_params->v_s);
 	gas_params->Kn = 8.0 / (5.0 * pow(PI, 0.5)) / delta;
@@ -141,13 +141,13 @@ int main(int argc, char *argv[])
 	REAL Re        = gas_params->rho_s * u_in * gas_params->l_s / gas_params->mu_s;
 	
 	// print parameters
-	std::cout << "n^{star}   = " << gas_params->n_s << std::endl;
-	std::cout << "T^{star}   = " << gas_params->T_s << std::endl;
+	std::cout << "n^{star}   = " << gas_params->n_s   << std::endl;
+	std::cout << "T^{star}   = " << gas_params->T_s   << std::endl;
 	std::cout << "rho^{star} = " << gas_params->rho_s << std::endl;
-	std::cout << "p^{star}   = " << gas_params->p_s << std::endl;
-	std::cout << "v^{star}   = " << gas_params->v_s << std::endl;
-	std::cout << "mu^{star}  = " << gas_params->mu_s << std::endl;
-	std::cout << "S^{inf}    = " << S_inf << std::endl;
+	std::cout << "p^{star}   = " << gas_params->p_s   << std::endl;
+	std::cout << "v^{star}   = " << gas_params->v_s   << std::endl;
+	std::cout << "mu^{star}  = " << gas_params->mu_s  << std::endl;
+	std::cout << "S^{inf}    = " << gas_params->S_inf << std::endl;
 	
 	std::cout << "Speed of sound,            c = " << c      << std::endl;
 	std::cout << "Rarefaction parameter, delta = " << delta  << std::endl;
@@ -160,22 +160,24 @@ int main(int argc, char *argv[])
 
 	std::cout << "START DIMENSIONLESS" << std::endl;
 	
-	REAL hvx = 2.0 * vmax / nvx;
+	REAL hvx = 2.0 * vmax / (nvx - 1);
 	REAL *vx_ = new REAL[nvx];
 	for (int i = 0; i < nvx; ++i) {
-		vx_[i] = - vmax + (hvx / 2.0) + i * hvx;
+		vx_[i] = - vmax + i * hvx;
+		std::cout << vx_[i] << " ";
 	}
+	std::cout << "\n";
 	
-	REAL hvy = 2.0 * vmax / nvy;
+	REAL hvy = 2.0 * vmax / (nvy - 1);
 	REAL *vy_ = new REAL[nvy];
 	for (int i = 0; i < nvy; ++i) {
-		vy_[i] = - vmax + (hvy / 2.0) + i * hvy;
+		vy_[i] = - vmax + i * hvy;
 	}
 	
-	REAL hvz = 2.0 * vmax / nvz;
+	REAL hvz = 2.0 * vmax / (nvz - 1);
 	REAL *vz_ = new REAL[nvz];
 	for (int i = 0; i < nvz; ++i) {
-		vz_[i] = - vmax + (hvz / 2.0) + i * hvz;
+		vz_[i] = - vmax + i * hvz;
 	}
 	
 	std::cout << "v_min =  " << vx_[0]     << std::endl;
@@ -209,7 +211,11 @@ int main(int argc, char *argv[])
 	std::cout << "f_out string error norm: " << (from_string(f_out.to_string(), f_in) - f_out).norm() / f_out.norm() << std::endl;
 
 	std::cout << "Test minmod" << std::endl;
-	std::cout << minmod(f_in + f_out, f_out - 2 * f_in, config->tol) << std::endl;
+	std::cout << "f_in:  " << f_in  << std::endl;
+	std::cout << "f_out: " << f_out << std::endl;
+	std::cout << "f_in norm:  " << f_in.norm()  << std::endl;
+	std::cout << "f_out norm: " << f_out.norm() << std::endl;
+	std::cout << minmod(f_in, f_out, config->tol) << std::endl;
 
 	problem->gas_params = gas_params;
 	problem->v = v;
