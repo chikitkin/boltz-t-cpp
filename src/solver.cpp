@@ -348,11 +348,12 @@ void Solution<Tensor>::write_macro_restart()
 	file.open("macro_restart.txt", std::ofstream::trunc);
 
 	for (int ic = 0; ic < mesh->nCells; ++ic) {
-	    file << mesh->cellCenters[ic][0] << " " << mesh->cellCenters[ic][1] << " " << mesh->cellCenters[ic][2] << " ";
-	    file << n[ic] << " " << ux[ic] << " " << uy[ic] << " " << uz[ic] << " " << T[ic] << " " << mesh->cellVolumes[ic] << "\n";
+		file << mesh->cellCenters[ic][0] << " " << mesh->cellCenters[ic][1] << " " << mesh->cellCenters[ic][2] << " ";
+		file << n[ic] << " " << ux[ic] << " " << uy[ic] << " " << uz[ic] << " " << T[ic] << " " << mesh->cellVolumes[ic] << " " << compression[ic] << "\n";
 	}
 	file.close();
 }
+
 
 template <class Tensor>
 void Solution<Tensor>::plot_residual() {
@@ -678,8 +679,7 @@ Solution<Tensor>::Solution(
 	}
 	auto TIME5 = omp_get_wtime();
 	std::cout << "bounds  time " << TIME5 - TIME4 << " s" << std::endl;
-				
-//	it = 0;
+
 	create_res();
 
 	mesh->divideMesh(omp_get_max_threads());
@@ -889,10 +889,12 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 				df[ic] = rhs[ic];
 			}
 			// Backward sweep
+			#pragma omp parallel
+			{
+			int partition = omp_get_thread_num();
 			for (int color = mesh->nColors - 1; color >= 0; --color) {
-			    #pragma omp parallel for schedule(dynamic)
-				for (int i = mesh->coloredCells[color].size() - 1; i >= 0; --i) {
-					int ic = mesh->coloredCells[color][i];
+				for (int i = mesh->C[partition][color].size() - 1; i >= 0; --i) {
+					int ic = mesh->C[partition][color][i];
 					int ic_perm = mesh->iPerm[ic];
 					Tensor vnm_loc;
 					Tensor div_tmp;
@@ -921,13 +923,13 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					// df[ic].round(config->tol); // TODO less rounding?
 					df[ic] = df[ic] / div_tmp;
 				}
+				#pragma omp barrier
 			}
 
 			// Forward sweep
 			for (int color = 0; color < mesh->nColors; ++color) {
-			    #pragma omp parallel for schedule(dynamic)
-				for (int i = 0; i < mesh->coloredCells[color].size(); ++i) {
-					int ic = mesh->coloredCells[color][i];
+				for (int i = 0; i < mesh->C[partition][color].size(); ++i) {
+					int ic = mesh->C[partition][color][i];
 					int ic_perm = mesh->iPerm[ic];
 					Tensor vnm_loc;
 					Tensor incr = v->zero;
@@ -957,6 +959,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					df[ic] = df[ic] + (incr / div_tmp);
 					df[ic].round(config->tol);
 				}
+				#pragma omp barrier
+			}
 			}
 			// Update values
 			#pragma omp parallel for schedule(dynamic)
