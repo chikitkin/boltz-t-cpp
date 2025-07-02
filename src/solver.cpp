@@ -682,8 +682,6 @@ Solution<Tensor>::Solution(
 
 	create_res();
 
-	mesh->divideMesh(omp_get_max_threads());
-
 	std::cout << "Init finished." << std::endl;
 }
 
@@ -736,6 +734,9 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 	std::vector<double> timesForFaceFluxes(mesh->nFaces, 1.0);
 	std::vector<double> timesForCellsRHS(mesh->nCells, 1.0);
 	std::vector<double> timesForCellsUpdate(mesh->nCells, 1.0);
+
+	std::vector < double > lusgs_timings(mesh->nCells, 1.0);
+	mesh->divideMesh(numThreads, lusgs_timings);
 
 	for (int it = 0; it < nt; ++it) {
 
@@ -884,6 +885,25 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			}
 		}
 		else {
+
+			auto divide_start = omp_get_wtime();
+			mesh->divideMesh(numThreads, lusgs_timings);
+
+			// BEGIN PARTITION PLOT
+			std::vector < std::vector <REAL> > data;
+			for (int ic = 0; ic < mesh->nCells; ++ic) {
+				data.push_back(std::vector <REAL> {static_cast<REAL>(mesh->cellPartitions[ic]), static_cast<REAL>(mesh->cellColors[ic])});
+			}
+            std::ostringstream it_ss;
+            it_ss << it;
+            std::string it_string = it_ss.str();
+			mesh->write_tecplot(data, "partiton_" + it_string + ".dat", {"partition", "color"});
+			// END PARTITION PLOT
+
+			std::fill_n(lusgs_timings.begin(), mesh->nCells, 0.0);
+			auto divide_end   = omp_get_wtime();
+			std::cout << "Divide time " << divide_end - divide_start << " s." << std::endl;
+			
 			#pragma omp parallel for schedule(dynamic)
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				df[ic] = rhs[ic];
@@ -894,6 +914,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			int partition = omp_get_thread_num();
 			for (int color = mesh->nColors - 1; color >= 0; --color) {
 				for (int i = mesh->C[partition][color].size() - 1; i >= 0; --i) {
+					auto start = omp_get_wtime();
+
 					int ic = mesh->C[partition][color][i];
 					int ic_perm = mesh->iPerm[ic];
 					Tensor vnm_loc;
@@ -922,6 +944,9 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					div_tmp.round(static_cast<REAL>(1e-3), 1); // TODO magic number
 					// df[ic].round(config->tol); // TODO less rounding?
 					df[ic] = df[ic] / div_tmp;
+
+					auto finish = omp_get_wtime();
+					lusgs_timings[ic] += finish - start;
 				}
 				#pragma omp barrier
 			}
@@ -929,6 +954,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			// Forward sweep
 			for (int color = 0; color < mesh->nColors; ++color) {
 				for (int i = 0; i < mesh->C[partition][color].size(); ++i) {
+					auto start = omp_get_wtime();
+
 					int ic = mesh->C[partition][color][i];
 					int ic_perm = mesh->iPerm[ic];
 					Tensor vnm_loc;
@@ -958,6 +985,9 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					div_tmp.round(static_cast<REAL>(1e-3), 1); // TODO magic number
 					df[ic] = df[ic] + (incr / div_tmp);
 					df[ic].round(config->tol);
+
+					auto finish = omp_get_wtime();
+					lusgs_timings[ic] += finish - start;
 				}
 				#pragma omp barrier
 			}

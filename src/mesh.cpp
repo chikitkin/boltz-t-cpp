@@ -627,6 +627,8 @@ void Mesh::read(const std::string& path, REAL scale) {
 	for (int color = 0; color < nColors; ++color) {
 		std::reverse(rcoloredCells[color].begin(), rcoloredCells[color].end());
 	}
+
+	cellPartitions.resize(nCells);
 	// end of function
 }
 
@@ -663,46 +665,58 @@ REAL Mesh::getOutSign(int jf) {
 	return 2.0 * static_cast<REAL>(isOuterNormalBoundary[jf]) - 1.0;
 }
 
-void Mesh::divideMesh(int nParts) {
+void Mesh::divideMesh(int nPartitions, const std::vector < double > &weights) {
 
-	nPartitions = nParts;
+	if (weights.size() != nCells) {
+		std::cout << "Wrong len of weights in Mesh::divideMesh!" << std::endl;
+	}
 
-	std::vector<int> partitionSizes(nPartitions, nCells / nPartitions);
-	partitionSizes[nPartitions - 1] = nCells - (nPartitions - 1) * (nCells / nPartitions);
+	double sum_weights = 0.0;
+	for (int ic = 0; ic < nCells; ++ic) {
+		sum_weights += weights[ic];
+	}
 
-	cellPartitions.clear();
-	cellPartitions.resize(nCells, -1);
+	double mean_weight = sum_weights / nPartitions;
+
+	int unused_cells = nCells;
+
+	std::fill_n(cellPartitions.begin(), nCells, -1);
+
 	for (int ip = 0; ip < nPartitions; ++ip) {
+		// Find first cell
+		double partitionWeight = 0;
 		int ic;
-		int partitionSize = 0;
 		for (int i = 0; i < nCells; ++i) {
 			if (cellPartitions[i] == -1) {
 				ic = i;
-				cellPartitions[ic] = ip;
-				++partitionSize;
+				cellPartitions[ic] = ip; --unused_cells;
+				partitionWeight += weights[ic];
 				break;
 			}
 		}
-		while (partitionSize < partitionSizes[ip]) {
+		while ((partitionWeight < mean_weight) && (unused_cells > 0)) {
+			// add all neighbors and choose the next cell
 			int ic_next = -1;
 			for (const int& inc : cellNeighbors[ic]) {
 				if (inc != -1) {
 					if (cellPartitions.at(inc) == -1) {
-						cellPartitions[inc] = ip; ++partitionSize;
+						cellPartitions[inc] = ip; --unused_cells;
+						partitionWeight += weights[inc];
 						ic_next = inc;
-						if (partitionSize == partitionSizes[ip]) {
+						if ((partitionWeight >= mean_weight) || (unused_cells == 0)) {
 							break;
 						}
 					}
 				}
 			}
 			ic = ic_next;
-			if ((ic == -1) && (partitionSize < partitionSizes[ip])) {
+			// if no available cells - find the next available
+			if ((ic == -1) && (partitionWeight < mean_weight) && (unused_cells > 0)) {
 				for (int i = 0; i < nCells; ++i) {
 					if (cellPartitions[i] == -1) {
 						ic = i;
-						cellPartitions[ic] = ip;
-						++partitionSize;
+						cellPartitions[ic] = ip; --unused_cells;
+						partitionWeight += weights[ic];
 						break;
 					}
 				}
@@ -711,6 +725,7 @@ void Mesh::divideMesh(int nParts) {
 	}
 
 //	C.resize(nPartitions, std::vector<std::vector<int>> (nColors));
+	C.clear();
 
 	for (int partition = 0; partition < nPartitions; ++partition) {
 		std::vector <std::vector <int>> v;
@@ -756,9 +771,8 @@ void Mesh::write_tecplot(std::vector < std::vector <REAL> > data, std::string fi
 		file << " \"" << var_names[iv] << "\" ";
 	}
 	file << "\n";
-	file << "ZONE T=\"my_zone\", SolutionTime=" << time <<
-			", DATAPACKING=Block, ZONETYPE=FEBRICK, Nodes=" << nVerts <<
-		   ", Elements=" << nCells;
+	// file << "ZONE T=\"my_zone\", SolutionTime=" << time << ", DATAPACKING=Block, ZONETYPE=FEBRICK, Nodes=" << nVerts << ", Elements=" << nCells;
+	file << "ZONE T=\"my_zone\", DATAPACKING=Block, ZONETYPE=FEBRICK, Nodes=" << nVerts << ", Elements=" << nCells;
 	file << ", VarLocation=([4-" << 3+nvar << "]=CellCentered)";
 	// Write vertices' coo;
 	for (int i = 0; i < 3; ++i) {

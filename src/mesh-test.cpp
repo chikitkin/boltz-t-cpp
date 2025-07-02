@@ -12,24 +12,42 @@ int main(int argc, char *argv[]) {
 	std::cout << "nFaces " << mesh.nFaces << std::endl;
 
 	int nParts = atoi(argv[2]);
-	mesh.divideMesh(nParts);
+	std::vector < double > weights(mesh.nCells, 1.0);
+
+	auto divide_start = omp_get_wtime();
+	mesh.divideMesh(nParts, weights);
+	auto divide_end   = omp_get_wtime();
+	std::cout << "Divide time " << divide_end - divide_start << " s." << std::endl;
+
+	std::vector < int > count(nParts, 0);
 
 	std::vector < std::vector <REAL> > data;
 	for (int ic = 0; ic < mesh.nCells; ++ic) {
 		data.push_back(std::vector <REAL> {static_cast<REAL>(mesh.cellPartitions[ic]), static_cast<REAL>(mesh.cellColors[ic])});
+		count[mesh.cellPartitions[ic]] += 1;
 	}
+
+	for (auto &ip : count) {
+		std::cout << ip << " ";
+	}
+	std::cout << "\n";
 
 	mesh.write_tecplot(data, "tec.dat", {"partition", "color"});
 
-	for (int color = 0; color < mesh.nColors; ++color) {
-		for (int partition = 0; partition < mesh.nPartitions; ++partition) {
-			std::cout << "C " << partition << " " << color << " - ";
-			for (int i = mesh.C[partition][color].size() - 1; i >= 0; --i) {
-				std::cout << mesh.C[partition][color][i] << " ";
-			}
-			std::cout << "\n";
-		}
+	for (int i = 0; i < 1000; ++i) {
+
 	}
+	mesh.divideMesh(nParts, weights);
+
+	// for (int color = 0; color < mesh.nColors; ++color) {
+	// 	for (int partition = 0; partition < mesh.nPartitions; ++partition) {
+	// 		std::cout << "C " << partition << " " << color << " - ";
+	// 		for (int i = mesh.C[partition][color].size() - 1; i >= 0; --i) {
+	// 			std::cout << mesh.C[partition][color][i] << " ";
+	// 		}
+	// 		std::cout << "\n";
+	// 	}
+	// }
 
 	// std::cout << "boundaryFaces" << std::endl;
 	// for (const auto &bcface : mesh.boundaryFaces) {

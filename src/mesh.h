@@ -85,7 +85,7 @@ public:
 	std::vector<std::vector<int>> rcoloredCells;
 	int nColors;
 
-	void divideMesh(int nParts_);
+	void divideMesh(int nPartitions, const std::vector < double > &weights);
 	std::vector<int> cellPartitions;
 	int nPartitions;
 
