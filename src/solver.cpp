@@ -439,7 +439,7 @@ Solution<Tensor>::Solution(
 			vn[jf].round(static_cast<REAL>(1e-3));
 			vn_abs[jf] = Tensor(v->nvx, v->nvy, v->nvz, vn_abs_tmp);
 			vn_abs[jf].round(static_cast<REAL>(1e-14), 6);
-			vn_abs_max[jf] = vn_abs_max_tmp;
+			vn_abs_max[jf] = pow(3.0, 1.0 / 3.0) * vn_abs_max_tmp;
 
 			delete [] vn_tmp;
 			delete [] vn_abs_tmp;
