@@ -889,6 +889,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			auto divide_start = omp_get_wtime();
 			mesh->divideMesh(numThreads, lusgs_timings);
 
+			/*
 			// BEGIN PARTITION PLOT
 			std::vector < std::vector <REAL> > data;
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
@@ -899,6 +900,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
             std::string it_string = it_ss.str();
 			mesh->write_tecplot(data, "partiton_" + it_string + ".dat", {"partition", "color"});
 			// END PARTITION PLOT
+			*/
 
 			std::fill_n(lusgs_timings.begin(), mesh->nCells, 0.0);
 			auto divide_end   = omp_get_wtime();

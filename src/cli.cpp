@@ -186,17 +186,17 @@ int main(int argc, char *argv[])
 	
 	std::shared_ptr < VelocityGrid<Tensor> > v = std::make_shared < VelocityGrid<Tensor> > (nvx, nvy, nvz, vx_, vy_, vz_);
 
-	n_in /= gas_params->n_s;
+	n_in  /= gas_params->n_s;
 	ux_in /= gas_params->v_s;
 	uy_in /= gas_params->v_s;
 	uz_in /= gas_params->v_s;
-	T_in /= gas_params->T_s;
+	T_in  /= gas_params->T_s;
 
-	n_out /= gas_params->n_s;
+	n_out  /= gas_params->n_s;
 	ux_out /= gas_params->v_s;
 	uy_out /= gas_params->v_s;
 	uz_out /= gas_params->v_s;
-	T_out /= gas_params->T_s;
+	T_out  /= gas_params->T_s;
 
 	u_in /= gas_params->v_s;
 	u_out /= gas_params->v_s;

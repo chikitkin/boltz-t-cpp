@@ -3,8 +3,8 @@
 
 #include "header.h"
 
-REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int &r);
-REAL *svd_trunc_rmax(int m, int n, REAL *a, int rmax);
+REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int rmax, int &r);
+// REAL *svd_trunc_rmax(int m, int n, REAL *a, int rmax);
 
 REAL **compress(int n1, int n2, int n3,
 		REAL *a, REAL eps, int &r1, int &r2, int &r3, int rmax = 1e+6);

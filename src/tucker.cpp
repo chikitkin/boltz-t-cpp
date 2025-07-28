@@ -634,7 +634,7 @@ std::vector<int> Tucker::multiI(int I)
 	return {0, 0, 0};
 }
 
-REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int &r)
+REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int rmax, int &r)
 {
 	int info;
 
@@ -654,18 +654,16 @@ REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int &r)
 			exit( 1 );
 	}
 
-	eps = eps * S[0] / sqrt(3);
+	eps = eps * S[0];
 
 	r = std::min(m, n);
 
-	for( int i = 0; i < std::min(m, n); ++i ) {
-		if (S[i] <= eps) {
+	for( int i = 1; i < std::min(m, n); ++i ) {
+		if ((S[i] <= eps) || (i == rmax)) {
 			r = i;
 			break;
 		}
 	}
-
-	r = std::max(1, r);
 
 	REAL *u = new REAL[m*r]; // TODO can be optimized
 
@@ -680,6 +678,7 @@ REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int &r)
 	return u;
 }
 
+/*
 REAL *svd_trunc_rmax(int m, int n, REAL *a, int rmax)
 {
 	int info;
@@ -712,6 +711,7 @@ REAL *svd_trunc_rmax(int m, int n, REAL *a, int rmax)
 
 	return u;
 }
+*/
 
 REAL **compress(int n1, int n2, int n3, REAL *a, REAL eps, int &r1, int &r2, int &r3, int rmax)
 {
@@ -732,10 +732,13 @@ REAL **compress(int n1, int n2, int n3, REAL *a, REAL eps, int &r1, int &r2, int
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z3, 1);
 	MKL_Dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
 
-	u1 = svd_trunc(n1, (n2 * n3), z1, eps, r1);
-	u2 = svd_trunc(n2, (n1 * n3), z2, eps, r2);
-	u3 = svd_trunc(n3, (n1 * n2), z3, eps, r3);
+	eps = eps / pow(3.0, 0.5);
 
+	u1 = svd_trunc(n1, (n2 * n3), z1, eps, rmax, r1);
+	u2 = svd_trunc(n2, (n1 * n3), z2, eps, rmax, r2);
+	u3 = svd_trunc(n3, (n1 * n2), z3, eps, rmax, r3);
+
+	/*
 	// TODO can just copy part
 	if (r1 > rmax) {
 		delete [] u1;
@@ -752,6 +755,7 @@ REAL **compress(int n1, int n2, int n3, REAL *a, REAL eps, int &r1, int &r2, int
 		u3 = svd_trunc_rmax(n3, (n1 * n2), z3, rmax);
 		r3 = rmax;
 	}
+	*/
 
 	REAL *g = new REAL[r1*r2*r3];
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
