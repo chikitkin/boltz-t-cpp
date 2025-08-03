@@ -391,6 +391,15 @@ REAL Solution<Tensor>::vector_norm(std::vector<Tensor> vec) {
 }
 
 template <class Tensor>
+REAL Solution<Tensor>::macro_min(std::vector<REAL> vec) {
+	REAL res = vec[0];
+	for (int ic = 1; ic < mesh->nCells; ++ic) {
+		res = std::min({res, vec[ic]});
+	}
+	return res;
+}
+
+template <class Tensor>
 Solution<Tensor>::Solution(
 		std::shared_ptr < GasParams > gas_params,
 		std::shared_ptr < Mesh > mesh,
@@ -447,9 +456,6 @@ Solution<Tensor>::Solution(
 	}
 	auto TIME1 = omp_get_wtime();
 	std::cout << "vn abs time " << TIME1 - TIME0 << " s" << std::endl;
-
-	h = *std::min_element(mesh->cellDiameters.begin(), mesh->cellDiameters.end());
-	tau = h * config->CFL / pow(pow(v->hvx, 2) + pow(v->hvy, 2) + pow(v->hvz, 2), 0.5);
 
 	diag.resize(mesh->nCells, Tensor());
 	diag_r1.resize(mesh->nCells, Tensor());
@@ -600,6 +606,7 @@ Solution<Tensor>::Solution(
 	    std::cout << "Incorrect init" << std::endl;
 	}
 	std::cout << "\n";
+
 	auto TIME3 = omp_get_wtime();
 	std::cout << "initial time " << TIME3 - TIME2 << " s" << std::endl;
 
@@ -607,6 +614,7 @@ Solution<Tensor>::Solution(
 	slope.resize(mesh->nFaces, Tensor());
 	flux.resize(mesh->nFaces, Tensor());
 	rhs.resize(mesh->nCells, Tensor());
+	// rhs_add.resize(mesh->nCells, Tensor());
 	df.resize(mesh->nCells, Tensor());
 
 	bcList.reserve(mesh->nBoundaryFaces);
@@ -727,8 +735,6 @@ void Solution<Tensor>::reconstruction_2nd_order() {
 template <class Tensor>
 void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 {
-	tau = h * config->CFL / pow(pow(v->hvx, 2) + pow(v->hvy, 2) + pow(v->hvz, 2), 0.5);
-
 	int numThreads = omp_get_max_threads();
 	std::cout << "Number of threads is: " << numThreads << std::endl;
 	std::vector<double> timesForFaceFluxes(mesh->nFaces, 1.0);
@@ -737,6 +743,10 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 
 	std::vector < double > lusgs_timings(mesh->nCells, 1.0);
 	mesh->divideMesh(numThreads, lusgs_timings);
+
+	h = *std::min_element(mesh->cellDiameters.begin(), mesh->cellDiameters.end());
+	tau_h = h * config->CFL / (pow(3, 0.5) * v->vx_[v->nvx-1]);
+	time = 0;
 
 	for (int it = 0; it < nt; ++it) {
 
@@ -791,31 +801,63 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 
 		// Riemann solver - compute fluxes
 		// loop over all faces
+		// if (!config->isIncrement) {
+		// 	#pragma omp parallel for schedule(dynamic)
+		// 	for (int ic = 0; ic < mesh->nCells; ++ic) {
+		// 		rhs_add[ic] = v->zero;
+		// 	}
+		// }
+
 		#pragma omp parallel for schedule(dynamic)
 		for (int jf = 0; jf < mesh->nFaces; ++jf) {
 			auto begin = omp_get_wtime();
-			if (!config->isRusanov) {
-			    // flux[jf] = 0.5 * mesh->faceAreas[jf] *
-				// 	    (round_t(round_t(fLeftRight[jf][0] + fLeftRight[jf][1], config->tol) * vn[jf], config->tol) - 
-				// 	        round_t(round_t(fLeftRight[jf][1] - fLeftRight[jf][0], config->tol) * vn_abs[jf], config->tol));
-				flux[jf] = 0.5 * mesh->faceAreas[jf] * ((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - (fLeftRight[jf][1] - fLeftRight[jf][0]) * vn_abs[jf]);
-			}
-			else {
-			    // flux[jf] = 0.5 * mesh->faceAreas[jf] *
-				// 	    (round_t(round_t(fLeftRight[jf][0] + fLeftRight[jf][1], config->tol) * vn[jf], config->tol) - 
-				// 	        vn_abs_max[jf] * round_t(fLeftRight[jf][1] - fLeftRight[jf][0], config->tol));
-			    flux[jf] = 0.5 * mesh->faceAreas[jf] * ((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - vn_abs_max[jf] * (fLeftRight[jf][1] - fLeftRight[jf][0]));
-			}
+
+			flux[jf] = 0.5 * mesh->faceAreas[jf] * ((fLeftRight[jf][0] + fLeftRight[jf][1]) * vn[jf] - (fLeftRight[jf][1] - fLeftRight[jf][0]) * vn_abs[jf]);
 			flux[jf].round(config->tol);
+
+			// if (!config->isIncrement) {
+			// 	int ic_left  = mesh->leftRightCells[jf][0];
+			// 	int ic_right = mesh->leftRightCells[jf][1];
+
+			// 	if (ic_left >= 0) {
+
+			// 		int j_tmp = -1;
+			// 		for (int j = 0; j < mesh->cellFaces[ic_left].size(); ++j) {
+			// 			if (mesh->cellFaces[ic_left][j] == jf) {
+			// 				j_tmp = j;
+			// 			} 
+			// 		}
+			// 		Tensor vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic_left, j_tmp) * vn[jf]); // vnm[jf] or -vnp[jf]
+			// 		Tensor vnp_loc = 0.5 * ( vn_abs[jf] + mesh->getOutSign(ic_left, j_tmp) * vn[jf]); // vnp[jf] or -vnm[jf]
+
+			// 		rhs_add[ic_left] = rhs_add[ic_left] + (mesh->faceAreas[jf] / mesh->cellVolumes[ic_left]) * vnp_loc * f[ic_left];
+			// 		rhs_add[ic_left] = rhs_add[ic_left] + (mesh->faceAreas[jf] / mesh->cellVolumes[ic_left]) * vnm_loc * f[ic_right];
+			// 		rhs_add[ic_left].round(config->tol);
+			// 	}
+
+			// 	if (ic_right >= 0) {
+
+			// 		int j_tmp = -1;
+			// 		for (int j = 0; j < mesh->cellFaces[ic_left].size(); ++j) {
+			// 			if (mesh->cellFaces[ic_right][j] == jf) {
+			// 				j_tmp = j;
+			// 			} 
+			// 		}
+			// 		Tensor vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic_right, j_tmp) * vn[jf]); // vnm[jf] or -vnp[jf]
+			// 		Tensor vnp_loc = 0.5 * ( vn_abs[jf] + mesh->getOutSign(ic_right, j_tmp) * vn[jf]); // vnp[jf] or -vnm[jf]
+
+			// 		rhs_add[ic_right] = rhs_add[ic_right] + (mesh->faceAreas[jf] / mesh->cellVolumes[ic_right]) * vnp_loc * f[ic_right];
+			// 		rhs_add[ic_right] = rhs_add[ic_right] + (mesh->faceAreas[jf] / mesh->cellVolumes[ic_right]) * vnm_loc * f[ic_left];
+			// 		rhs_add[ic_right].round(config->tol);
+			// 	}
+			// }
+
 			auto end = omp_get_wtime();
 			timesForFaceFluxes[jf] = end - begin;
 		}
 		auto TIME3 = omp_get_wtime();
 		timings[FLUXES].push_back(TIME3 - TIME2);
 		std::cout << "FLUXES              time " << TIME3 - TIME2 << " s" << std::endl;
-
-		// Compute ranges for each thread
-		//threadRanges = getParallelRanges(timesForCellsRHS, numThreads);
 
 		// computation of the right hand side
 		// loop over all cells
@@ -824,15 +866,6 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			auto begin = omp_get_wtime();
 			// compute macroparameters and collision integral
 			std::vector<REAL> params = comp_macro_params(f[ic], v, gas_params);
-			rhs[ic] = comp_j(params, f[ic], config->tol, v, gas_params);
-			// sum up fluxes from all faces of this cell
-			for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
-				int jf = mesh->cellFaces[ic][j];
-				rhs[ic] = rhs[ic] - (mesh->getOutSign(ic, j) / mesh->cellVolumes[ic]) * flux[jf];
-				rhs[ic].round(config->tol);
-			}
-			auto end = omp_get_wtime();
-			timesForCellsRHS[ic] = end - begin;
 
 			n[ic]   = params[0];
 			ux[ic]  = params[1];
@@ -840,6 +873,31 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			uz[ic]  = params[3];
 			T[ic]   = params[4];
 			nu[ic]  = params[5];
+
+			rhs[ic] = comp_j(params, f[ic], config->tol, v, gas_params);
+
+			// if (!config->isIncrement) {
+			// 	rhs[ic] = rhs[ic] + (1.0 / tau + nu[ic]) * v->ones + rhs_add[ic];
+			// 	rhs[ic].round(config->tol);
+			// }
+
+			// sum up fluxes from all faces of this cell
+			for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+				int jf = mesh->cellFaces[ic][j];
+				rhs[ic] = rhs[ic] - (mesh->getOutSign(ic, j) / mesh->cellVolumes[ic]) * flux[jf];
+				rhs[ic].round(config->tol);
+				// if (!config->isIncrement) {
+				// 	int icn = mesh->cellNeighbors[ic][j];
+				// 	if (icn >= 0) {
+				// 		Tensor vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+				// 		rhs[ic] = rhs[ic] + (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * f[icn]);
+				// 		rhs[ic].round(config->tol);
+				// 	}
+				// }
+			}
+			auto end = omp_get_wtime();
+			timesForCellsRHS[ic] = end - begin;
+
 			compression[ic] = f[ic].compression();
 			rank_x[ic] = f[ic].r()[0];
 			rank_y[ic] = f[ic].r()[1];
@@ -866,6 +924,10 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			};
 		}
 
+		tau = std::min({tau_h, macro_min(nu)});
+		time = time + tau;
+		std::cout << "tau=" << tau << ", time=" << time << std::endl;
+
 		REAL frob_norm = vector_norm(rhs);
 		update_res(frob_norm);
 		auto TIME4 = omp_get_wtime();
@@ -885,7 +947,6 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			}
 		}
 		else {
-
 			auto divide_start = omp_get_wtime();
 			mesh->divideMesh(numThreads, lusgs_timings);
 
@@ -909,7 +970,49 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			#pragma omp parallel for schedule(dynamic)
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
 				df[ic] = rhs[ic];
+				diag[ic] = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]);
+				diag[ic].round(static_cast<REAL>(1e-3), 1); // TODO magic number
 			}
+
+			// if (!config->isIncrement) {
+			// 	#pragma omp parallel for schedule(dynamic)
+			// 	for (int ic = 0; ic < mesh->nCells; ++ic) {
+			// 		Tensor div_tmp = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]) ;
+			// 		div_tmp.round(static_cast<REAL>(1e-3), 1); // TODO magic number
+			// 		df[ic] = df[ic] + div_tmp * f[ic];
+			// 		for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+			// 			int jf = mesh->cellFaces[ic][j];
+			// 			int icn = mesh->cellNeighbors[ic][j]; // index of neighbor
+			// 			if (icn >= 0) {
+			// 				Tensor vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+			// 				df[ic] = df[ic] + (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * f[icn]);
+			// 				df[ic].round(config->tol);
+			// 			}
+			// 		}
+			// 	}
+			// }
+
+			if (!config->isIncrement) {
+				#pragma omp parallel for schedule(dynamic)
+				for (int ic = 0; ic < mesh->nCells; ++ic) {
+					Tensor diag_tmp = (1.0 / tau + nu[ic]) * v->ones;
+					for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+						int jf = mesh->cellFaces[ic][j];
+						int icn = mesh->cellNeighbors[ic][j]; // index of neighbor
+						Tensor vnp_loc = 0.5 * ( vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnp[jf] or -vnm[jf]
+						diag_tmp = diag_tmp + (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnp_loc);
+						diag_tmp.round(config->tol);
+						if (icn >= 0) {
+							Tensor vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+							df[ic] = df[ic] + (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * f[icn]);
+							df[ic].round(config->tol);
+						}
+					}
+					df[ic] = df[ic] + diag_tmp * f[ic];
+					df[ic].round(config->tol);
+				}
+			}
+
 			// Backward sweep
 			#pragma omp parallel
 			{
@@ -921,31 +1024,20 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					int ic = mesh->C[partition][color][i];
 					int ic_perm = mesh->iPerm[ic];
 					Tensor vnm_loc;
-					Tensor div_tmp;
 					// loop over neighbors of cell ic
 					for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
 						int jf = mesh->cellFaces[ic][j];
 						int icn = mesh->cellNeighbors[ic][j]; // index of neighbor
 						int icn_perm = mesh->iPerm[icn];
 						if ((icn >= 0) && (icn_perm > ic_perm)) {
-						    if (!config->isRusanov) {
-								// TODO important
-							    vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-							    // vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-                            }
-                            else {
-                                vnm_loc = 0.5 * (-vn_abs_max[jf] * v->ones + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-                            }
-						    // df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * round_t(vnm_loc * df[icn], config->tol);
+							// TODO important
+							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 							df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * df[icn]);
 						    df[ic].round(config->tol);
 						}
 					}
 					// divide by diagonal coefficient
-					div_tmp = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]);
-					div_tmp.round(static_cast<REAL>(1e-3), 1); // TODO magic number
-					// df[ic].round(config->tol); // TODO less rounding?
-					df[ic] = df[ic] / div_tmp;
+					df[ic] = df[ic] / diag[ic];
 
 					auto finish = omp_get_wtime();
 					lusgs_timings[ic] += finish - start;
@@ -962,31 +1054,21 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					int ic_perm = mesh->iPerm[ic];
 					Tensor vnm_loc;
 					Tensor incr = v->zero;
-					Tensor div_tmp;
 					// loop over neighbors of cell ic
 					for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
 						int jf = mesh->cellFaces[ic][j];
 						int icn = mesh->cellNeighbors[ic][j]; // index of neighbor, -1 if no neighbor
 						int icn_perm = mesh->iPerm[icn];
 						if ((icn >= 0) && (icn_perm < ic_perm)) {
-						    if (!config->isRusanov) {
-								// TODO important
-							    vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-							    // vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-					        }
-					        else {
-					            vnm_loc = 0.5 * (-vn_abs_max[jf] * v->ones + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-					        }
-						    // incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * round_t(vnm_loc * df[icn], config->tol);
+							// TODO important
+							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 						    incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * df[icn]);
 						    incr.round(config->tol);
 						}
 					}
 					// divide by diagonal coefficient
-					div_tmp = ((1.0 / tau + nu[ic]) * v->ones + diag_r1[ic]);
-					div_tmp.round(static_cast<REAL>(1e-3), 1); // TODO magic number
-					df[ic] = df[ic] + (incr / div_tmp);
-					df[ic].round(config->tol);
+					df[ic] = (incr / diag[ic]) + df[ic];
+					// df[ic].round(config->tol);
 
 					auto finish = omp_get_wtime();
 					lusgs_timings[ic] += finish - start;
@@ -997,8 +1079,14 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			// Update values
 			#pragma omp parallel for schedule(dynamic)
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
-				f[ic] = f[ic] + df[ic];
-				f[ic].round(config->tol);
+				if (config->isIncrement) {
+					f[ic] = f[ic] + df[ic];
+					f[ic].round(config->tol);
+				}
+				else {
+					f[ic] = df[ic];
+					f[ic].round(config->tol);
+				}
 			}
 			int  f_max_rank = 0;
 			int df_max_rank = 0;
@@ -1012,9 +1100,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					df_max_rank = df_max_rank_tmp;
 				}
 			}
-			std::cout << " f max rank = " <<  f_max_rank << std::endl;
-			std::cout << "df max rank = " << df_max_rank << std::endl;
-			std::cout << "df norm     = " << vector_norm(df) << std::endl;
+			std::cout << "  f max rank = " <<  f_max_rank << ",  f norm = " << vector_norm(f)  << std::endl;
+			std::cout << " df max rank = " << df_max_rank << ", df norm = " << vector_norm(df) << std::endl;
 //			for (int ic = 0; ic < mesh->nCells; ++ic) {
 //				std::cout << "Tensor, r=(" << df[ic].r()[0] << "," << df[ic].r()[1] << "," << df[ic].r()[2] << ")";
 //				std::cout << ", n=(" << df[ic].n()[0] << "," << df[ic].n()[1] << "," << df[ic].n()[2] << ")" << std::endl;

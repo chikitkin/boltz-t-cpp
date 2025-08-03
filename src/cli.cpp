@@ -96,7 +96,6 @@ int main(int argc, char *argv[])
         else if (line.find("order") != std::string::npos) { line_stream >> config->order; }
         else if (line.find("steps") != std::string::npos) { line_stream >> steps; }
         else if (line.find("isImplicit")  != std::string::npos) { line_stream >> config->isImplicit; }
-        else if (line.find("isRusanov")   != std::string::npos) { line_stream >> config->isRusanov; }
         else if (line.find("isIncrement") != std::string::npos) { line_stream >> config->isIncrement; }
 
 		else if (line.find("channel_length") != std::string::npos) { line_stream >> channel_length; }

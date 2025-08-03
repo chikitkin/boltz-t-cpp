@@ -208,7 +208,6 @@ struct Config {
 	int order = 1;
 	
 	bool isImplicit = false;
-	bool isRusanov = false;
 	bool isIncrement = true;
 	int vnAbsRestart = 0; // 0 - don't write to file, 1 - write to file, 2 - read from file
 
@@ -252,6 +251,9 @@ public:
 
 	REAL h;
 	REAL tau;
+	REAL tau_h;
+	REAL time;
+	REAL nu_min;
 
 	std::vector < Tensor > diag;
 	std::vector < Tensor > diag_r1;
@@ -261,6 +263,7 @@ public:
 	std::vector < Tensor > slope;
 	std::vector < Tensor > flux;
 	std::vector < Tensor > rhs;
+	std::vector < Tensor > rhs_add;
 	std::vector < Tensor > df;
 
 	// Arrays for macroparameters
@@ -288,6 +291,7 @@ public:
 //	int it;
 
 	REAL vector_norm(std::vector<Tensor> vec);
+	REAL macro_min(std::vector<REAL> vec);
 
 	void plot_residual();
 	void create_res();
