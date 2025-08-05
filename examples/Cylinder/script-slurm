@@ -1,6 +1,3 @@
-#!/bin/sh
-#SBATCH
-
 export OMP_NUM_THREADS=16
 
 now=$(date '+%Y_%m_%d__%H_%M_%S')
@@ -9,4 +6,3 @@ cd $now
 
 srun ../../../src/cli.o ../config.cfg ../mesh_medium.mesh ../restart_e-2.txt
 srun python3 ../../plot_res.py res.txt
-srun python3 ../../plot_cylinder.py boundary.txt

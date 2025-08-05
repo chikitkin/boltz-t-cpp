@@ -614,7 +614,6 @@ Solution<Tensor>::Solution(
 	slope.resize(mesh->nFaces, Tensor());
 	flux.resize(mesh->nFaces, Tensor());
 	rhs.resize(mesh->nCells, Tensor());
-	// rhs_add.resize(mesh->nCells, Tensor());
 	df.resize(mesh->nCells, Tensor());
 
 	bcList.reserve(mesh->nBoundaryFaces);
@@ -992,26 +991,26 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			// 	}
 			// }
 
-			if (!config->isIncrement) {
-				#pragma omp parallel for schedule(dynamic)
-				for (int ic = 0; ic < mesh->nCells; ++ic) {
-					Tensor diag_tmp = (1.0 / tau + nu[ic]) * v->ones;
-					for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
-						int jf = mesh->cellFaces[ic][j];
-						int icn = mesh->cellNeighbors[ic][j]; // index of neighbor
-						Tensor vnp_loc = 0.5 * ( vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnp[jf] or -vnm[jf]
-						diag_tmp = diag_tmp + (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnp_loc);
-						diag_tmp.round(config->tol);
-						if (icn >= 0) {
-							Tensor vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-							df[ic] = df[ic] + (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * f[icn]);
-							df[ic].round(config->tol);
-						}
-					}
-					df[ic] = df[ic] + diag_tmp * f[ic];
-					df[ic].round(config->tol);
-				}
-			}
+			// if (!config->isIncrement) {
+			// 	#pragma omp parallel for schedule(dynamic)
+			// 	for (int ic = 0; ic < mesh->nCells; ++ic) {
+			// 		Tensor diag_tmp = (1.0 / tau + nu[ic]) * v->ones;
+			// 		for (int j = 0; j < mesh->cellFaces[ic].size(); ++j) {
+			// 			int jf = mesh->cellFaces[ic][j];
+			// 			int icn = mesh->cellNeighbors[ic][j]; // index of neighbor
+			// 			Tensor vnp_loc = 0.5 * ( vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnp[jf] or -vnm[jf]
+			// 			diag_tmp = diag_tmp + (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnp_loc);
+			// 			diag_tmp.round(config->tol);
+			// 			if (icn >= 0) {
+			// 				Tensor vnm_loc = 0.5 * (-vn_abs[jf] + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
+			// 				df[ic] = df[ic] + (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * f[icn]);
+			// 				df[ic].round(config->tol);
+			// 			}
+			// 		}
+			// 		df[ic] = df[ic] + diag_tmp * f[ic];
+			// 		df[ic].round(config->tol);
+			// 	}
+			// }
 
 			// Backward sweep
 			#pragma omp parallel
@@ -1030,14 +1029,24 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 						int icn = mesh->cellNeighbors[ic][j]; // index of neighbor
 						int icn_perm = mesh->iPerm[icn];
 						if ((icn >= 0) && (icn_perm > ic_perm)) {
-							// TODO important
 							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 							df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * df[icn]);
-						    df[ic].round(config->tol);
+							if (config->isIncrement) {
+								// df[ic].round(config->tol);
+							}
+							else {
+								// df[ic] = round_t(f[ic] + df[ic], config->tol) - f[ic];
+							}
 						}
 					}
-					// divide by diagonal coefficient
-					df[ic] = df[ic] / diag[ic];
+					if (config->isIncrement) {
+						df[ic].round(config->tol);
+						df[ic] = df[ic] / diag[ic];
+					}
+					else {
+						df[ic] = round_t(f[ic] + df[ic], config->tol) - f[ic];
+						df[ic] = df[ic] / diag[ic];
+					}
 
 					auto finish = omp_get_wtime();
 					lusgs_timings[ic] += finish - start;
@@ -1060,15 +1069,23 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 						int icn = mesh->cellNeighbors[ic][j]; // index of neighbor, -1 if no neighbor
 						int icn_perm = mesh->iPerm[icn];
 						if ((icn >= 0) && (icn_perm < ic_perm)) {
-							// TODO important
 							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
-						    incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * df[icn]);
-						    incr.round(config->tol);
+							incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * df[icn]);
+							if (config->isIncrement) {
+								// incr.round(config->tol);
+							}
+							else {
+								// incr = round_t(incr + f[ic], config->tol) - f[ic];
+							}
 						}
 					}
-					// divide by diagonal coefficient
-					df[ic] = (incr / diag[ic]) + df[ic];
-					// df[ic].round(config->tol);
+					if (config->isIncrement) {
+						incr.round(config->tol);
+						df[ic] = (incr / diag[ic]) + df[ic];
+					}
+					else {
+						df[ic] = round_t((incr / diag[ic]) + df[ic] + f[ic], config->tol) - f[ic];
+					}
 
 					auto finish = omp_get_wtime();
 					lusgs_timings[ic] += finish - start;
@@ -1084,7 +1101,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 					f[ic].round(config->tol);
 				}
 				else {
-					f[ic] = df[ic];
+					f[ic] = f[ic] + df[ic];
 					f[ic].round(config->tol);
 				}
 			}

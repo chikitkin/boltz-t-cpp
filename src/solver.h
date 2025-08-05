@@ -263,7 +263,6 @@ public:
 	std::vector < Tensor > slope;
 	std::vector < Tensor > flux;
 	std::vector < Tensor > rhs;
-	std::vector < Tensor > rhs_add;
 	std::vector < Tensor > df;
 
 	// Arrays for macroparameters
