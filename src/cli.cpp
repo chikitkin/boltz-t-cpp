@@ -26,7 +26,7 @@ int check_velocity_grid(REAL n, REAL ux, REAL uy, REAL uz, REAL T,
 
 int main(int argc, char *argv[])
 {
-    typedef Tucker Tensor;
+    typedef Full Tensor;
 	std::shared_ptr < GasParams > gas_params = std::make_shared < GasParams > ();
 
 	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();
@@ -343,7 +343,7 @@ int main(int argc, char *argv[])
 	std::ofstream out;
 	out.open("T.txt");
 	for (int ic = 0; ic < S.mesh->nCells; ++ic) {
-		out << S.mesh->cellCenters[ic][0] << " " << S.n[ic] << " " << S.ux[ic] << " " << S.T[ic] << "\n";
+		out << S.mesh->cellCenters[ic][2] << " " << S.n[ic] << " " << S.uz[ic] << " " << S.T[ic] << "\n";
 	}
 	out.close();
 
