@@ -51,6 +51,7 @@ public:
 	REAL mu_s;
 
 	REAL Kn;
+	REAL delta;
 	REAL S_inf;
 };
 

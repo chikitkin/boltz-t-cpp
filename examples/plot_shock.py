@@ -2,32 +2,47 @@ import numpy as np
 from matplotlib import pyplot as plt
 import sys
 
-if __name__ == "__main__":
+data_3 = [
+    -10.0, 1.000, 1.000, 1.000,
+    -9.2, 1.000, 1.000, 1.000,
+    -8.4, 1.000, 1.000, 1.000,
+    -7.6, 1.000, 1.003, 1.003,
+    -6.8, 1.000, 1.003, 1.008,
+    -6.2, 1.000, 1.008, 1.013,
+    -5.6, 1.002, 1.013, 1.027,
+    -5.0, 1.004, 1.029, 1.053,
+    -4.4, 1.008, 1.056, 1.104,
+    -3.8, 1.016, 1.109, 1.205,
+    -3.2, 1.030, 1.216, 1.405,
+    -2.8, 1.050, 1.339, 1.627,
+    -2.4, 1.080, 1.517, 1.952,
+    -2.0, 1.128, 1.771, 2.397,
+    -1.6, 1.204, 2.104, 2.947,
+    -1.2, 1.322, 2.493, 3.523,
+    -0.8, 1.496, 2.880, 3.992,
+    -0.4, 1.726, 3.200, 4.235,
+    0.0, 2.000, 3.419, 4.251,
+    0.4, 2.278, 3.547, 4.133,
+    0.8, 2.516, 3.613, 3.989,
+    1.2, 2.696, 3.645, 3.872,
+    1.6, 2.816, 3.659, 3.792,
+    2.0, 2.892, 3.667, 3.739,
+    2.4, 2.936, 3.667, 3.709,
+    2.8, 2.962, 3.669, 3.691,
+    3.2, 2.978, 3.669, 3.680,
+    3.8, 2.990, 3.667, 3.672,
+    4.4, 2.996, 3.667, 3.669,
+    5.0, 2.998, 3.667, 3.669,
+    5.6, 3.000, 3.667, 3.667,
+    6.2, 3.000, 3.667, 3.667,
+    6.8, 3.000, 3.667, 3.667,
+    7.6, 3.000, 3.667, 3.667,
+    8.4, 3.000, 3.667, 3.667,
+    9.2, 3.000, 3.667, 3.667,
+    10.0, 3.000, 3.667, 3.667,
+]
 
-    data = np.loadtxt(sys.argv[1])
-
-    fig, ax = plt.subplots(figsize = (10, 6))
-    
-    data = data[data[:, 0].argsort()]
-    x  = data[:, 0]
-    n  = data[:, 1]
-    u  = data[:, 2]
-    T  = data[:, 3]
-    
-    n  = (n - n[0]) / (n[-1] - n[0])
-    u  = (u - u[-1]) / (u[0] - u[-1])
-    T  = (T - T[0]) / (T[-1] - T[0])
-    
-    delta = (n[1:] - n[:-1]) / (x[1:] - x[:-1])
-    print("delta =", np.max(delta))
-    
-    ax.plot(x, n,  'b-', label="Density")
-    ax.plot(x, u, 'g-', label="Velocity")
-    ax.plot(x, T,  'r-', label="Temperature")
-    
-    
-    
-    data = [-10.0, 1.000, 1.000, 1.000,
+data_8 = [-10.0, 1.000, 1.000, 1.000,
     -9.2, 1.000, 1.000, 1.000,
     -8.4, 1.000, 1.000, 1.000,
     -7.6, 1.000, 1.000, 1.020,
@@ -63,32 +78,66 @@ if __name__ == "__main__":
     7.6, 3.821, 20.872, 20.872,
     8.4, 3.821, 20.872, 20.872,
     9.2, 3.821, 20.872, 20.872,
-    10.0, 3.821, 20.872, 20.872]
-    
-    data = np.array(data).reshape((-1, 4))
-    
-    # x_ref = data[:, 0]
-    # n_ref = data[:, 1]
-    # # u_ref = data[:, 2]
-    # T_ref = data[:, 2]
-    
-    # n_ref  = (n_ref - n_ref[0])  / (n_ref[-1] - n_ref[0])
-    # # u_ref  = (u_ref - u_ref[-1]) / (u_ref[0] - u_ref[-1])
-    # T_ref  = (T_ref - T_ref[0])  / (T_ref[-1] - T_ref[0])
+    10.0, 3.821, 20.872, 20.872,
+]
 
-    # ax.plot(x_ref, n_ref,  'ko', label="Reference Density")
-    # # ax.plot(x_ref, u_ref,  'kD', label="Reference Velocity")
-    # ax.plot(x_ref, T_ref,  'kx', label="Reference Temperature")
+if __name__ == "__main__":
+
+    data = np.loadtxt("T.txt")
+
+    fig, ax = plt.subplots(figsize = (10, 6))
+    
+    data = data[data[:, 0].argsort()] # [:-3]
+    x  = data[:, 0] # + 0.4
+    n  = data[:, 1]
+    u  = data[:, 2]
+    T  = data[:, 3]
+    
+    n_in  = 2e+23
+    n_out = 6e+23
+    lmbda = 1.5196550015090774e-05
+    
+    from math import pi as PI
+    
+    # lambda_eff = 1.0 / (2**.5 * PI * n_in * (3.405e-10) ** 2)
+    
+    dn_dx = (n_in * (n[2:] - n[:-2])) / (lmbda * (x[2:] - x[:-2]))
+    delta = (lmbda / (n_out - n_in)) * np.max(dn_dx)
+    print("delta =", delta)
+    
+    n  = (n - n[0] ) / (n[-1] - n[0] )
+    u  = (u - u[-1]) / (u[0]  - u[-1])
+    T  = (T - T[0] ) / (T[-1] - T[0] )
+    
+    lw = 3
+    
+    ax.plot(x, n,  'b-', linewidth=lw, label="Density")
+    ax.plot(x, u,  'g-', linewidth=lw, label="Velocity")
+    ax.plot(x, T,  'r-', linewidth=lw, label="Temperature")
+    
+    data = np.array(data_3).reshape((-1, 4))
+    
+    x_ref = data[:, 0]
+    n_ref = data[:, 1]
+    # u_ref = data[:, 2]
+    T_ref = data[:, 2]
+    
+    n_ref  = (n_ref - n_ref[0])  / (n_ref[-1] - n_ref[0])
+    # u_ref  = (u_ref - u_ref[-1]) / (u_ref[0] - u_ref[-1])
+    T_ref  = (T_ref - T_ref[0])  / (T_ref[-1] - T_ref[0])
+
+    ax.plot(x_ref, n_ref,  'ko', label="Reference Density")
+    # ax.plot(x_ref, u_ref,  'kD', label="Reference Velocity")
+    ax.plot(x_ref, T_ref,  'ks', label="Reference Temperature")
     
     ax.set_xlabel('x', fontsize=16)
     ax.grid()
     plt.legend()
-    plt.savefig("T.pdf", dpi=200)
-    
+    plt.savefig("T.png", dpi=200)
     
     fig, ax = plt.subplots(figsize = (10, 6))
-    ax.plot((x[1:] + x[:-1]), delta, 'b-', label=r"$\frac{\partial n}{\partial x}$")
+    ax.plot(x[1:-1], dn_dx, 'b-', linewidth=lw, label=r"$\frac{\partial n}{\partial x}$")
     ax.set_xlabel('x', fontsize=16)
     ax.grid()
-    plt.legend()
+    plt.legend(fontsize=30)
     plt.savefig("stress.pdf", dpi=200)

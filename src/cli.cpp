@@ -133,11 +133,11 @@ int main(int argc, char *argv[])
 	REAL c = pow(gas_params->g * gas_params->Rg * gas_params->T_s, 0.5);
 	gas_params->S_inf = u_in / gas_params->v_s;
 	
-	REAL delta     = (gas_params->l_s * gas_params->p_s) / (gas_params->mu_s * gas_params->v_s);
-	gas_params->Kn = 8.0 / (5.0 * pow(PI, 0.5)) / delta;
-	REAL lambda    = gas_params->Kn * gas_params->l_s;
-	REAL Mach      = u_in / c;
-	REAL Re        = gas_params->rho_s * u_in * gas_params->l_s / gas_params->mu_s;
+	REAL lambda       = (gas_params->mu_s / gas_params->p_s) * pow((PI * gas_params->Rg * gas_params->T_s) / 2.0, 0.5);
+	gas_params->delta = (gas_params->l_s * gas_params->p_s) / (gas_params->mu_s * gas_params->v_s);
+	gas_params->Kn    = 8.0 / (5.0 * pow(PI, 0.5)) / gas_params->delta;
+	REAL Mach         = u_in / c;
+	REAL Re           = gas_params->rho_s * u_in * gas_params->l_s / gas_params->mu_s;
 	
 	// print parameters
 	std::cout << "n^{star}   = " << gas_params->n_s   << std::endl;
@@ -148,12 +148,12 @@ int main(int argc, char *argv[])
 	std::cout << "mu^{star}  = " << gas_params->mu_s  << std::endl;
 	std::cout << "S^{inf}    = " << gas_params->S_inf << std::endl;
 	
-	std::cout << "Speed of sound,            c = " << c      << std::endl;
-	std::cout << "Rarefaction parameter, delta = " << delta  << std::endl;
-	std::cout << "Knudsen number,           Kn = " << gas_params->Kn << std::endl;
-	std::cout << "Mean free path,       lambda = " << lambda << std::endl;
-	std::cout << "Mach number,            Mach = " << Mach   << std::endl;
-	std::cout << "Reynolds numbers,         Re = " << Re     << std::endl;
+	std::cout << "Speed of sound,            c = " << c                  << std::endl;
+	std::cout << "Rarefaction parameter, delta = " << gas_params->delta  << std::endl;
+	std::cout << "Knudsen number,           Kn = " << gas_params->Kn     << std::endl;
+	std::cout << "Mean free path,       lambda = " << lambda             << std::endl;
+	std::cout << "Mach number,            Mach = " << Mach               << std::endl;
+	std::cout << "Reynolds numbers,         Re = " << Re                 << std::endl;
 
 	std::shared_ptr < Mesh > mesh = std::make_shared < Mesh > (mesh_path, 1.0); // gas_params->l_s);
 
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
 	uz_out /= gas_params->v_s;
 	T_out  /= gas_params->T_s;
 
-	u_in /= gas_params->v_s;
+	u_in  /= gas_params->v_s;
 	u_out /= gas_params->v_s;
 	
 	Tensor f_in  = f_maxwell_t<Tensor>(v, n_in, ux_in, uy_in, uz_in, T_in, gas_params->Rg);
@@ -343,7 +343,7 @@ int main(int argc, char *argv[])
 	std::ofstream out;
 	out.open("T.txt");
 	for (int ic = 0; ic < S.mesh->nCells; ++ic) {
-		out << S.mesh->cellCenters[ic][2] << " " << S.n[ic] << " " << S.uz[ic] << " " << S.T[ic] << "\n";
+		out << S.mesh->cellCenters[ic][0] << " " << S.n[ic] << " " << S.ux[ic] << " " << S.T[ic] << "\n";
 	}
 	out.close();
 

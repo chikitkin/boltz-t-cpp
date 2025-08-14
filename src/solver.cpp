@@ -113,7 +113,7 @@ std::vector <REAL> comp_macro_params(const Tensor& f, std::shared_ptr < Velocity
 	}
 
 	REAL mu = gas_params->mu(T);
-	REAL nu = (8.0 / (5.0 * pow(PI, 0.5))) * (n * T / mu) / gas_params->Kn;
+	REAL nu = gas_params->delta * (n * T / mu);
 
 	// REAL rho = n;
 	// REAL p = rho * T;
@@ -156,7 +156,7 @@ Tensor comp_j(const std::vector <REAL>& params, const Tensor& f, REAL tol, std::
 template <class Tensor>
 Tensor Problem<Tensor>::getInit(REAL x, REAL y, REAL z,
 		const std::vector<Tensor>& initData) {
-	if (z <= 0.0) {
+	if (x <= 0.0) {
 		return initData[0];
 	}
 	else {
@@ -704,7 +704,7 @@ void Solution<Tensor>::reconstruction_2nd_order() {
             continue;
         }
 
-        std::vector < REAL > leftCellCenter = mesh->cellCenters[leftRightCell[0]];
+        std::vector < REAL > leftCellCenter  = mesh->cellCenters[leftRightCell[0]];
         std::vector < REAL > rightCellCenter = mesh->cellCenters[leftRightCell[1]];
         REAL delta = distance_3d(leftCellCenter, rightCellCenter);
         slope[jf] = (1.0 / delta) * (f[leftRightCell[1]] - f[leftRightCell[0]]);
@@ -714,9 +714,9 @@ void Solution<Tensor>::reconstruction_2nd_order() {
     for (int ic = 0; ic < mesh->nCells; ++ic) {
         std::vector < int > hexaFaces = mesh->cellFaces[ic];
         
-        Tensor slope0 = minmod(-mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], mesh->getOutSign(ic, 2) * slope[hexaFaces[2]], config->tol);
-        Tensor slope1 = minmod(-mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], mesh->getOutSign(ic, 3) * slope[hexaFaces[3]], config->tol);
-        Tensor slope2 = minmod(-mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], mesh->getOutSign(ic, 5) * slope[hexaFaces[5]], config->tol);
+        Tensor slope0 = minmod(mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], mesh->getOutSign(ic, 2) * slope[hexaFaces[2]], config->tol);
+        Tensor slope1 = minmod(mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], mesh->getOutSign(ic, 3) * slope[hexaFaces[3]], config->tol);
+        Tensor slope2 = minmod(mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], mesh->getOutSign(ic, 5) * slope[hexaFaces[5]], config->tol);
         
         std::vector<REAL> cellCenter = mesh->cellCenters[ic];
         
