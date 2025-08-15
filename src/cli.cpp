@@ -26,7 +26,7 @@ int check_velocity_grid(REAL n, REAL ux, REAL uy, REAL uz, REAL T,
 
 int main(int argc, char *argv[])
 {
-    typedef Full Tensor;
+    typedef Tucker Tensor;
 	std::shared_ptr < GasParams > gas_params = std::make_shared < GasParams > ();
 
 	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();

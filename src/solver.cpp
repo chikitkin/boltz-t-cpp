@@ -612,6 +612,7 @@ Solution<Tensor>::Solution(
 
 	fLeftRight.resize(mesh->nFaces, std::vector<Tensor>{Tensor(), Tensor()});
 	slope.resize(mesh->nFaces, Tensor());
+	slope_r1.resize(mesh->nFaces, Tensor());
 	flux.resize(mesh->nFaces, Tensor());
 	rhs.resize(mesh->nCells, Tensor());
 	df.resize(mesh->nCells, Tensor());
@@ -692,6 +693,59 @@ Solution<Tensor>::Solution(
 	std::cout << "Init finished." << std::endl;
 }
 
+// template <class Tensor>
+// void Solution<Tensor>::reconstruction_2nd_order() {
+//     // compute slopes
+//     #pragma omp parallel for schedule(dynamic)
+//     for (int jf = 0; jf < mesh->nFaces; ++jf) {
+//         std::vector < int > leftRightCell = mesh->leftRightCells[jf];
+        
+//         if ((leftRightCell[0] == -1) || (leftRightCell[1] == -1)) {
+//             slope[jf] = v->zero;
+//             continue;
+//         }
+
+//         std::vector < REAL > leftCellCenter  = mesh->cellCenters[leftRightCell[0]];
+//         std::vector < REAL > rightCellCenter = mesh->cellCenters[leftRightCell[1]];
+//         REAL delta = distance_3d(leftCellCenter, rightCellCenter);
+//         slope[jf] = (1.0 / delta) * (f[leftRightCell[1]] - f[leftRightCell[0]]);
+//         // slope[jf].round(config->tol);
+//     }
+//     #pragma omp parallel for schedule(dynamic)
+//     for (int ic = 0; ic < mesh->nCells; ++ic) {
+//         std::vector < int > hexaFaces = mesh->cellFaces[ic];
+        
+//         Tensor slope0 = minmod(mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], mesh->getOutSign(ic, 2) * slope[hexaFaces[2]], config->tol);
+//         Tensor slope1 = minmod(mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], mesh->getOutSign(ic, 3) * slope[hexaFaces[3]], config->tol);
+//         Tensor slope2 = minmod(mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], mesh->getOutSign(ic, 5) * slope[hexaFaces[5]], config->tol);
+        
+//         std::vector<REAL> cellCenter = mesh->cellCenters[ic];
+        
+//         fLeftRight[hexaFaces[0]][1 - mesh->getOutIndex(ic, 0)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[0]]) * slope0, config->tol, 1000000);
+//         fLeftRight[hexaFaces[2]][1 - mesh->getOutIndex(ic, 2)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[2]]) * slope0, config->tol, 1000000);
+        
+//         fLeftRight[hexaFaces[1]][1 - mesh->getOutIndex(ic, 1)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[1]]) * slope1, config->tol, 1000000);
+//         fLeftRight[hexaFaces[3]][1 - mesh->getOutIndex(ic, 3)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[3]]) * slope1, config->tol, 1000000);
+        
+//         fLeftRight[hexaFaces[4]][1 - mesh->getOutIndex(ic, 4)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[4]]) * slope2, config->tol, 1000000);
+//         fLeftRight[hexaFaces[5]][1 - mesh->getOutIndex(ic, 5)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[5]]) * slope2, config->tol, 1000000);
+//     }
+// }
+
+template <class Tensor>
+Tensor Solution<Tensor>::to_rank_one(Tensor f) {
+
+	std::vector<REAL> params = comp_macro_params(f, v, gas_params);
+
+	REAL n  = params[0];
+	REAL ux = params[1];
+	REAL uy = params[2];
+	REAL uz = params[3];
+	REAL T  = params[4];
+
+	return f_maxwell_t(v, n, ux, uy, uz, T, gas_params->Rg);
+}
+
 template <class Tensor>
 void Solution<Tensor>::reconstruction_2nd_order() {
     // compute slopes
@@ -701,6 +755,7 @@ void Solution<Tensor>::reconstruction_2nd_order() {
         
         if ((leftRightCell[0] == -1) || (leftRightCell[1] == -1)) {
             slope[jf] = v->zero;
+            slope_r1[jf] = v->zero;
             continue;
         }
 
@@ -708,15 +763,15 @@ void Solution<Tensor>::reconstruction_2nd_order() {
         std::vector < REAL > rightCellCenter = mesh->cellCenters[leftRightCell[1]];
         REAL delta = distance_3d(leftCellCenter, rightCellCenter);
         slope[jf] = (1.0 / delta) * (f[leftRightCell[1]] - f[leftRightCell[0]]);
-        slope[jf].round(config->tol);
+		slope_r1[jf] = to_rank_one(slope[jf]);
     }
     #pragma omp parallel for schedule(dynamic)
     for (int ic = 0; ic < mesh->nCells; ++ic) {
         std::vector < int > hexaFaces = mesh->cellFaces[ic];
         
-        Tensor slope0 = minmod(mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], mesh->getOutSign(ic, 2) * slope[hexaFaces[2]], config->tol);
-        Tensor slope1 = minmod(mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], mesh->getOutSign(ic, 3) * slope[hexaFaces[3]], config->tol);
-        Tensor slope2 = minmod(mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], mesh->getOutSign(ic, 5) * slope[hexaFaces[5]], config->tol);
+        Tensor slope0 = (2.0 * (mesh->getOutSign(ic, 0) * slope[hexaFaces[0]]) * (mesh->getOutSign(ic, 2) * slope[hexaFaces[2]])) / round_t((mesh->getOutSign(ic, 0) * slope[hexaFaces[0]]) + (mesh->getOutSign(ic, 2) * slope[hexaFaces[2]]) + 1e-8 * v->ones, config->tol, 1);
+        Tensor slope1 = (2.0 * (mesh->getOutSign(ic, 1) * slope[hexaFaces[1]]) * (mesh->getOutSign(ic, 3) * slope[hexaFaces[3]])) / round_t((mesh->getOutSign(ic, 1) * slope[hexaFaces[1]]) + (mesh->getOutSign(ic, 3) * slope[hexaFaces[3]]) + 1e-8 * v->ones, config->tol, 1);
+        Tensor slope2 = (2.0 * (mesh->getOutSign(ic, 4) * slope[hexaFaces[4]]) * (mesh->getOutSign(ic, 5) * slope[hexaFaces[5]])) / round_t((mesh->getOutSign(ic, 4) * slope[hexaFaces[4]]) + (mesh->getOutSign(ic, 5) * slope[hexaFaces[5]]) + 1e-8 * v->ones, config->tol, 1);
         
         std::vector<REAL> cellCenter = mesh->cellCenters[ic];
         

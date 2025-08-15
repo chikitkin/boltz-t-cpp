@@ -262,6 +262,7 @@ public:
 	std::vector < Tensor > f;
 	std::vector < std::vector<Tensor> > fLeftRight;
 	std::vector < Tensor > slope;
+	std::vector < Tensor > slope_r1;
 	std::vector < Tensor > flux;
 	std::vector < Tensor > rhs;
 	std::vector < Tensor > df;
@@ -306,6 +307,7 @@ public:
 	void plot_macro();
 
 	void make_time_steps(std::shared_ptr<Config> config, int nt);
+    Tensor to_rank_one(Tensor f);
     void reconstruction_2nd_order();
 
 };
