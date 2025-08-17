@@ -4,7 +4,7 @@ cd $now
 
 ../../../src/cli.o ../config.cfg ../mesh.mesh
 python3 ../../plot_res.py res.txt
-python3 ../../plot_shock.py
+python3 ../plot_cavity.py
 
 
 

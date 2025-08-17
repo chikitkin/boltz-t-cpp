@@ -391,15 +391,6 @@ REAL Solution<Tensor>::vector_norm(std::vector<Tensor> vec) {
 }
 
 template <class Tensor>
-REAL Solution<Tensor>::macro_min(std::vector<REAL> vec) {
-	REAL res = vec[0];
-	for (int ic = 1; ic < mesh->nCells; ++ic) {
-		res = std::min({res, vec[ic]});
-	}
-	return res;
-}
-
-template <class Tensor>
 Solution<Tensor>::Solution(
 		std::shared_ptr < GasParams > gas_params,
 		std::shared_ptr < Mesh > mesh,
@@ -978,7 +969,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			};
 		}
 
-		tau = std::min({tau_h, macro_min(nu)});
+		REAL tau_nu = *std::min_element(nu.begin(), nu.end());
+		tau = std::min({tau_h, tau_nu});
 		time = time + tau;
 		std::cout << "tau=" << tau << ", time=" << time << std::endl;
 
