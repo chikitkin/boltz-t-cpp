@@ -760,20 +760,24 @@ void Solution<Tensor>::reconstruction_2nd_order() {
     for (int ic = 0; ic < mesh->nCells; ++ic) {
         std::vector < int > hexaFaces = mesh->cellFaces[ic];
         
-        Tensor slope0 = (2.0 * (mesh->getOutSign(ic, 0) * slope[hexaFaces[0]]) * (mesh->getOutSign(ic, 2) * slope[hexaFaces[2]])) / round_t((mesh->getOutSign(ic, 0) * slope[hexaFaces[0]]) + (mesh->getOutSign(ic, 2) * slope[hexaFaces[2]]) + 1e-8 * v->ones, config->tol, 1);
-        Tensor slope1 = (2.0 * (mesh->getOutSign(ic, 1) * slope[hexaFaces[1]]) * (mesh->getOutSign(ic, 3) * slope[hexaFaces[3]])) / round_t((mesh->getOutSign(ic, 1) * slope[hexaFaces[1]]) + (mesh->getOutSign(ic, 3) * slope[hexaFaces[3]]) + 1e-8 * v->ones, config->tol, 1);
-        Tensor slope2 = (2.0 * (mesh->getOutSign(ic, 4) * slope[hexaFaces[4]]) * (mesh->getOutSign(ic, 5) * slope[hexaFaces[5]])) / round_t((mesh->getOutSign(ic, 4) * slope[hexaFaces[4]]) + (mesh->getOutSign(ic, 5) * slope[hexaFaces[5]]) + 1e-8 * v->ones, config->tol, 1);
+        // Tensor slope0 = (2.0 * (mesh->getOutSign(ic, 0) * slope[hexaFaces[0]]) * (mesh->getOutSign(ic, 2) * slope[hexaFaces[2]])) / round_t((mesh->getOutSign(ic, 0) * slope[hexaFaces[0]]) + (mesh->getOutSign(ic, 2) * slope[hexaFaces[2]]) + 1e-8 * v->ones, config->tol, 1);
+        // Tensor slope1 = (2.0 * (mesh->getOutSign(ic, 1) * slope[hexaFaces[1]]) * (mesh->getOutSign(ic, 3) * slope[hexaFaces[3]])) / round_t((mesh->getOutSign(ic, 1) * slope[hexaFaces[1]]) + (mesh->getOutSign(ic, 3) * slope[hexaFaces[3]]) + 1e-8 * v->ones, config->tol, 1);
+        // Tensor slope2 = (2.0 * (mesh->getOutSign(ic, 4) * slope[hexaFaces[4]]) * (mesh->getOutSign(ic, 5) * slope[hexaFaces[5]])) / round_t((mesh->getOutSign(ic, 4) * slope[hexaFaces[4]]) + (mesh->getOutSign(ic, 5) * slope[hexaFaces[5]]) + 1e-8 * v->ones, config->tol, 1);
         
+        Tensor slope0 = minmod(mesh->getOutSign(ic, 0) * slope[hexaFaces[0]], mesh->getOutSign(ic, 2) * slope[hexaFaces[2]], config->tol);
+        Tensor slope1 = minmod(mesh->getOutSign(ic, 1) * slope[hexaFaces[1]], mesh->getOutSign(ic, 3) * slope[hexaFaces[3]], config->tol);
+        Tensor slope2 = minmod(mesh->getOutSign(ic, 4) * slope[hexaFaces[4]], mesh->getOutSign(ic, 5) * slope[hexaFaces[5]], config->tol);
+
         std::vector<REAL> cellCenter = mesh->cellCenters[ic];
         
         fLeftRight[hexaFaces[0]][1 - mesh->getOutIndex(ic, 0)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[0]]) * slope0, config->tol, 1000000);
-        fLeftRight[hexaFaces[2]][1 - mesh->getOutIndex(ic, 2)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[2]]) * slope0, config->tol, 1000000);
+        fLeftRight[hexaFaces[2]][1 - mesh->getOutIndex(ic, 2)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[2]]) * slope0, config->tol, 1000000);
         
         fLeftRight[hexaFaces[1]][1 - mesh->getOutIndex(ic, 1)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[1]]) * slope1, config->tol, 1000000);
-        fLeftRight[hexaFaces[3]][1 - mesh->getOutIndex(ic, 3)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[3]]) * slope1, config->tol, 1000000);
+        fLeftRight[hexaFaces[3]][1 - mesh->getOutIndex(ic, 3)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[3]]) * slope1, config->tol, 1000000);
         
         fLeftRight[hexaFaces[4]][1 - mesh->getOutIndex(ic, 4)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[4]]) * slope2, config->tol, 1000000);
-        fLeftRight[hexaFaces[5]][1 - mesh->getOutIndex(ic, 5)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[5]]) * slope2, config->tol, 1000000);
+        fLeftRight[hexaFaces[5]][1 - mesh->getOutIndex(ic, 5)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[5]]) * slope2, config->tol, 1000000);
     }
 }
 

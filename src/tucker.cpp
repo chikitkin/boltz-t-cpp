@@ -607,7 +607,7 @@ Tucker minmod(const Tucker& t1, const Tucker& t2, REAL tol)
 	delete [] t1_full;
 	delete [] t2_full;
 
-	Tucker res(t1.n1, t1.n2, t1.n3, res_full, tol);
+	Tucker res(t1.n1, t1.n2, t1.n3, res_full, 1e-15);
 	delete [] res_full;
 
     return res;
