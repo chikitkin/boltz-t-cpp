@@ -6,5 +6,5 @@ mkdir $now
 cd $now
 
 srun ../../../src/cli.o ../config.cfg ../mesh_medium.mesh ../macro_restart_e-2.txt
-srun python3 ../../plot_res.py res.txt
+srun python3 ../../plot_res.py
 srun python3 ../../plot_cylinder.py

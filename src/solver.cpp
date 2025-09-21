@@ -156,7 +156,7 @@ Tensor comp_j(const std::vector <REAL>& params, const Tensor& f, REAL tol, std::
 template <class Tensor>
 Tensor Problem<Tensor>::getInit(REAL x, REAL y, REAL z,
 		const std::vector<Tensor>& initData) {
-	if (x <= 0.0) {
+	if (z <= 0.0) {
 		return initData[0];
 	}
 	else {

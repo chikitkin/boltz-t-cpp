@@ -325,6 +325,7 @@ int main(int argc, char *argv[])
 	if (channel_length > 0.0) {
 		std::ofstream file;
 		file.open("../macro_start.txt", std::ofstream::trunc);
+		file.precision(17); // TODO magic number
 		for (int ic = 0; ic < mesh->nCells; ++ic) {
 			file << mesh->cellCenters[ic][0] << " " << mesh->cellCenters[ic][1] << " " << mesh->cellCenters[ic][2] << " ";
 			file << 1.0 - (mesh->cellCenters[ic][2] / channel_length) << " " << 0.0 << " " << 0.0 << " " << 0.0 << " " << T_wall << "\n";
@@ -342,8 +343,17 @@ int main(int argc, char *argv[])
 
 	std::ofstream out;
 	out.open("T.txt");
+	out.precision(17); // TODO magic number
 	for (int ic = 0; ic < S.mesh->nCells; ++ic) {
-		out << S.mesh->cellCenters[ic][0] << " " << S.n[ic] << " " << S.ux[ic] << " " << S.T[ic] << "\n";
+		out << 
+		S.mesh->cellCenters[ic][0] << " " << 
+		S.mesh->cellCenters[ic][1] << " " <<
+		S.mesh->cellCenters[ic][2] << " " <<
+		S.n[ic]  << " " << 
+		S.ux[ic] << " " << 
+		S.uy[ic] << " " << 
+		S.uz[ic] << " " << 
+		S.T[ic]  << "\n";
 	}
 	out.close();
 

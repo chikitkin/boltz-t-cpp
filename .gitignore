@@ -4,4 +4,8 @@
 *.dat
 /Default/
 *.out
+*.txt
 *.png
+*.pdf
+
+!*e-2*
