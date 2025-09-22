@@ -89,9 +89,9 @@ if __name__ == "__main__":
     
     data = data[data[:, 0].argsort()] # [:-3]
     x  = data[:, 0] # + 0.4
-    n  = data[:, 1]
-    u  = data[:, 2]
-    T  = data[:, 3]
+    n  = data[:, 3]
+    u  = data[:, 4]
+    T  = data[:, 7]
     
     n_in  = 2e+23
     n_out = 6e+23
@@ -140,4 +140,4 @@ if __name__ == "__main__":
     ax.set_xlabel('x', fontsize=16)
     ax.grid()
     plt.legend(fontsize=30)
-    plt.savefig("stress.pdf", dpi=200)
+    plt.savefig("stress.png", dpi=200)

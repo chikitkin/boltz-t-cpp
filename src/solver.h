@@ -167,8 +167,8 @@ public:
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
 			REAL tol) override {
-				// return Tensor(BoundaryCondition<Tensor>::bcData);
-				return Tensor(f);
+				return Tensor(BoundaryCondition<Tensor>::bcData);
+				// return Tensor(f);
 	}
 };
 
