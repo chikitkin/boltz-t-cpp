@@ -7,7 +7,7 @@ REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int rmax, int &r);
 // REAL *svd_trunc_rmax(int m, int n, REAL *a, int rmax);
 
 REAL **compress(int n1, int n2, int n3,
-		REAL *a, REAL eps, int &r1, int &r2, int &r3, int rmax = 1e+6);
+		REAL *a, REAL eps, int &r1, int &r2, int &r3, int rmax = 1000000);
 
 REAL **qr(int m, int n, const REAL *a);
 
@@ -19,7 +19,7 @@ public:
 	// Zero tensor with given ranks
 	Tucker(int n1_, int n2_, int n3_, int r1_=1, int r2_=1, int r3_=1);
 	// Compress a tensor with given accuracy
-	Tucker(int n1_, int n2_, int n3_, REAL *a, REAL eps=1e-14);
+	Tucker(int n1_, int n2_, int n3_, REAL *a, REAL eps=1e-14); // TODO check base epsilon
 	// Create a rank-1 tensor from given factors
 	Tucker(int n1_, int n2_, int n3_, REAL *u1_, REAL *u2_, REAL *u3_);
 	// Copy constructor
@@ -41,7 +41,7 @@ public:
 	// Orthogonalize factors with QR
 	void orthogonalize();
 	// Recompress tensor
-	void round(REAL tol=1e-14, int rmax=1000000);
+	void round(REAL tol=1e-14, int rmax=1000000); // TODO check base epsilon
 	REAL *full() const;
 	// Compute sum of all elements
 	REAL sum() const;
@@ -59,7 +59,7 @@ public:
 	friend Tucker reflect(const Tucker& t, char axis);
 	friend Tucker minmod(const Tucker& t1, const Tucker& t2, REAL tol);
 
-	friend Tucker round_t(const Tucker& t, REAL tol=1e-14, int rmax=1000000);
+	friend Tucker round_t(const Tucker& t, REAL tol=1e-14, int rmax=1000000); // TODO check base epsilon
 
 	std::string to_string() const;
 	friend Tucker from_string(const std::string &tensor_string, const Tucker& foo);

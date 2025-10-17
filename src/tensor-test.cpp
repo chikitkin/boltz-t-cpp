@@ -14,11 +14,11 @@ void print_matrix( char* desc, int m, int n, REAL* a, int lda )
 }
 
 REAL f(REAL x, REAL y, REAL z) {
-	return 2.0 + x + 4*y + exp(-z*z);
+	return x + y + z;
 }
 
 REAL g(REAL x, REAL y, REAL z) {
-	return exp(-x);
+	return exp(-x*x);
 }
 
 int main(){
@@ -83,7 +83,7 @@ int main(){
 	sum = pow(sum, 0.5);
 	std::cout << "sum " << sum << std::endl;
 
-	vn_abs = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp);
+	vn_abs = Tensor(nvx, nvy, nvz, vn_abs_r1_tmp, 1e-20);
 	vn_abs_r1 = Tensor(vn_abs);
 	delete [] vn_abs_r1_tmp;
 
@@ -91,17 +91,20 @@ int main(){
 	std::cout << vn_abs_r1 << std::endl;
 	std::cout << vn_abs_r1.norm() << std::endl;
 
-	for (int r = 17; r > 0; --r) {
-		vn_abs_r1.round(1e-18, r);
-		std::cout << "rank = " << r << ", error norm = " << (vn_abs - vn_abs_r1).norm() << std::endl;
+	Tensor tmp = Tensor(vn_abs);
+
+	for (int r = 20; r > 0; --r) {
+		tmp = round_t(vn_abs, 1e-18, r);
+		std::cout << "rank = " << r << ", error norm = " << (vn_abs - tmp).norm() << std::endl;
 	}
-	
+
 /*************************************************************************************/
 // Ortho test
+	std::cout << "Ortho test\n" << std::endl; 
 	int n1, n2, n3;
-	n1 = 34;
-	n2 = 21;
-	n3 = 12;
+	n1 = 44;
+	n2 = 44;
+	n3 = 44;
 	
 	REAL *a = new REAL[n1*n2*n3];
 	REAL *b = new REAL[n1*n2*n3];
@@ -110,61 +113,94 @@ int main(){
 	for (int i = 0; i < n1; ++i) {
 		for (int j = 0; j < n2; ++j) {
 			for (int k = 0; k < n3; ++k) {
-				a[i*n2*n3 + j*n3 + k] = f(i, j, k);
-				b[i*n2*n3 + j*n3 + k] = g(i, j, k);
-				F[i*n2*n3 + j*n3 + k] = (a[i*n2*n3 + j*n3 + k] / b[i*n2*n3 + j*n3 + k]);
+				REAL x = static_cast<REAL>(i);
+				REAL y = static_cast<REAL>(j);
+				REAL z = static_cast<REAL>(k);
+				a[i*n2*n3 + j*n3 + k] = f(x, y, z);
+				b[i*n2*n3 + j*n3 + k] = g(x, y, z);
+				F[i*n2*n3 + j*n3 + k] = 12 * f(x, y, z) + 12 * g(x, y, z);
 			}
 		}
 	}
 
-	Tensor a_t(n1, n2, n3, a, 1e-8);
-	Tensor b_t(n1, n2, n3, b, 1e-8);
+	Tensor a_t(n1, n2, n3, a, 1e-5);
+	Tensor b_t(n1, n2, n3, b, 1e-5);
+	std::cout << "a_t: " << a_t << std::endl;
+	std::cout << "b_t: " << b_t << std::endl;
 
-	Tensor c_t;
-
-	c_t = 3 * a_t + a_t * b_t;
-	Tensor d_t(c_t);
-
-	Tensor F_t(n1, n2, n3, F);
-
-	F_t = -(a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t);
-	std::cout << "F_t: " << F_t << std::endl;
+	Tensor F_t = (
+		a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + 
+		a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t + a_t + b_t
+	);
+	std::cout << "F_t before round: " << F_t << std::endl;
+	F_t.round(1e-8);
+	std::cout << "F_t after  round: " << F_t << std::endl;
 
 	REAL * F_t_full = F_t.full();
 
-	REAL F_err = 0.0;
 	REAL F_sum = 0.0;
+	REAL F_t_sum = F_t.sum();
+	REAL F_t_full_sum = 0.0;
 	for (int i = 0; i < n1*n2*n3; i++) {
-		F_err += pow(F_t_full[i] - F[i], 2);
-		F_sum += pow(F[i], 2);
+		F_sum        += F[i];
+		F_t_full_sum += F_t_full[i];
 	}
-	F_err = pow(F_err, 0.5);
-	F_sum = pow(F_sum, 0.5);
-	std::cout << "compare full: " << F_err / F_sum << std::endl;
+	std::cout << "F_sum:        " << F_sum << std::endl;
+	std::cout << "F_t_sum:      " << F_t_sum << std::endl;
+	std::cout << "F_t_full_sum: " << F_t_full_sum << std::endl;
 
-	F_sum = 0.0;
-	for (int i = 0; i < n1*n2*n3; i++) {
-		F_sum += F[i];
-	}
-	std::cout << "compare sum: " << abs(F_sum - F_t.sum()) / abs(F_sum) << std::endl;
-
-	std::cout << F_t << std::endl;
-
-	REAL * d_t_full = d_t.full();
-	std::cout << "before ortho: " << (c_t - d_t).norm() / d_t.norm() << std::endl;
-	d_t.orthogonalize();
-	std::cout << " after ortho: " << (c_t - d_t).norm() / d_t.norm() << std::endl;
-
-	std::cout << b_t << std::endl;
-	std::cout << "divide error = " << ((a_t / b_t) - F_t).norm() / F_t.norm() << std::endl;
+	Tensor c_t = a_t + b_t;
+	std::cout << "norm before ortho: " << c_t.norm() << std::endl;
+	c_t.orthogonalize();
+	std::cout << " norm after ortho: " << c_t.norm() << std::endl;
 
 	std::cout << "a_t string error norm: " << (from_string(a_t.to_string(), a_t) - a_t).norm() / a_t.norm() << std::endl;
 
-	std::cout << "Test sum 2 "  << (a_t + b_t).sum()  << std::endl;
-	std::cout << "Test full 2 " << (a_t + b_t).full() << std::endl;
-
 	std::cout << "Test minmod" << std::endl;
-	std::cout << minmod(-a_t, b_t, 1e-8) << std::endl;
+	std::cout << minmod(a_t, b_t, 1e-8) << std::endl;
+
+/*************************************************************************************/
+
+// Test round
+	std::cout << "\n\n\n\nTest round\n";
+	n1 = 44;
+	n2 = 44;
+	n3 = 44;
+
+	a = new REAL[n1*n2*n3];
+	b = new REAL[n1*n2*n3];
+	F = new REAL[n1*n2*n3];
+
+	for (int i = 0; i < n1; ++i) {
+		for (int j = 0; j < n2; ++j) {
+			for (int k = 0; k < n3; ++k) {
+				REAL x = static_cast<REAL>(i);
+				REAL y = static_cast<REAL>(j);
+				REAL z = static_cast<REAL>(k);
+				a[i*n2*n3 + j*n3 + k] = x + y + z;
+				b[i*n2*n3 + j*n3 + k] = y;
+				F[i*n2*n3 + j*n3 + k] = x + y;
+			}
+		}
+	}
+
+	REAL *a_t_full;
+
+	for (int i = 1; i < 20; i++) {
+		a_t = Tensor(n1, n2, n3, a, pow(10, -i));
+		std::cout << "tol: 1e-" << i;
+		a_t_full = a_t.full();
+		REAL dif = 0.0;
+		REAL nrm = 0.0;
+		for (int j = 0; j < n1*n2*n3; j++) {
+			dif += pow(a[j] - a_t_full[j], 2);
+			nrm += pow(a[j], 2);
+		}
+		dif = pow(dif, 0.5);
+		nrm = pow(nrm, 0.5);
+		std::cout << ", error:" << dif / nrm;
+		std::cout << ", ranks: " << a_t.r()[0] << " " << a_t.r()[1] << " " << a_t.r()[2] << std::endl;
+	}
 
 /*************************************************************************************/
 // Reflect test

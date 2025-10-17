@@ -607,7 +607,7 @@ Tucker minmod(const Tucker& t1, const Tucker& t2, REAL tol)
 	delete [] t1_full;
 	delete [] t2_full;
 
-	Tucker res(t1.n1, t1.n2, t1.n3, res_full, 1e-15);
+	Tucker res(t1.n1, t1.n2, t1.n3, res_full, 1e-15); // TODO check base epsilon
 	delete [] res_full;
 
     return res;
@@ -654,7 +654,7 @@ REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int rmax, int &r)
 			exit( 1 );
 	}
 
-	eps = eps * S[0];
+	eps = eps * S[0]; // TODO if epsilon changes
 
 	r = std::min(m, n);
 
@@ -668,6 +668,11 @@ REAL *svd_trunc(int m, int n, REAL *a, REAL eps, int rmax, int &r)
 	REAL *u = new REAL[m*r]; // TODO can be optimized
 
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', m, r, U, m, u, r);
+
+	// for (int i = 0; i < std::min(m, n); ++i) {
+	// 	std::cout << S[i] << " ";
+	// }
+	// std::cout << "\n";
 
 	delete[] a_copy;
 	delete[] U;
@@ -732,7 +737,7 @@ REAL **compress(int n1, int n2, int n3, REAL *a, REAL eps, int &r1, int &r2, int
 	LAPACKE_dlacpy (LAPACK_ROW_MAJOR, 'A', n1*n2*n3, 1, a, 1, z3, 1);
 	MKL_Dimatcopy ('R', 'T', n1*n2, n3, alpha, z3, n3, n1*n2);
 
-	eps = eps / pow(3.0, 0.5);
+	eps = eps / pow(3.0, 0.5); // TODO check epsilon
 
 	u1 = svd_trunc(n1, (n2 * n3), z1, eps, rmax, r1);
 	u2 = svd_trunc(n2, (n1 * n3), z2, eps, rmax, r2);

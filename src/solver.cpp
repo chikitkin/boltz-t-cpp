@@ -44,8 +44,7 @@ std::vector<int> getParallelRanges(const std::vector<double>& times, int numThre
 
 template <class Tensor>
 REAL *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,
-		REAL n, REAL ux, REAL uy, REAL uz,
-		REAL T, REAL Rg)
+		REAL n, REAL ux, REAL uy, REAL uz, REAL T)
 {
 	REAL *fmax = new REAL[v->nv];
 
@@ -60,8 +59,7 @@ REAL *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,
 
 template <class Tensor>
 Tensor f_maxwell_t(std::shared_ptr < VelocityGrid<Tensor> > v,
-		REAL n, REAL ux, REAL uy, REAL uz,
-		REAL T, REAL Rg)
+		REAL n, REAL ux, REAL uy, REAL uz, REAL T)
 {
 	REAL C = n / pow((PI * T), 1.5); // TODO pi
 
@@ -115,10 +113,6 @@ std::vector <REAL> comp_macro_params(const Tensor& f, std::shared_ptr < Velocity
 	REAL mu = gas_params->mu(T);
 	REAL nu = gas_params->delta * (n * T / mu);
 
-	// REAL rho = n;
-	// REAL p = rho * T;
-	// REAL Mach = pow((ux*ux + uy*uy + uz*uz) / (gas_params->g * gas_params->Rg * T), 0.5)
-
 	return {n, ux, uy, uz, T, nu};
 }
 
@@ -143,7 +137,7 @@ Tensor comp_j(const std::vector <REAL>& params, const Tensor& f, REAL tol, std::
 	REAL qy = 0.5 * v->hv3 * (vy * v2 * f).sum();
 	REAL qz = 0.5 * v->hv3 * (vz * v2 * f).sum();
 
-	Tensor fmax = f_maxwell_t(v, n, ux, uy, uz, T, gas_params->Rg);
+	Tensor fmax = f_maxwell_t(v, n, ux, uy, uz, T);
 
 	Tensor f_plus = fmax * (v->ones + ((8.0 / 5.0) * (1.0 - gas_params->Pr) * (1.0 / (n*T*T)) * (vx*qx + vy*qy + vz*qz) * (((1.0 / T) * v2 + (- 5.0 / 2.0) * v->ones)))); // TODO round
 	Tensor J = nu * (f_plus - f);
@@ -587,7 +581,7 @@ Solution<Tensor>::Solution(
             std::istringstream line_stream(line);
 			line_stream.precision(17); // TODO magic number
             line_stream >> x >> y >> z >> n[ic] >> ux[ic] >> uy[ic] >> uz[ic] >> T[ic];
-            f[ic] = f_maxwell_t(v, n[ic], ux[ic], uy[ic], uz[ic], T[ic], gas_params->Rg);
+            f[ic] = f_maxwell_t(v, n[ic], ux[ic], uy[ic], uz[ic], T[ic]);
             ++ic;
 			std::cout << ic << " ";
         }
@@ -619,7 +613,16 @@ Solution<Tensor>::Solution(
 		if (mesh->boundaryFacesForEachTag.count(tag)) {
 			std::vector<int> bcFaces = mesh->boundaryFacesForEachTag[tag];
 			for (const int &jf: bcFaces) {
-				if (type == SYMMETRYX) {
+				if (type == SYMMETRY) {
+					BCSYMMETRY<Tensor> * pBoundaryCondition = new BCSYMMETRY<Tensor>();
+					pBoundaryCondition->jf = jf;
+					pBoundaryCondition->gas_params = gas_params;
+					pBoundaryCondition->v = v;
+					pBoundaryCondition->bcData = data_;
+					pBoundaryCondition->type = type;
+					bcList.push_back(pBoundaryCondition);
+				}
+				else if (type == SYMMETRYX) {
 					BCSYMMETRYX<Tensor> * pBoundaryCondition = new BCSYMMETRYX<Tensor>();
 					pBoundaryCondition->jf = jf;
 					pBoundaryCondition->gas_params = gas_params;
@@ -734,7 +737,7 @@ Tensor Solution<Tensor>::to_rank_one(Tensor f) {
 	REAL uz = params[3];
 	REAL T  = params[4];
 
-	return f_maxwell_t(v, n, ux, uy, uz, T, gas_params->Rg);
+	return f_maxwell_t(v, n, ux, uy, uz, T);
 }
 
 template <class Tensor>
@@ -1207,7 +1210,7 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 template class VelocityGrid<Full>;
 template class Problem<Full>;
 template class Solution<Full>;
-template Full f_maxwell_t(std::shared_ptr < VelocityGrid<Full> >, REAL, REAL, REAL, REAL, REAL, REAL);
+template Full f_maxwell_t(std::shared_ptr < VelocityGrid<Full> >, REAL, REAL, REAL, REAL, REAL);
 // template std::vector <REAL> comp_macro_params(const Full&, std::shared_ptr < VelocityGrid<Full> >, std::shared_ptr < GasParams >);     
 // template Full comp_j(const std::vector <REAL>&, const Full&, REAL, std::shared_ptr < VelocityGrid<Full> > v, std::shared_ptr < GasParams >);
 // template void Solution<Full>::reconstruction_2nd_order();
@@ -1216,7 +1219,7 @@ template Full f_maxwell_t(std::shared_ptr < VelocityGrid<Full> >, REAL, REAL, RE
 template class VelocityGrid<Tucker>;
 template class Problem<Tucker>;
 template class Solution<Tucker>;
-template Tucker f_maxwell_t(std::shared_ptr < VelocityGrid<Tucker> >, REAL, REAL, REAL, REAL, REAL, REAL);
+template Tucker f_maxwell_t(std::shared_ptr < VelocityGrid<Tucker> >, REAL, REAL, REAL, REAL, REAL);
 // template std::vector <REAL> comp_macro_params(const Full&, std::shared_ptr < VelocityGrid<Full> >, std::shared_ptr < GasParams >);     
 // template Tucker comp_j(const std::vector <REAL>&, const Tucker&, REAL, std::shared_ptr < VelocityGrid<Tucker> > v, std::shared_ptr < GasParams >);
 // template void Solution<Tucker>::reconstruction_2nd_order();

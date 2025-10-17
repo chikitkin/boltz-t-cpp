@@ -10,7 +10,8 @@ enum bcType
     OUTLET = 2,
     WALL = 3,
     SYMMETRYY = 4,
-    SYMMETRYX = 5 
+    SYMMETRYX = 5,
+	SYMMETRY = 6
 };
 
 enum cellType

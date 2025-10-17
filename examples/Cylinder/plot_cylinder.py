@@ -5,31 +5,6 @@ from matplotlib import pyplot as plt
 from mpl_toolkits import mplot3d
 
 ######################################
-# Timings
-
-time_full = 17+2+2+12+21+.72
-
-time_2 = 6872.66 / 1000
-time_3 = 39762.2 / 1000
-time_4 = 99260.2 / 1000
-
-plt.figure(figsize = (5, 3))
-plt.semilogx([1e-2, 1e-3, 1e-4], [time_2, time_3, time_4], 'ko-', linewidth=1)
-plt.hlines(time_full, 0, 1, color='k', linestyle="dashed", linewidth=1)
-plt.suptitle("Average time of a step", fontsize=15)
-plt.xlabel("Rounding error")
-plt.xticks([1e-2, 1e-3, 1e-4], [r'$10^{-2}$', r'$10^{-3}$', r'$10^{-4}$'])
-plt.ylabel("Time, s")
-plt.grid()
-plt.savefig('timings.png', dpi=300)
-plt.close()
-
-print("Time full:", time_full, "speed-up", time_full / time_full)
-print("Time 1e-2:", time_2, "speed-up", time_full / time_2)
-print("Time 1e-3:", time_3, "speed-up", time_full / time_3)
-print("Time 1e-4:", time_4, "speed-up", time_full / time_4)
-
-######################################
 # Compression
 filename_list = [""]
 

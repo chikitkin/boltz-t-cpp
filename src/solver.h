@@ -117,6 +117,17 @@ public:
 };
 
 template <class Tensor>
+class BCSYMMETRY : public BoundaryCondition<Tensor> {
+public:
+	Tensor applyBC(REAL x, REAL y, REAL z, 
+			const Tensor& f, 
+			const Tensor& vn, const Tensor& vn_abs, 
+			REAL tol) override {
+				return Tensor(f);
+	}
+};
+
+template <class Tensor>
 class BCSYMMETRYX : public BoundaryCondition<Tensor> {
 public:
 	Tensor applyBC(REAL x, REAL y, REAL z, 
@@ -156,6 +167,7 @@ public:
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
 			REAL tol) override {
+				// std::cout << "BCINLET " << BoundaryCondition<Tensor>::bcData.sum() << std::endl;
 				return Tensor(BoundaryCondition<Tensor>::bcData);
 	}
 };
@@ -167,8 +179,8 @@ public:
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
 			REAL tol) override {
+				// std::cout << "BCOUTLET " << BoundaryCondition<Tensor>::bcData.sum() << std::endl;
 				return Tensor(BoundaryCondition<Tensor>::bcData); // TODO fixed or reflected?
-				// return Tensor(f);
 	}
 };
 
@@ -324,12 +336,10 @@ Tensor comp_j(const std::vector <REAL>& params, const Tensor& f, REAL tol,
 
 template <class Tensor>
 REAL *f_maxwell(std::shared_ptr < VelocityGrid<Tensor> > v,
-		REAL n, REAL ux, REAL uy, REAL uz,
-		REAL T, REAL Rg);
+		REAL n, REAL ux, REAL uy, REAL uz, REAL T);
 
 template <class Tensor>
 Tensor f_maxwell_t(std::shared_ptr < VelocityGrid<Tensor> > v,
-		REAL n, REAL ux, REAL uy, REAL uz,
-		REAL T, REAL Rg);
+		REAL n, REAL ux, REAL uy, REAL uz, REAL T);
 
 #endif /* SOLVER_H_ */

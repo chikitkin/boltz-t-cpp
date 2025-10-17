@@ -12,7 +12,7 @@ int check_velocity_grid(REAL n, REAL ux, REAL uy, REAL uz, REAL T,
         std::shared_ptr < VelocityGrid<Tensor> > v,
         std::shared_ptr < GasParams > gas_params)
 {
-    Tensor f = f_maxwell_t<Tensor>(v, n, ux, uy, uz, T, gas_params->Rg);
+    Tensor f = f_maxwell_t<Tensor>(v, n, ux, uy, uz, T);
     std::vector<REAL> params = comp_macro_params(f, v, gas_params);
     
     std::cout << "\tn:  " << abs(params[0] - n) / n << " = 0" << std::endl;
@@ -31,6 +31,11 @@ int main(int argc, char *argv[])
 
 	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();
 	std::shared_ptr < Config > config = std::make_shared < Config > ();
+
+	bool dimensionless = false;
+
+	REAL scale = 1.0;
+	gas_params->l_s = 1.0;
 	
 	REAL n_in;
 	REAL ux_in = 0.0;
@@ -67,7 +72,9 @@ int main(int argc, char *argv[])
         std::istringstream line_stream(line.substr(line.find("=") + 1));
 		line_stream.precision(17); // TODO magic number
             
-        if      (line.find("l_s")   != std::string::npos) { line_stream >> gas_params->l_s; }
+        if      (line.find("dimensionless") != std::string::npos) { line_stream >> dimensionless; }
+        else if (line.find("scale") != std::string::npos) { line_stream >> scale; }
+        else if (line.find("l_s")   != std::string::npos) { line_stream >> gas_params->l_s; }
         else if (line.find("n_in")  != std::string::npos) { line_stream >> n_in; }
         else if (line.find("ux_in") != std::string::npos) { line_stream >> ux_in; }
         else if (line.find("uy_in") != std::string::npos) { line_stream >> uy_in; }
@@ -109,11 +116,11 @@ int main(int argc, char *argv[])
         else if (line.find("boundary:") != -1) { break; }
 	}
 
-	u_in = pow(ux_in*ux_in + uy_in*uy_in + uz_in*uz_in, 0.5);
-	u_out = pow(ux_out*ux_out + uy_out*uy_out + uz_out*uz_out, 0.5);
+	u_in  = pow(pow(ux_in,  2) + pow(uy_in,  2) + pow(uz_in,  2), 0.5);
+	u_out = pow(pow(ux_out, 2) + pow(uy_out, 2) + pow(uz_out, 2), 0.5);
 	
-	gas_params->Rg = gas_params->Ru / gas_params->Mol; // = self.Ru / self.Mol  # J / (kg * K)
-	gas_params->m = gas_params->Mol / gas_params->Na; // # kg
+	gas_params->Rg = gas_params->Ru  / gas_params->Mol; // = self.Ru / self.Mol  # J / (kg * K)
+	gas_params->m  = gas_params->Mol / gas_params->Na; // # kg
 	
 	mesh_path = argv[2];
 	
@@ -200,8 +207,8 @@ int main(int argc, char *argv[])
 	u_in  /= gas_params->v_s;
 	u_out /= gas_params->v_s;
 	
-	Tensor f_in  = f_maxwell_t<Tensor>(v, n_in, ux_in, uy_in, uz_in, T_in, gas_params->Rg);
-	Tensor f_out = f_maxwell_t<Tensor>(v, n_out, ux_out, uy_out, uz_out, T_out, gas_params->Rg);
+	Tensor f_in  = f_maxwell_t<Tensor>(v, n_in,  ux_in,  uy_in,  uz_in,  T_in);
+	Tensor f_out = f_maxwell_t<Tensor>(v, n_out, ux_out, uy_out, uz_out, T_out);
 
 	// std::cout << "f_in string: " << f_in.to_string() << std::endl;
 	std::cout << "f_in string error norm: " << (from_string(f_in.to_string(), f_in) - f_in).norm() / f_in.norm() << std::endl;
@@ -246,7 +253,13 @@ int main(int argc, char *argv[])
 				T_wall /= gas_params->T_s;
 				problem->bcTags.push_back(tag);
 				problem->bcTypes.push_back(WALL);
-				problem->bcData.push_back(f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_wall, gas_params->Rg));
+				problem->bcData.push_back(f_maxwell_t<Tensor>(v, 1.0, 0.0, 0.0, 0.0, T_wall));
+			}
+			else if (bc_type == "SYMMETRY") {
+				bc_line_stream >> tag >> bc_type;
+				problem->bcTags.push_back(tag);
+				problem->bcTypes.push_back(SYMMETRY);
+				problem->bcData.push_back(Tensor());
 			}
 			else if (bc_type == "SYMMETRYX") {
 				bc_line_stream >> tag >> bc_type;
@@ -276,8 +289,7 @@ int main(int argc, char *argv[])
 						ux/gas_params->v_s, 
 						uy/gas_params->v_s, 
 						uz/gas_params->v_s,
-						T/gas_params->T_s,
-						gas_params->Rg
+						T/gas_params->T_s
 					)
 				);
 			}
@@ -291,8 +303,7 @@ int main(int argc, char *argv[])
 						ux/gas_params->v_s, 
 						uy/gas_params->v_s, 
 						uz/gas_params->v_s,
-						T/gas_params->T_s,
-						gas_params->Rg
+						T/gas_params->T_s
 					)
 				);
 			}
