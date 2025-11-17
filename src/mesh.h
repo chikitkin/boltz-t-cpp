@@ -17,7 +17,8 @@ enum bcType
 enum cellType
 {
 	TETRA = 0,
-	HEXA = 1
+	HEXA = 1,
+	PRISM = 2
 };
 
 enum faceType
