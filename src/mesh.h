@@ -43,7 +43,9 @@ public:
 	std::vector<cellType> cellTypes;
 	void readHexa(std::ifstream &data);
 	void readTetra(std::ifstream &data);
+	void readPrisms(std::ifstream &data);
 	std::vector<std::vector<REAL>> cellCenters;
+	REAL volume;
 	std::vector<REAL> cellVolumes;
 	std::vector<std::vector<int>> computeFacesOfCell(int ic);
 	std::vector<std::vector<int>> cellNeighbors;
@@ -93,7 +95,6 @@ public:
 
 	std::vector < std::vector < std::vector < int >>> C;
 	std::vector < int > iPerm;
-
 
 	void write_tecplot(std::vector < std::vector <REAL> > data, std::string filename,
 			std::vector <std::string> var_names, REAL time = 0.0);

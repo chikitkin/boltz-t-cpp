@@ -353,7 +353,6 @@ Full minmod(const Full& t1, const Full& t2, REAL tol)
             }
         }
     }
-    
     return res;
 }
 

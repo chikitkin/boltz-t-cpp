@@ -304,7 +304,7 @@ public:
 //	int it;
 
 	REAL vector_norm(std::vector<Tensor> vec);
-	REAL macro_min(std::vector<REAL> vec);
+	REAL residual();
 
 	void plot_residual();
 	void create_res();

@@ -111,6 +111,50 @@ void Mesh::readTetra(std::ifstream &data) {
 		cellVerts.push_back(cell);
 	}
 }
+//              1
+//             /|\
+//            / | \
+//          2/__|__\0
+//          |   |   |
+//          |   |   |
+//          |   |   |
+//          |  4|   |
+//          |  / \  |
+//          | /   \ |
+//          |/_____\|
+//          5       3
+void Mesh::readPrisms(std::ifstream &data) {
+	std::string line;
+	getline(data, line);
+	int nPrisms;
+	std::istringstream(line) >> nPrisms;
+	std::cout << "Number of prism cells = " << nPrisms << std::endl;
+	if (cellVerts.empty()) {
+		nCells = nPrisms;
+	}
+	else {
+		nCells += nPrisms;
+	}
+	cellVerts.reserve(nCells);
+	cellTypes.resize(nCells, PRISM);
+	for (int i = 0; i < nPrisms; ++i) {
+		getline(data, line);
+		std::istringstream iss(line);
+		int v0, v1, v2, v3, v4, v5, tag;
+		if (!(iss >> v0 >> v1 >> v2 >> v3 >> v4 >> v5 >> tag)) {
+			std::cout << "Wrong prism line!" << std::endl;
+		}
+		std::vector <int> cell;
+		// check TODO
+		cell.push_back(v0 - 1);
+		cell.push_back(v1 - 1);
+		cell.push_back(v2 - 1);
+		cell.push_back(v3 - 1);
+		cell.push_back(v4 - 1);
+		cell.push_back(v5 - 1);
+		cellVerts.push_back(cell);
+	}
+}
 
 void Mesh::readBoundaryQuads(std::ifstream &data) {
 	std::string line;
@@ -187,8 +231,15 @@ REAL Mesh::computeTetraVolume(std::vector < std::vector < REAL > > tetra) {
 	REAL a21 = tetra[3][1] - tetra[0][1];
 	REAL a22 = tetra[3][2] - tetra[0][2];
 
-	return ((a00 * a11 * a22 + a01 * a12 * a20 + a02 * a21 * a10) -
-			(a02 * a11 * a20 + a00 * a12 * a21 + a01 * a10 * a22)) / 6.0;
+	REAL res = ((a00 * a11 * a22 + a01 * a12 * a20 + a02 * a21 * a10) - 
+					(a02 * a11 * a20 + a00 * a12 * a21 + a01 * a10 * a22)) / 6.0;
+
+	// if (res < 0) {
+	// 	std::cout << "NEGATIVE VOLUME IN computeTetraVolume" << std::endl;
+	// }
+
+	// TODO abs or correct orientation???
+	return abs(res);
 }
 
 std::vector<std::vector<int>> Mesh::computeFacesOfCell(int ic) {
@@ -211,6 +262,14 @@ std::vector<std::vector<int>> Mesh::computeFacesOfCell(int ic) {
 		faces.push_back(std::vector <int> {verts[0], verts[1], verts[2]});
 		faces.push_back(std::vector <int> {verts[0], verts[2], verts[3]});
 		faces.push_back(std::vector <int> {verts[0], verts[3], verts[1]});
+	}
+	else if (cellTypes[ic] == PRISM) {
+		faces.reserve(5);
+		faces.push_back(std::vector <int> {verts[0], verts[1], verts[2]});
+		faces.push_back(std::vector <int> {verts[3], verts[4], verts[5]});
+		faces.push_back(std::vector <int> {verts[0], verts[1], verts[4], verts[3]});
+		faces.push_back(std::vector <int> {verts[1], verts[2], verts[5], verts[4]});
+		faces.push_back(std::vector <int> {verts[2], verts[0], verts[3], verts[5]});
 	}
 
 	return faces;
@@ -249,6 +308,9 @@ void Mesh::read(const std::string& path, REAL scale) {
 		}
 		else if (line == "Tetrahedra") {
 			readTetra(data);
+		}
+		else if (line == "Prisms") {
+			readPrisms(data);
 		}
 	}
 	data.close();
@@ -299,6 +361,10 @@ void Mesh::read(const std::string& path, REAL scale) {
 		else if (cellTypes[i] == TETRA) {
 			cellNeighbors.push_back(std::vector <int> {-1, -1, -1, -1});
 			cellFaces.push_back(std::vector <int> {-1, -1, -1, -1});
+		}
+		else if (cellTypes[i] == PRISM) {
+			cellNeighbors.push_back(std::vector <int> {-1, -1, -1, -1, -1});
+			cellFaces.push_back(std::vector <int> {-1, -1, -1, -1, -1});
 		}
 	}
 	/*
@@ -417,8 +483,35 @@ void Mesh::read(const std::string& path, REAL scale) {
 			tetra.push_back(x4);
 			cellVolumes[ic] = computeTetraVolume(tetra); // TODO
 		}
+		else if (cellTypes[ic] == PRISM) {
+			std::vector <REAL> x0 = vertsCoo[cellVerts[ic][0]];
+			std::vector <REAL> x1 = vertsCoo[cellVerts[ic][1]];
+			std::vector <REAL> x2 = vertsCoo[cellVerts[ic][2]];
+			std::vector <REAL> x3 = vertsCoo[cellVerts[ic][3]];
+			std::vector <REAL> x4 = vertsCoo[cellVerts[ic][4]];
+			std::vector <REAL> x5 = vertsCoo[cellVerts[ic][5]];
+			std::vector <std::vector<REAL>> tetra0;
+			tetra0.push_back(x3);
+			tetra0.push_back(x4);
+			tetra0.push_back(x0);
+			tetra0.push_back(x5);
+			cellVolumes[ic] += computeTetraVolume(tetra0);
+			std::vector <std::vector<REAL>> tetra1;
+			tetra1.push_back(x5);
+			tetra1.push_back(x1);
+			tetra1.push_back(x0);
+			tetra1.push_back(x2);
+			cellVolumes[ic] += computeTetraVolume(tetra1);
+			std::vector <std::vector<REAL>> tetra2;
+			tetra2.push_back(x5);
+			tetra2.push_back(x4);
+			tetra2.push_back(x1);
+			tetra2.push_back(x0);
+			cellVolumes[ic] += computeTetraVolume(tetra2);
+		}
 	}
-	std::cout << "Sum of volumes = " << accumulate(cellVolumes.begin(), cellVolumes.end(), 0.0) << std::endl;
+	volume = accumulate(cellVolumes.begin(), cellVolumes.end(), 0.0);
+	std::cout << "Sum of volumes = " << volume << std::endl;
 	/*
 		Compute face areas and normals
 	*/
@@ -809,6 +902,17 @@ void Mesh::write_tecplot(std::vector < std::vector <REAL> > data, std::string fi
 			file << verts[0] + 1 << " ";
 			file << verts[0] + 1 << " ";
 			file << verts[0] + 1 << " ";
+			file << "\n";
+		}
+		else if (cellTypes[ic] == PRISM) {
+			file << verts[0] + 1 << " ";
+			file << verts[1] + 1 << " ";
+			file << verts[2] + 1 << " ";
+			file << verts[2] + 1 << " ";
+			file << verts[3] + 1 << " ";
+			file << verts[4] + 1 << " ";
+			file << verts[5] + 1 << " ";
+			file << verts[5] + 1 << " ";
 			file << "\n";
 		}
 	}

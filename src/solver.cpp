@@ -376,12 +376,27 @@ void Solution<Tensor>::update_res(REAL frob_norm) {
 template <class Tensor>
 REAL Solution<Tensor>::vector_norm(std::vector<Tensor> vec) {
 	REAL res = 0.0;
-	#pragma omp parallel for reduction(+:res)
+	#pragma omp parallel for reduction(+:res) schedule(dynamic)
 	for (int ic = 0; ic < mesh->nCells; ++ic) {
 		res += pow(vec[ic].norm(), 2.0);
 	}
 	res = pow(res, 0.5); // was / mesh->nCells
 	return res;
+}
+
+template <class Tensor>
+REAL Solution<Tensor>::residual() {
+	std::vector < REAL > res(mesh->nCells, 0.0);
+	#pragma omp parallel for schedule(dynamic)
+	for (int ic = 0; ic < mesh->nCells; ++ic) {
+		res[ic] += pow(v->hv3 * rhs[ic].sum(), 2);
+		res[ic] += pow(v->hv3 * (v->vx_t * rhs[ic]).sum(), 2);
+		res[ic] += pow(v->hv3 * (v->vy_t * rhs[ic]).sum(), 2);
+		res[ic] += pow(v->hv3 * (v->vz_t * rhs[ic]).sum(), 2);
+		res[ic] += pow(v->hv3 * (v->v2 * rhs[ic]).sum(), 2);
+		res[ic] *= mesh->cellVolumes[ic];
+	}
+	return accumulate(res.begin(), res.end(), 0.0) / mesh->volume;
 }
 
 template <class Tensor>
@@ -583,7 +598,6 @@ Solution<Tensor>::Solution(
             line_stream >> x >> y >> z >> n[ic] >> ux[ic] >> uy[ic] >> uz[ic] >> T[ic];
             f[ic] = f_maxwell_t(v, n[ic], ux[ic], uy[ic], uz[ic], T[ic]);
             ++ic;
-			std::cout << ic << " ";
         }
 		init.close();
 	}
@@ -774,13 +788,13 @@ void Solution<Tensor>::reconstruction_2nd_order() {
         std::vector<REAL> cellCenter = mesh->cellCenters[ic];
         
         fLeftRight[hexaFaces[0]][1 - mesh->getOutIndex(ic, 0)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[0]]) * slope0, config->tol, 1000000);
-        fLeftRight[hexaFaces[2]][1 - mesh->getOutIndex(ic, 2)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[2]]) * slope0, config->tol, 1000000);
+        fLeftRight[hexaFaces[2]][1 - mesh->getOutIndex(ic, 2)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[2]]) * slope0, config->tol, 1000000);
         
         fLeftRight[hexaFaces[1]][1 - mesh->getOutIndex(ic, 1)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[1]]) * slope1, config->tol, 1000000);
-        fLeftRight[hexaFaces[3]][1 - mesh->getOutIndex(ic, 3)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[3]]) * slope1, config->tol, 1000000);
+        fLeftRight[hexaFaces[3]][1 - mesh->getOutIndex(ic, 3)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[3]]) * slope1, config->tol, 1000000);
         
         fLeftRight[hexaFaces[4]][1 - mesh->getOutIndex(ic, 4)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[4]]) * slope2, config->tol, 1000000);
-        fLeftRight[hexaFaces[5]][1 - mesh->getOutIndex(ic, 5)] = round_t(f[ic] - distance_3d(cellCenter, mesh->faceCenters[hexaFaces[5]]) * slope2, config->tol, 1000000);
+        fLeftRight[hexaFaces[5]][1 - mesh->getOutIndex(ic, 5)] = round_t(f[ic] + distance_3d(cellCenter, mesh->faceCenters[hexaFaces[5]]) * slope2, config->tol, 1000000);
     }
 }
 
@@ -981,8 +995,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 		time = time + tau;
 		std::cout << "tau=" << tau << ", time=" << time << std::endl;
 
-		REAL frob_norm = vector_norm(rhs);
-		update_res(frob_norm);
+		REAL res = residual();
+		update_res(res);
 		auto TIME4 = omp_get_wtime();
 		timings[RHS].push_back(TIME4 - TIME3);
 		std::cout << "RHS                 time " << TIME4 - TIME3 << " s" << std::endl;
@@ -1085,22 +1099,15 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 						if ((icn >= 0) && (icn_perm > ic_perm)) {
 							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 							df[ic] = df[ic] - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * df[icn]);
-							if (config->isIncrement) {
-								// df[ic].round(config->tol);
-							}
-							else {
-								// df[ic] = round_t(f[ic] + df[ic], config->tol) - f[ic];
-							}
 						}
 					}
 					if (config->isIncrement) {
 						df[ic].round(config->tol);
-						df[ic] = df[ic] / diag[ic];
 					}
 					else {
 						df[ic] = round_t(f[ic] + df[ic], config->tol) - f[ic];
-						df[ic] = df[ic] / diag[ic];
 					}
+					df[ic] = df[ic] / diag[ic];
 
 					auto finish = omp_get_wtime();
 					lusgs_timings[ic] += finish - start;
@@ -1125,12 +1132,6 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 						if ((icn >= 0) && (icn_perm < ic_perm)) {
 							vnm_loc = 0.5 * (-v->vn_abs_r1 + mesh->getOutSign(ic, j) * vn[jf]); // vnm[jf] or -vnp[jf]
 							incr = incr - (mesh->faceAreas[jf] / mesh->cellVolumes[ic]) * (vnm_loc * df[icn]);
-							if (config->isIncrement) {
-								// incr.round(config->tol);
-							}
-							else {
-								// incr = round_t(incr + f[ic], config->tol) - f[ic];
-							}
 						}
 					}
 					if (config->isIncrement) {
@@ -1150,14 +1151,8 @@ void Solution<Tensor>::make_time_steps(std::shared_ptr<Config> config, int nt)
 			// Update values
 			#pragma omp parallel for schedule(dynamic)
 			for (int ic = 0; ic < mesh->nCells; ++ic) {
-				if (config->isIncrement) {
-					f[ic] = f[ic] + df[ic];
-					f[ic].round(config->tol);
-				}
-				else {
-					f[ic] = f[ic] + df[ic];
-					f[ic].round(config->tol);
-				}
+				f[ic] = f[ic] + df[ic];
+				f[ic].round(config->tol);
 			}
 			int  f_max_rank = 0;
 			int df_max_rank = 0;

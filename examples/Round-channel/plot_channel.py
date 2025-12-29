@@ -10,7 +10,6 @@ if __name__ == "__main__":
     
     dist = (params[:, 0]**2 + params[:, 1]**2)**.5
     params = params[np.isclose(dist, np.amin(dist), rtol=1e-2)]
-    
     params = params[params[:, 2].argsort()]
     
     z   = params[:, 2]
@@ -31,7 +30,7 @@ if __name__ == "__main__":
     plt.savefig("channel.png", dpi=200)
     
     
-    params = np.loadtxt("./macro_restart_1e-3.txt")
+    params = np.loadtxt("./macro_restart.txt")
     
     Mol = 40e-3
     Na = 6.02214129e+23
@@ -61,6 +60,7 @@ if __name__ == "__main__":
     uz = uz
     z = z.round(decimals=4)
     z_unique = np.unique(z)
+    print(z_unique)
     
     Q_0 = .5 * np.pi ** -.5
     
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     
     N = len(Q)
     
-    print((Q_norm[N // 2] + Q_norm[(N + 1) // 2]) / 2)
+    print((Q_norm[(N - 1) // 2] + Q_norm[N // 2]) / 2)
     print(np.mean(Q_norm))
 
     fig, ax = plt.subplots(figsize = (10, 6))

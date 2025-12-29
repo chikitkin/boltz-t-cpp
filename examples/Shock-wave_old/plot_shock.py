@@ -126,9 +126,9 @@ if __name__ == "__main__":
     # u_ref  = (u_ref - u_ref[-1]) / (u_ref[0] - u_ref[-1])
     T_ref  = (T_ref - T_ref[0])  / (T_ref[-1] - T_ref[0])
 
-    ax.plot(x_ref, n_ref,  'ko', label="Reference Density")
+    # ax.plot(x_ref, n_ref,  'ko', label="Reference Density")
     # ax.plot(x_ref, u_ref,  'kD', label="Reference Velocity")
-    ax.plot(x_ref, T_ref,  'ks', label="Reference Temperature")
+    # ax.plot(x_ref, T_ref,  'ks', label="Reference Temperature")
     
     ax.set_xlabel('x', fontsize=16)
     ax.grid()
