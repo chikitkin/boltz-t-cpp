@@ -239,7 +239,7 @@ REAL Mesh::computeTetraVolume(std::vector < std::vector < REAL > > tetra) {
 	// }
 
 	// TODO abs or correct orientation???
-	return abs(res);
+	return std::abs(res);
 }
 
 std::vector<std::vector<int>> Mesh::computeFacesOfCell(int ic) {

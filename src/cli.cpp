@@ -15,18 +15,18 @@ int check_velocity_grid(REAL n, REAL ux, REAL uy, REAL uz, REAL T,
     Tensor f = f_maxwell_t<Tensor>(v, n, ux, uy, uz, T);
     std::vector<REAL> params = comp_macro_params(f, v, gas_params);
     
-    std::cout << "\tn:  " << abs(params[0] - n) / n << " = 0" << std::endl;
-	std::cout << "\tux: " << abs(params[1] - ux) / ux << " = 0" << std::endl;
-	std::cout << "\tuy: " << abs(params[2] - uy) / uy << " = 0" << std::endl;
-	std::cout << "\tuz: " << abs(params[3] - uz) / uz << " = 0" << std::endl;
-	std::cout << "\tT:  " << abs(params[4] - T) / T   << " = 0" << std::endl;
+    std::cout << "\tn:  " << std::abs(params[0] - n) / n << " = 0" << std::endl;
+	std::cout << "\tux: " << std::abs(params[1] - ux) / ux << " = 0" << std::endl;
+	std::cout << "\tuy: " << std::abs(params[2] - uy) / uy << " = 0" << std::endl;
+	std::cout << "\tuz: " << std::abs(params[3] - uz) / uz << " = 0" << std::endl;
+	std::cout << "\tT:  " << std::abs(params[4] - T) / T   << " = 0" << std::endl;
 	
 	return 0;
 }
 
 int main(int argc, char *argv[])
 {
-    typedef Tucker Tensor;
+    typedef Full Tensor;
 	std::shared_ptr < GasParams > gas_params = std::make_shared < GasParams > ();
 
 	std::shared_ptr < Problem<Tensor> > problem = std::make_shared < Problem<Tensor> > ();
@@ -329,7 +329,7 @@ int main(int argc, char *argv[])
     check_velocity_grid(n_in, 0.0, 0.0, 0.0, T_wall, v, gas_params);
 	std::cout << "Inlet 2:" << std::endl;
 	std::vector<REAL> params = comp_macro_params(f_in, v, gas_params);
-	std::cout << "\t" << abs(params[0] - n_in) / n_in << " = 0, " << abs(params[4] - T_in) / T_in << " = 0"  << std::endl;
+	std::cout << "\t" << std::abs(params[0] - n_in) / n_in << " = 0, " << std::abs(params[4] - T_in) / T_in << " = 0"  << std::endl;
 
 	// WRITE MACRO START
 	std::cout << "channel_length = " << channel_length << std::endl;

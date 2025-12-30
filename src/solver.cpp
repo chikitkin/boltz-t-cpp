@@ -439,7 +439,7 @@ Solution<Tensor>::Solution(
 						mesh->faceNormals[jf][0] * v->vx[i] +
 						mesh->faceNormals[jf][1] * v->vy[i] +
 						mesh->faceNormals[jf][2] * v->vz[i];
-				vn_abs_tmp[i] = abs(vn_tmp[i]);
+				vn_abs_tmp[i] = std::abs(vn_tmp[i]);
 				if (vn_abs_tmp[i] > vn_abs_max_tmp) {
 					vn_abs_max_tmp = vn_abs_tmp[i];
 				}

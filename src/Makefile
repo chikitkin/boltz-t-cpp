@@ -1,7 +1,7 @@
 # CC=icc
 CC=icc
 
-CFLAGS=-std=c++14 -Wall -O3 -qopenmp -qmkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include"
+CFLAGS=-std=c++14 -O3 -qopenmp -mkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include"
 
 # for valgrind
 # CFLAGS=-std=c++14 -Wall -O0 -g -qopenmp -qmkl=sequential -DMKL_ILP64 -I"${MKLROOT}/include"

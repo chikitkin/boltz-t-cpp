@@ -1,0 +1,12 @@
+#!/bin/sh
+#SBATCH
+
+# export OMP_NUM_THREADS=1
+
+now=$(date '+%Y_%m_%d__%H_%M_%S')
+mkdir $now
+cd $now
+
+srun ../../../src/cli.o ../config.cfg ../mesh_mixed.mesh ../macro_start.txt
+srun python3 ../../plot_res.py
+srun python3 ../plot_channel.py

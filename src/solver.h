@@ -167,7 +167,6 @@ public:
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
 			REAL tol) override {
-				// std::cout << "BCINLET " << BoundaryCondition<Tensor>::bcData.sum() << std::endl;
 				return Tensor(BoundaryCondition<Tensor>::bcData);
 	}
 };
@@ -179,8 +178,7 @@ public:
 			const Tensor& f, 
 			const Tensor& vn, const Tensor& vn_abs, 
 			REAL tol) override {
-				// std::cout << "BCOUTLET " << BoundaryCondition<Tensor>::bcData.sum() << std::endl;
-				return Tensor(BoundaryCondition<Tensor>::bcData); // TODO fixed or reflected?
+				return Tensor(BoundaryCondition<Tensor>::bcData);
 	}
 };
 
